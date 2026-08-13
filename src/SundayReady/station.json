@@ -1,0 +1,22 @@
+{
+  // Local to this PC. Delete this file to fall back to hostname auto-detect.
+  "station": "Livestream Video",
+  "operator": "J. Mercer",
+  "checklists": [
+    "livestream-video.json",
+    "livestream-audio.json",
+    "go-live.json"
+  ],
+  "service": {
+    "doorsAt": "10:15",
+    "streamAt": "10:25",
+    "startsAt": "10:30",
+    "venue": "SANCTUARY"
+  },
+  "quickLaunch": [
+    { "label": "vMix", "action": { "run": "C:\\Program Files (x86)\\vMix\\vMix64.exe" } },
+    { "label": "Stream folder", "action": { "run": "E:\\Streams" } },
+    { "label": "Sound settings", "action": { "run": "ms-settings:sound" } },
+    { "label": "Planning Center", "action": { "run": "https://services.planningcenteronline.com" } }
+  ]
+}

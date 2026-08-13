@@ -1,0 +1,74 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Design tokens from the handoff. Status hues were authored in oklch at a matched
+        lightness/chroma; Avalonia cannot parse oklch, and the handoff says to fall back to
+        the supplied hex in that case, so these are the hex values verbatim.
+
+        The three derived accents with no hex given (failure body text, the failed AUTO tag,
+        and the action hover) are colour-matched into the same family.
+    -->
+
+    <!-- Surfaces -->
+    <SolidColorBrush x:Key="BgBrush" Color="#0b0d10" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#101317" />
+    <SolidColorBrush x:Key="PanelRaisedBrush" Color="#14171c" />
+    <SolidColorBrush x:Key="RailBgBrush" Color="#0e1115" />
+
+    <!-- Hairlines. Depth comes from surface lightness only — no shadows anywhere. -->
+    <SolidColorBrush x:Key="HairlineBrush" Color="#12FFFFFF" />
+    <SolidColorBrush x:Key="HairlineStrongBrush" Color="#1FFFFFFF" />
+    <SolidColorBrush x:Key="HairlineDashedBrush" Color="#24FFFFFF" />
+    <SolidColorBrush x:Key="RowBorderBrush" Color="#0FFFFFFF" />
+
+    <!-- White overlays, by the alpha the design calls for -->
+    <SolidColorBrush x:Key="Overlay02Brush" Color="#05FFFFFF" />
+    <SolidColorBrush x:Key="Overlay03Brush" Color="#08FFFFFF" />
+    <SolidColorBrush x:Key="Overlay04Brush" Color="#0AFFFFFF" />
+    <SolidColorBrush x:Key="Overlay05Brush" Color="#0DFFFFFF" />
+    <SolidColorBrush x:Key="Overlay06Brush" Color="#0FFFFFFF" />
+    <SolidColorBrush x:Key="Overlay08Brush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="Overlay20Brush" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="Overlay22Brush" Color="#38FFFFFF" />
+
+    <!-- Text ramp -->
+    <SolidColorBrush x:Key="TextBrush" Color="#e9ebee" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#c7ccd2" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#aeb4bb" />
+    <SolidColorBrush x:Key="TextFaintBrush" Color="#868d95" />
+    <SolidColorBrush x:Key="TextFainterBrush" Color="#6f767e" />
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#5f666e" />
+    <SolidColorBrush x:Key="TextLockedBrush" Color="#4e555d" />
+
+    <!-- Status. Grey means no human has looked at this yet. -->
+    <SolidColorBrush x:Key="OkBrush" Color="#4ec27f" />
+    <SolidColorBrush x:Key="WaitBrush" Color="#d6a53c" />
+    <SolidColorBrush x:Key="FailBrush" Color="#d75a44" />
+    <SolidColorBrush x:Key="ActionBrush" Color="#4a93e0" />
+    <SolidColorBrush x:Key="ActionHoverBrush" Color="#6aa8e8" />
+    <SolidColorBrush x:Key="FailTextBrush" Color="#eda294" />
+    <SolidColorBrush x:Key="FailTagBrush" Color="#e5786a" />
+
+    <!-- Status tints: fills at .06–.12, borders at .35–.45 -->
+    <SolidColorBrush x:Key="FailFillBrush" Color="#12d75a44" />
+    <SolidColorBrush x:Key="FailPillFillBrush" Color="#1Fd75a44" />
+    <SolidColorBrush x:Key="FailBorderBrush" Color="#73d75a44" />
+    <SolidColorBrush x:Key="FailPillBorderBrush" Color="#66d75a44" />
+    <SolidColorBrush x:Key="WaitBorderBrush" Color="#59d6a53c" />
+    <SolidColorBrush x:Key="WaitFillBrush" Color="#0Fd6a53c" />
+    <SolidColorBrush x:Key="OkFillBrush" Color="#1A4ec27f" />
+
+    <!-- Text on a filled status button is never white. -->
+    <SolidColorBrush x:Key="OnStatusBrush" Color="#0b0d10" />
+    <SolidColorBrush x:Key="OnOkBrush" Color="#07140c" />
+    <SolidColorBrush x:Key="OnActionBrush" Color="#08131f" />
+
+    <!--
+        Typography. The handoff specifies Archivo + JetBrains Mono but explicitly allows
+        substitution: "the Archivo/mono split is the load-bearing idea, not Archivo
+        specifically". Inter already ships with the app via Avalonia.Fonts.Inter and is the
+        inherited default, so UI text sets no family. Machine data uses the mono stack —
+        Cascadia Mono ships with Windows 11, Consolas with everything older.
+    -->
+    <FontFamily x:Key="MonoFont">Cascadia Mono,Consolas,Courier New</FontFamily>
+</ResourceDictionary>

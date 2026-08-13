@@ -1,0 +1,388 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SundayReady.ViewModels"
+             xmlns:views="using:SundayReady.Views"
+             xmlns:controls="using:SundayReady.Controls"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="SundayReady.Views.StationView"
+             x:DataType="vm:StationViewModel">
+
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:FailedVerifyViewModel">
+            <views:FailedVerifyView />
+        </DataTemplate>
+        <DataTemplate DataType="vm:OverrideViewModel">
+            <views:OverrideView />
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Styles>
+        <!-- Connectivity pill. Flips wholesale to the failure tint when a verifier is down. -->
+        <Style Selector="Border.pill">
+            <Setter Property="Background" Value="{StaticResource Overlay04Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="13,7" />
+        </Style>
+        <Style Selector="Border.pill.failing">
+            <Setter Property="Background" Value="{StaticResource FailPillFillBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource FailPillBorderBrush}" />
+        </Style>
+        <Style Selector="Border.pill Ellipse.dot">
+            <Setter Property="Fill" Value="{StaticResource OkBrush}" />
+        </Style>
+        <Style Selector="Border.pill.failing Ellipse.dot">
+            <Setter Property="Fill" Value="{StaticResource FailBrush}" />
+        </Style>
+        <Style Selector="Border.pill TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+        <Style Selector="Border.pill.failing TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+        </Style>
+
+        <!-- Tab labels and their counts -->
+        <Style Selector="TextBlock.tabLabel">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        </Style>
+        <Style Selector="TextBlock.tabLabel.active">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+        <Style Selector="TextBlock.tabCount">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource WaitBrush}" />
+        </Style>
+        <Style Selector="TextBlock.tabCount.complete">
+            <Setter Property="Foreground" Value="{StaticResource OkBrush}" />
+        </Style>
+        <Style Selector="TextBlock.tabCount.untouched">
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Background="{StaticResource BgBrush}">
+        <Grid RowDefinitions="76,*">
+
+            <!-- Top bar -->
+            <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="32,0">
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                        <TextBlock Classes="wordmark" Text="SundayReady" />
+                        <TextBlock Classes="mono" Text="{Binding Version}" FontSize="11" FontWeight="Medium"
+                                   Foreground="{StaticResource TextFainterBrush}"
+                                   VerticalAlignment="Bottom" Margin="0,0,0,2" />
+                    </StackPanel>
+
+                    <Rectangle Grid.Column="1" Width="1" Height="32" Margin="20,0"
+                               Fill="{StaticResource HairlineStrongBrush}" VerticalAlignment="Center" />
+
+                    <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center">
+                        <TextBlock Classes="screenTitle" Text="{Binding StationName}" />
+                        <TextBlock Classes="mono" Text="{Binding HostLine}" FontSize="11" FontWeight="Medium"
+                                   Foreground="{StaticResource TextFainterBrush}" />
+                    </StackPanel>
+
+                    <!-- Not in the mockups: the design shows Settings and the log as separate
+                         windows but no way into them. These are the quietest affordance that
+                         still gets an operator there. -->
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,20,0"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick" />
+                        <Button Classes="chip" Content="LOG" Click="OnLogClick" />
+                    </StackPanel>
+
+                    <Border Grid.Column="4" Classes="pill" Classes.failing="{Binding PillIsFailing}"
+                            VerticalAlignment="Center" Margin="0,0,20,0">
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Ellipse Classes="dot" Width="8" Height="8" VerticalAlignment="Center" />
+                            <TextBlock Classes="mono" Text="{Binding PillText}" FontSize="12" FontWeight="Medium" />
+                        </StackPanel>
+                    </Border>
+
+                    <StackPanel Grid.Column="5" Spacing="3" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <TextBlock Classes="mono" Text="{Binding Clock}" FontSize="26" FontWeight="SemiBold"
+                                   LetterSpacing="-0.52" HorizontalAlignment="Right" />
+                        <TextBlock Classes="mono" Text="{Binding DateLine}" FontSize="11" FontWeight="Medium"
+                                   Foreground="{StaticResource TextFainterBrush}" HorizontalAlignment="Right" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Body -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,452">
+
+                <!-- Left column: tabs and the list -->
+                <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" Margin="32,26,32,0">
+
+                    <Border Grid.Row="0" IsVisible="{Binding HasLoadError}" Margin="0,0,0,16"
+                            Background="{StaticResource FailFillBrush}" BorderBrush="{StaticResource FailBorderBrush}"
+                            BorderThickness="1" CornerRadius="7" Padding="18,14">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="microLabel" Text="CHECKLIST FAILED TO LOAD"
+                                       Foreground="{StaticResource FailTextBrush}" />
+                            <TextBlock Classes="railBody" Text="{Binding LoadError}"
+                                       Foreground="{StaticResource FailTextBrush}" />
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tabs}" Margin="0,0,0,22">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:ChecklistTabViewModel">
+                                <Button Classes="tab" Classes.active="{Binding IsSelected}"
+                                        Command="{Binding SelectCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Classes="tabLabel" Classes.active="{Binding IsSelected}"
+                                                   Text="{Binding Label}" />
+                                        <TextBlock Classes="tabCount"
+                                                   Classes.complete="{Binding IsComplete}"
+                                                   Classes.untouched="{Binding IsUntouched}"
+                                                   Text="{Binding CountText}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,26">
+                        <ItemsControl ItemsSource="{Binding SelectedTab.Sections}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ChecklistSectionViewModel">
+                                    <StackPanel Margin="0,0,0,14">
+
+                                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasLabel}"
+                                              Margin="0,0,0,13">
+                                            <TextBlock Grid.Column="0" Classes="microLabel" Text="{Binding Label}" />
+                                            <Rectangle Grid.Column="1" Height="1" Margin="8,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Fill="{StaticResource HairlineBrush}" />
+                                        </Grid>
+
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Spacing="9" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:ChecklistItemViewModel">
+
+                                                    <Border Classes="row"
+                                                            Classes.polling="{Binding IsRowPolling}"
+                                                            Classes.failed="{Binding IsRowFailed}"
+                                                            PointerPressed="OnRowPressed">
+                                                        <Grid>
+                                                            <!-- 3px accent edge marks a row you can launch -->
+                                                            <Rectangle Width="3" HorizontalAlignment="Left"
+                                                                       VerticalAlignment="Stretch"
+                                                                       Fill="{StaticResource ActionBrush}"
+                                                                       IsVisible="{Binding IsRowLaunchable}" />
+
+                                                            <Grid Margin="18,13" ColumnDefinitions="Auto,16,*,16,Auto">
+
+                                                                <!-- Status slot: one of five treatments -->
+                                                                <Panel Grid.Column="0" Classes="statusSlot"
+                                                                       Width="28" Height="28">
+                                                                    <Border IsVisible="{Binding IsRowDone}"
+                                                                            Background="{StaticResource OkBrush}"
+                                                                            CornerRadius="6">
+                                                                        <TextBlock Text="&#x2713;" FontSize="16"
+                                                                                   FontWeight="Bold"
+                                                                                   Foreground="{StaticResource OnStatusBrush}"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center" />
+                                                                    </Border>
+                                                                    <Border IsVisible="{Binding IsRowFailed}"
+                                                                            Background="{StaticResource FailBrush}"
+                                                                            CornerRadius="6">
+                                                                        <TextBlock Text="!" FontSize="17"
+                                                                                   FontWeight="Bold"
+                                                                                   Foreground="{StaticResource OnStatusBrush}"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center" />
+                                                                    </Border>
+                                                                    <Panel IsVisible="{Binding IsRowPolling}">
+                                                                        <Rectangle RadiusX="6" RadiusY="6"
+                                                                                   Stroke="{StaticResource WaitBrush}"
+                                                                                   StrokeThickness="1.5"
+                                                                                   StrokeDashArray="3,2" />
+                                                                        <Ellipse Width="8" Height="8"
+                                                                                 Fill="{StaticResource WaitBrush}"
+                                                                                 HorizontalAlignment="Center"
+                                                                                 VerticalAlignment="Center" />
+                                                                    </Panel>
+                                                                    <Border IsVisible="{Binding IsRowEmpty}"
+                                                                            BorderBrush="{StaticResource Overlay22Brush}"
+                                                                            BorderThickness="1.5" CornerRadius="6" />
+                                                                </Panel>
+
+                                                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                                    <TextBlock Classes="itemLabel" Text="{Binding Label}" />
+                                                                    <TextBlock Classes="subLine"
+                                                                               Classes.failure="{Binding IsRowFailed}"
+                                                                               Classes.polling="{Binding IsRowPolling}"
+                                                                               IsVisible="{Binding ShowSubLine}"
+                                                                               Text="{Binding SubLine}" />
+
+                                                                    <StackPanel Orientation="Horizontal" Spacing="9"
+                                                                                Margin="0,11,0,0"
+                                                                                IsVisible="{Binding ShowFailureButtons}">
+                                                                        <Button Classes="danger" Content="Retry now"
+                                                                                Command="{Binding RetryNowCommand}" />
+                                                                        <Button Classes="secondary" Content="What to check"
+                                                                                Command="{Binding WhatToCheckCommand}" />
+                                                                        <Button Classes="secondary" Content="Override &amp; note"
+                                                                                Command="{Binding OverrideCommand}" />
+                                                                    </StackPanel>
+                                                                </StackPanel>
+
+                                                                <StackPanel Grid.Column="4" Classes="rightSlot">
+                                                                    <Button Classes="primary"
+                                                                            IsVisible="{Binding ShowLaunchButton}"
+                                                                            Content="{Binding LaunchLabel}"
+                                                                            Command="{Binding LaunchCommand}" />
+                                                                    <Button Classes="chip"
+                                                                            IsVisible="{Binding ShowRelaunchChip}"
+                                                                            Content="RELAUNCH"
+                                                                            Command="{Binding LaunchCommand}" />
+                                                                    <TextBlock Classes="typeTag"
+                                                                               Classes.waiting="{Binding IsRowPolling}"
+                                                                               Classes.failing="{Binding IsRowFailed}"
+                                                                               IsVisible="{Binding ShowTypeTag}"
+                                                                               Text="{Binding TypeTag}" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Right rail -->
+                <Border Grid.Column="1" Background="{StaticResource RailBgBrush}"
+                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="32,30">
+
+                        <StackPanel Grid.Row="0" Spacing="18">
+                            <Panel Width="260" Height="260" HorizontalAlignment="Center">
+                                <controls:ProgressRing
+                                    CompletedFraction="{Binding CompletedFraction}"
+                                    FailingFraction="{Binding FailingFraction}"
+                                    IsHealthy="{Binding RingIsHealthy}"
+                                    RingThickness="14"
+                                    TrackBrush="{StaticResource HairlineBrush}"
+                                    OkBrush="{StaticResource OkBrush}"
+                                    WaitBrush="{StaticResource WaitBrush}"
+                                    FailBrush="{StaticResource FailBrush}" />
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Classes="mono" Text="{Binding PercentText}" FontSize="74"
+                                                   FontWeight="SemiBold" LetterSpacing="-2.96" />
+                                        <TextBlock Classes="mono" Text="%" FontSize="30" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextFaintBrush}"
+                                                   VerticalAlignment="Bottom" Margin="2,0,0,9" />
+                                    </StackPanel>
+                                    <TextBlock Classes="mono" Text="{Binding RingCaption}" FontSize="13"
+                                               FontWeight="Medium" LetterSpacing="1.56"
+                                               Foreground="{StaticResource TextFaintBrush}"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Panel>
+
+                            <Border Background="{StaticResource Overlay03Brush}"
+                                    BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                    CornerRadius="8" Padding="16">
+                                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                    <TextBlock Classes="microLabel" Text="{Binding CountdownLabel}"
+                                               LetterSpacing="1.54" Foreground="{StaticResource TextFaintBrush}"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Classes="mono" Text="{Binding Countdown}" FontSize="46"
+                                               FontWeight="SemiBold" LetterSpacing="-1.38"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Classes="mono" Text="{Binding ServiceLine}" FontSize="12"
+                                               FontWeight="Medium" Foreground="{StaticResource TextFainterBrush}"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- The gate. Dashed until it is real. -->
+                        <Grid Grid.Row="1" Margin="0,26,0,0">
+                            <Rectangle RadiusX="8" RadiusY="8" Fill="{StaticResource Overlay02Brush}"
+                                       Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                       StrokeDashArray="4,3" />
+                            <StackPanel Margin="18" Spacing="10">
+                                <TextBlock Classes="microLabel" Text="{Binding GateLabel}" />
+                                <TextBlock Classes="railBody" Text="{Binding GateExplanation}" />
+                                <Button Classes="gate" Classes.open="{Binding IsGateOpen}"
+                                        IsEnabled="{Binding IsGateOpen}" Content="Ready to go"
+                                        Command="{Binding ReadyToGoCommand}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="2" VerticalAlignment="Bottom" Margin="0,26,0,0"
+                              IsVisible="{Binding ShowFailureAdvisory}">
+                            <Rectangle RadiusX="8" RadiusY="8" Fill="{StaticResource Overlay02Brush}"
+                                       Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                       StrokeDashArray="4,3" />
+                            <TextBlock Classes="railBody" Margin="16,15" FontSize="14" LineHeight="21"
+                                       Text="{Binding FailureAdvisory}" />
+                        </Grid>
+
+                        <StackPanel Grid.Row="3" Spacing="9" Margin="0,26,0,0"
+                                    IsVisible="{Binding HasQuickLaunch}">
+                            <TextBlock Classes="microLabel" Text="QUICK LAUNCH" />
+                            <ItemsControl ItemsSource="{Binding QuickLaunch}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:QuickLaunchTileViewModel">
+                                        <Button Classes="tile" Content="{Binding Label}"
+                                                Command="{Binding LaunchCommand}"
+                                                HorizontalAlignment="Stretch" Margin="0,0,9,9" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                            <TextBlock Grid.Column="0" Classes="mono" Text="{Binding OperatorLine}" FontSize="11"
+                                       FontWeight="Medium" Foreground="{StaticResource TextDisabledBrush}" />
+                            <TextBlock Grid.Column="1" Classes="mono" Text="{Binding ResetLine}" FontSize="11"
+                                       FontWeight="Medium" Foreground="{StaticResource TextDisabledBrush}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Modal overlay -->
+        <Border IsVisible="{Binding HasDialog}" Background="#cc0b0d10">
+            <ContentControl Content="{Binding ActiveDialog}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+    </Grid>
+</UserControl>

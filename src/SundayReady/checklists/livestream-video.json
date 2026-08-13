@@ -1,0 +1,74 @@
+{
+  // Sample content, mirroring mockup 1b. Real paths still need the owner's answers:
+  // the actual vMix install and preset locations on the livestream PC.
+  "station": "Livestream Video",
+  "name": "Video",
+  "items": [
+    {
+      "label": "Camera power on and lens caps off",
+      "type": "manual",
+      "section": "Cameras & capture"
+    },
+    {
+      "label": "Launch vMix with the Sunday preset",
+      "type": "action",
+      "section": "Cameras & capture",
+      "action": {
+        "run": "C:\\Program Files (x86)\\vMix\\vMix64.exe",
+        "args": "\"C:\\vMix\\Presets\\Sunday.vmix\""
+      },
+      "verify": {
+        "kind": "httpContains",
+        "url": "http://127.0.0.1:8088/api",
+        "contains": "<vmix>"
+      }
+    },
+    {
+      "label": "Cam 3 (balcony) present in vMix inputs",
+      "type": "verified",
+      "section": "Cameras & capture",
+      "verify": {
+        "kind": "httpContains",
+        "url": "http://127.0.0.1:8088/api",
+        "contains": "Cam 3",
+        "maxAttempts": 3
+      },
+      "checkSteps": [
+        "Is the balcony camera's PoE injector lit? It's the grey box on the shelf behind the booth.",
+        "In vMix, does Add Input \u2192 NDI list \"BALCONY-CAM\"? If yes, add it and rename to Cam 3.",
+        "Still nothing \u2014 reload the Sunday preset. It carries all four inputs.",
+        "Out of time? Override below and tell the tech director you're on three cameras."
+      ],
+      "remediationLabel": "Reload preset",
+      "remediation": { "run": "C:\\vMix\\Presets\\Sunday.vmix" }
+    },
+    {
+      "label": "SD cards formatted and seated in all four bodies",
+      "type": "manual",
+      "section": "Cameras & capture"
+    },
+    {
+      "label": "Internet reachable",
+      "type": "verified",
+      "section": "Stream path",
+      "verify": { "kind": "internetReachable" }
+    },
+    {
+      "label": "Open the YouTube & Facebook stream dashboards",
+      "type": "action",
+      "section": "Stream path",
+      "action": {
+        "run": "https://studio.youtube.com/channel/live",
+        "label": "Launch both",
+        "also": [
+          { "run": "https://www.facebook.com/live/producer" }
+        ]
+      }
+    },
+    {
+      "label": "Record armed \u2014 multitrack to E: and ISO on Cam 1",
+      "type": "manual",
+      "section": "Stream path"
+    }
+  ]
+}

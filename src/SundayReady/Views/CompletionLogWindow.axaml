@@ -1,0 +1,156 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SundayReady.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1180" d:DesignHeight="800"
+        x:Class="SundayReady.Views.CompletionLogWindow"
+        x:DataType="vm:CompletionLogViewModel"
+        Title="Completion log"
+        Width="1180" Height="800"
+        Background="{StaticResource BgBrush}"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.colHead">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="1.26" />
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+        </Style>
+        <Style Selector="Border.logRow">
+            <Setter Property="BorderBrush" Value="#0DFFFFFF" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="Padding" Value="4,11" />
+        </Style>
+        <Style Selector="Border.logRow.failure">
+            <Setter Property="Background" Value="{StaticResource FailFillBrush}" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Border.logRow.override">
+            <Setter Property="Background" Value="{StaticResource WaitFillBrush}" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="TextBlock.how">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        </Style>
+        <Style Selector="TextBlock.how.auto">
+            <Setter Property="Foreground" Value="{StaticResource OkBrush}" />
+        </Style>
+        <Style Selector="TextBlock.how.failure">
+            <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+        </Style>
+        <Style Selector="TextBlock.how.override">
+            <Setter Property="Foreground" Value="{StaticResource WaitBrush}" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="64,*">
+
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="28,0">
+                <TextBlock Grid.Column="0" Classes="screenTitle" Text="Completion log" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="mono" Text="{Binding Header}" FontSize="11" FontWeight="Medium"
+                           Margin="16,0,0,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextFainterBrush}" />
+                <Button Grid.Column="3" Classes="chip" Content="EXPORT .LOG" Command="{Binding ExportCommand}"
+                        VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,360">
+
+            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Margin="28,24">
+
+                <Grid Grid.Row="0" ColumnDefinitions="78,72,*,110" Margin="4,0,4,10">
+                    <TextBlock Grid.Column="0" Classes="colHead" Text="TIME" />
+                    <TextBlock Grid.Column="1" Classes="colHead" Text="BY" />
+                    <TextBlock Grid.Column="2" Classes="colHead" Text="ITEM" />
+                    <TextBlock Grid.Column="3" Classes="colHead" Text="HOW" />
+                </Grid>
+
+                <ScrollViewer Grid.Row="1">
+                    <StackPanel>
+                        <TextBlock Classes="railBody" IsVisible="{Binding IsEmpty}" Margin="4,14"
+                                   Text="Nothing logged yet today. Rows appear as items are checked, verified, or overridden." />
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:LogRowViewModel">
+                                    <Border Classes="logRow" Classes.failure="{Binding IsFailure}"
+                                            Classes.override="{Binding IsOverride}">
+                                        <Grid ColumnDefinitions="78,72,*,110">
+                                            <TextBlock Grid.Column="0" Classes="mono" Text="{Binding Time}"
+                                                       FontSize="13" VerticalAlignment="Top"
+                                                       Foreground="{StaticResource TextFaintBrush}" />
+                                            <TextBlock Grid.Column="1" Classes="mono" Text="{Binding By}" FontSize="13"
+                                                       FontWeight="Medium" VerticalAlignment="Top" />
+                                            <StackPanel Grid.Column="2" Margin="0,0,16,0">
+                                                <TextBlock Text="{Binding Item}" FontSize="15" LineHeight="19.5"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Classes="mono" Text="{Binding Secondary}" FontSize="12"
+                                                           LineHeight="17" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                           IsVisible="{Binding HasSecondary}"
+                                                           Foreground="{StaticResource TextFaintBrush}" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="3" Classes="how"
+                                                       Classes.auto="{Binding IsAuto}"
+                                                       Classes.failure="{Binding IsFailure}"
+                                                       Classes.override="{Binding IsOverride}"
+                                                       Text="{Binding How}" VerticalAlignment="Top" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <TextBlock Grid.Row="2" Classes="mono" Text="{Binding FilePathLine}" FontSize="11" Margin="4,16,0,0"
+                           TextWrapping="Wrap" Foreground="{StaticResource TextDisabledBrush}" />
+            </Grid>
+
+            <Border Grid.Column="1" Background="{StaticResource RailBgBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="26,24">
+
+                    <StackPanel Grid.Row="0" Spacing="10">
+                        <TextBlock Classes="microLabel" Text="SIGN OFF" />
+                        <TextBlock Classes="railBody" Text="{Binding SignOffExplanation}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Spacing="9" Margin="0,22,0,0">
+                        <TextBlock Classes="microLabel" Text="OPERATOR INITIALS" />
+                        <TextBox Classes="field mono" Text="{Binding Initials, Mode=TwoWay}" MaxLength="4"
+                                 FontSize="22" FontWeight="SemiBold" LetterSpacing="2.2" Width="140"
+                                 HorizontalAlignment="Left" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Spacing="9" Margin="0,20,0,0">
+                        <TextBlock Classes="microLabel" Text="ANYTHING THE NEXT PERSON SHOULD KNOW" />
+                        <TextBox Classes="field" Text="{Binding Notes, Mode=TwoWay}" AcceptsReturn="True"
+                                 TextWrapping="Wrap" MinHeight="88" FontSize="14" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="4" Margin="0,20,0,14">
+                        <Rectangle RadiusX="8" RadiusY="8" Fill="{StaticResource Overlay02Brush}"
+                                   Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                   StrokeDashArray="4,3" />
+                        <StackPanel Margin="16,14" Spacing="8">
+                            <TextBlock Classes="railBody" FontSize="14" Text="{Binding Advisory}" />
+                            <TextBlock Classes="railBody" FontSize="13" IsVisible="{Binding SignOffStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Foreground="{StaticResource OkBrush}" Text="{Binding SignOffStatus}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Button Grid.Row="5" Classes="gate open" Content="Sign off &amp; mark ready"
+                            FontSize="17" Padding="14" CornerRadius="7"
+                            Command="{Binding SignOffCommand}" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+        <!-- The release workflow overrides this with the pushed tag. The updater compares
+             against it, so it must be a real three-part version, not a marketing string. -->
+        <Version>0.4.0</Version>
+
+        <!-- Booth PCs have no .NET runtime installed, so releases ship as one file. -->
+        <RuntimeIdentifier Condition="'$(PublishSingleFile)' == 'true'">win-x64</RuntimeIdentifier>
+        <SelfContained Condition="'$(PublishSingleFile)' == 'true'">true</SelfContained>
+        <IncludeNativeLibrariesForSelfExtract Condition="'$(PublishSingleFile)' == 'true'">true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile Condition="'$(PublishSingleFile)' == 'true'">true</EnableCompressionInSingleFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.3.10"/>
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.10"/>
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10"/>
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.10"/>
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.10">
+            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Checklists ship beside the exe and are loaded at runtime, never embedded:
+             editing one must not require a rebuild. -->
+        <None Update="checklists\**\*.json" CopyToOutputDirectory="PreserveNewest"/>
+        <None Update="station.json" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+</Project>

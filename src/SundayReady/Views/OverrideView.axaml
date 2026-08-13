@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SundayReady.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="620" d:DesignHeight="520"
+             x:Class="SundayReady.Views.OverrideView"
+             x:DataType="vm:OverrideViewModel">
+
+    <Border Width="620" Background="{StaticResource PanelBrush}" CornerRadius="10" Padding="32,30">
+        <StackPanel Spacing="20">
+
+            <Grid ColumnDefinitions="Auto,16,*">
+                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
+                        Background="{StaticResource WaitBrush}" VerticalAlignment="Top">
+                    <TextBlock Text="?" FontSize="21" FontWeight="Bold"
+                               Foreground="{StaticResource OnStatusBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="Override this item" FontSize="24" FontWeight="SemiBold" />
+                    <TextBlock Classes="mono" Text="{Binding Title}" FontSize="12"
+                               Foreground="{StaticResource TextFaintBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Classes="railBody" Text="{Binding Explanation}" />
+
+            <StackPanel Spacing="9">
+                <TextBlock Classes="microLabel" Text="OPERATOR INITIALS" />
+                <TextBox Classes="field mono" Text="{Binding Initials, Mode=TwoWay}" MaxLength="4"
+                         FontSize="22" FontWeight="SemiBold" LetterSpacing="2.2" Width="140"
+                         HorizontalAlignment="Left" />
+            </StackPanel>
+
+            <StackPanel Spacing="9">
+                <TextBlock Classes="microLabel" Text="WHY ARE YOU OVERRIDING THIS?" />
+                <TextBox Classes="field" Text="{Binding Note, Mode=TwoWay}" AcceptsReturn="True"
+                         TextWrapping="Wrap" MinHeight="96" FontSize="15"
+                         Watermark="Going live on three cameras — balcony PoE is dead, told the tech director." />
+            </StackPanel>
+
+            <!-- Both fields are required: an override is a person taking responsibility. -->
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+                <Button Grid.Column="0" Classes="secondary" Content="Cancel" Padding="22,12" FontSize="15"
+                        CornerRadius="6" Command="{Binding CancelCommand}" />
+                <Button Grid.Column="2" Classes="primary" Content="Override &amp; log it" Padding="22,12"
+                        FontSize="15" CornerRadius="6" Command="{Binding ConfirmCommand}" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

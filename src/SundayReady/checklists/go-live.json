@@ -1,0 +1,38 @@
+{
+  // Sample content. The last four things before the stream key goes hot.
+  "station": "Livestream Video",
+  "name": "Go Live",
+  "items": [
+    {
+      "label": "Countdown loop running on the stream output",
+      "type": "manual",
+      "section": "Final"
+    },
+    {
+      "label": "Stream titles match this week's service",
+      "type": "manual",
+      "section": "Final"
+    },
+    {
+      "label": "vMix still responding",
+      "type": "verified",
+      "section": "Final",
+      "verify": {
+        "kind": "httpContains",
+        "url": "http://127.0.0.1:8088/api",
+        "contains": "<vmix>",
+        "maxAttempts": 3
+      },
+      "checkSteps": [
+        "Is vMix still on screen, or did it close? Relaunch it from the Video tab.",
+        "If vMix is up but this stays red, its web controller is off: Settings → Web Controller → Enabled.",
+        "Confirm nothing else grabbed port 8088."
+      ]
+    },
+    {
+      "label": "Both platforms show a healthy incoming stream",
+      "type": "manual",
+      "section": "Final"
+    }
+  ]
+}

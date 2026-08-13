@@ -1,0 +1,71 @@
+name: Release
+
+# Cutting a release is pushing a tag. The tag is the version — it is stamped into the exe,
+# and the in-app updater compares against it.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: |
+          RAW="${GITHUB_REF_NAME}"
+          VERSION="${RAW#v}"
+          if [ -z "$VERSION" ] || ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Tag '$RAW' is not vMAJOR.MINOR.PATCH — the updater cannot compare it." >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish self-contained single file
+        shell: pwsh
+        run: >
+          dotnet publish src/SundayReady/SundayReady.csproj
+          -c Release
+          -p:PublishSingleFile=true
+          -p:Version=${{ steps.version.outputs.version }}
+          -o publish
+
+      # Two assets on purpose. The bare exe is what the in-app updater downloads, so an
+      # update never touches a station's own checklists or station.json. The zip is for
+      # setting up a booth PC the first time.
+      - name: Stage assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist | Out-Null
+          Copy-Item publish/SundayReady.exe dist/SundayReady-win-x64.exe
+
+          New-Item -ItemType Directory -Path bundle | Out-Null
+          Copy-Item publish/SundayReady.exe bundle/SundayReady.exe
+          Copy-Item -Recurse publish/checklists bundle/checklists
+          Copy-Item publish/station.json bundle/station.json
+          Compress-Archive -Path bundle/* -DestinationPath dist/SundayReady-win-x64.zip
+
+          Get-FileHash dist/SundayReady-win-x64.exe -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  SundayReady-win-x64.exe" } |
+            Out-File -Encoding utf8 dist/SHA256SUMS.txt
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/SundayReady-win-x64.exe
+            dist/SundayReady-win-x64.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true

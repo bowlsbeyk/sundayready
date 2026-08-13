@@ -1,0 +1,305 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SundayReady.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1180" d:DesignHeight="800"
+        x:Class="SundayReady.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Station settings"
+        Width="1180" Height="800"
+        Background="{StaticResource BgBrush}"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="Button.nav">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="14,11" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.nav.active /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay06Brush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay03Brush}" />
+        </Style>
+        <Style Selector="Button.nav.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay06Brush}" />
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource PanelRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="14" />
+        </Style>
+        <!-- A stubbed verifier gets the dashed Rectangle behind it instead of a solid border. -->
+        <Style Selector="Border.card.stub">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <!-- Set here, not inline: a local value would outrank the .stub selector below. -->
+        <Style Selector="Border.card TextBlock.tileStatus">
+            <Setter Property="Foreground" Value="{StaticResource OkBrush}" />
+        </Style>
+        <Style Selector="Border.card.stub TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+        </Style>
+        <Style Selector="Border.card.stub TextBlock.tileStatus">
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        </Style>
+        <Style Selector="TextBlock.fieldLabel">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="1.32" />
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="64,*">
+
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*" Margin="30,0">
+                <TextBlock Grid.Column="0" Classes="screenTitle" Text="Station settings" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="mono" FontSize="11" FontWeight="Medium"
+                           Foreground="{StaticResource TextFainterBrush}" VerticalAlignment="Center"
+                           HorizontalAlignment="Right" Text="LOCAL TO THIS PC · WRITES STATION.JSON" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="230,*">
+
+            <ItemsControl Grid.Column="0" ItemsSource="{Binding Pages}" Margin="14,18">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="2" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:SettingsPageViewModel">
+                        <Button Classes="nav" Classes.active="{Binding IsSelected}"
+                                Content="{Binding Label}" Command="{Binding SelectCommand}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Grid Grid.Column="1" RowDefinitions="*,Auto" Background="{StaticResource BgBrush}">
+                <ScrollViewer Grid.Row="0" Padding="30,26">
+                    <StackPanel Spacing="24">
+
+                        <!-- Identity -->
+                        <StackPanel x:Name="Section_identity" Spacing="18">
+                            <TextBlock Classes="microLabel" Text="THIS STATION" />
+                            <Grid ColumnDefinitions="*,20,*">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Classes="fieldLabel" Text="HOSTNAME (DETECTED)" />
+                                    <Border Background="{StaticResource PanelRaisedBrush}"
+                                            BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                            CornerRadius="7" Padding="12,11">
+                                        <TextBlock Classes="mono" Text="{Binding Hostname}" FontSize="15"
+                                                   Foreground="{StaticResource TextMutedBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Classes="fieldLabel" Text="STATION NAME (OVERRIDE)" />
+                                    <TextBox Classes="field" Text="{Binding StationName, Mode=TwoWay}" FontSize="15" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="fieldLabel" Text="OPERATOR" />
+                                <TextBox Classes="field" Text="{Binding Operator, Mode=TwoWay}" FontSize="15"
+                                         Watermark="Shown in the rail footer" />
+                            </StackPanel>
+
+                            <!-- This toggle is how techdesk mode is selected. Same binary. -->
+                            <Grid x:Name="Section_techdesk">
+                                <Rectangle RadiusX="7" RadiusY="7" Fill="{StaticResource Overlay02Brush}"
+                                           Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                           StrokeDashArray="4,3" />
+                                <StackPanel Margin="16,14" Spacing="8">
+                                    <CheckBox IsChecked="{Binding Techdesk, Mode=TwoWay}"
+                                              Content="Run as techdesk instead — show every station's list on this screen" />
+                                    <TextBlock Classes="railBody" FontSize="13"
+                                               Text="Not built yet. This writes the setting so the station is ready when the techdesk view lands." />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Checklists -->
+                        <StackPanel x:Name="Section_checklists" Spacing="14">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0" Classes="microLabel" Text="CHECKLISTS LOADED" />
+                                <TextBlock Grid.Column="2" Classes="mono" FontSize="11"
+                                           Foreground="{StaticResource TextFainterBrush}"
+                                           Text="{Binding ChecklistsNote}" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Files}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="7" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:ChecklistFileViewModel">
+                                        <Border Classes="card" Padding="16,13">
+                                            <Grid ColumnDefinitions="Auto,14,Auto,*,Auto">
+                                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{StaticResource OkBrush}"
+                                                         IsVisible="{Binding IsHealthy}" />
+                                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{StaticResource WaitBrush}"
+                                                         IsVisible="{Binding IsWarning}" />
+                                                <Ellipse Grid.Column="0" Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{StaticResource FailBrush}"
+                                                         IsVisible="{Binding IsBroken}" />
+                                                <TextBlock Grid.Column="2" Classes="mono" Text="{Binding FileName}"
+                                                           FontSize="15" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="3" Classes="mono" Text="{Binding Detail}"
+                                                           FontSize="12" Margin="16,0,0,0" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextFaintBrush}" />
+                                                <TextBlock Grid.Column="4" Classes="mono" Text="{Binding Edited}"
+                                                           FontSize="11" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextDisabledBrush}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Classes="secondary" Content="Open checklists folder" HorizontalAlignment="Left"
+                                    Command="{Binding OpenChecklistsFolderCommand}" />
+                        </StackPanel>
+
+                        <!-- Verifiers -->
+                        <StackPanel x:Name="Section_verifiers" Spacing="14">
+                            <TextBlock Classes="microLabel" Text="VERIFIER HEALTH" />
+                            <ItemsControl ItemsSource="{Binding Verifiers}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="3" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:VerifierTileViewModel">
+                                        <Grid Margin="0,0,10,10">
+                                            <Rectangle RadiusX="6" RadiusY="6" IsVisible="{Binding IsStub}"
+                                                       Stroke="{StaticResource HairlineDashedBrush}"
+                                                       StrokeThickness="1" StrokeDashArray="4,3" />
+                                            <Border Classes="card" Classes.stub="{Binding IsStub}">
+                                                <StackPanel Spacing="7">
+                                                    <TextBlock Classes="mono" Text="{Binding Kind}" FontSize="13"
+                                                               FontWeight="Medium" />
+                                                    <TextBlock Classes="mono tileStatus" Text="{Binding Status}"
+                                                               FontSize="11" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border Classes="card" HorizontalAlignment="Left">
+                                <TextBlock Classes="mono" Text="{Binding PollIntervalTile}" FontSize="13"
+                                           Foreground="{StaticResource TextMutedBrush}" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Service times -->
+                        <StackPanel x:Name="Section_service" Spacing="18">
+                            <TextBlock Classes="microLabel" Text="SERVICE TIMES" />
+                            <Grid ColumnDefinitions="*,16,*,16,*,16,*">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Classes="fieldLabel" Text="DOORS" />
+                                    <TextBox Classes="field mono" Text="{Binding DoorsAt, Mode=TwoWay}" Watermark="10:15" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Classes="fieldLabel" Text="STREAM" />
+                                    <TextBox Classes="field mono" Text="{Binding StreamAt, Mode=TwoWay}" Watermark="10:25" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Classes="fieldLabel" Text="SERVICE" />
+                                    <TextBox Classes="field mono" Text="{Binding StartsAt, Mode=TwoWay}" Watermark="10:30" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Classes="fieldLabel" Text="VENUE" />
+                                    <TextBox Classes="field" Text="{Binding Venue, Mode=TwoWay}" Watermark="Sanctuary" />
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Classes="railBody" FontSize="14"
+                                       Text="24-hour times. The countdown on the station screen reads from SERVICE." />
+                        </StackPanel>
+
+                        <!-- Logging -->
+                        <StackPanel x:Name="Section_logging" Spacing="14">
+                            <TextBlock Classes="microLabel" Text="LOGGING" />
+                            <Border Classes="card" Padding="16,14">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Classes="mono" Text="{Binding LogsDirectory}" FontSize="13"
+                                               Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
+                                    <TextBlock Classes="railBody" FontSize="14"
+                                               Text="One file per day per station, append-only. State and logs live under LOCALAPPDATA because a booth PC cannot write next to its own exe." />
+                                </StackPanel>
+                            </Border>
+                            <Button Classes="secondary" Content="Open logs folder" HorizontalAlignment="Left"
+                                    Command="{Binding OpenLogsFolderCommand}" />
+                        </StackPanel>
+
+                        <!-- Updates -->
+                        <StackPanel x:Name="Section_updates" Spacing="14">
+                            <TextBlock Classes="microLabel" Text="UPDATES" />
+                            <Border Classes="card" Padding="16,14">
+                                <StackPanel Spacing="10">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <TextBlock Grid.Column="0" Classes="mono" Text="{Binding CurrentVersion}"
+                                                   FontSize="22" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="1" Classes="mono" Text="{Binding Repository}"
+                                                   FontSize="12" Margin="14,0,0,0" VerticalAlignment="Bottom"
+                                                   Foreground="{StaticResource TextFaintBrush}" />
+                                    </Grid>
+                                    <TextBlock Classes="railBody" FontSize="14" Text="{Binding UpdateStatus}" />
+                                </StackPanel>
+                            </Border>
+                            <CheckBox IsChecked="{Binding UpdatesEnabled, Mode=TwoWay}"
+                                      Content="Check for updates on startup and stage them for the next launch" />
+                            <TextBlock Classes="railBody" FontSize="14"
+                                       Text="Updates never install while the app is open — a staged build is swapped in the next time this PC starts SundayReady, so nothing changes under an operator mid-service." />
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Button Classes="primary" Content="Check now" Padding="18,10"
+                                        IsEnabled="{Binding !IsCheckingUpdate}"
+                                        Command="{Binding CheckForUpdatesCommand}" />
+                                <Button Classes="secondary" Content="Open releases page"
+                                        Command="{Binding OpenReleasesCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Border Grid.Row="1" Background="{StaticResource PanelBrush}"
+                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="30,16">
+                    <Grid ColumnDefinitions="Auto,11,Auto,*,Auto">
+                        <Button Grid.Column="0" Classes="primary" Content="Save station.json" Padding="20,11"
+                                FontSize="15" CornerRadius="6" Command="{Binding SaveCommand}" />
+                        <Button Grid.Column="2" Classes="secondary" Content="Reload from disk" Padding="20,11"
+                                FontSize="15" CornerRadius="6" Command="{Binding ReloadCommand}" />
+                        <TextBlock Grid.Column="3" Classes="railBody" FontSize="13" Margin="18,0"
+                                   VerticalAlignment="Center" Text="{Binding SaveStatus}" />
+                        <TextBlock Grid.Column="4" Classes="mono" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextDisabledBrush}"
+                                   Text="STATE RESETS DAILY AT 12:01 AM" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

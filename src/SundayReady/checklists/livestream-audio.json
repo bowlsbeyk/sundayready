@@ -1,0 +1,35 @@
+{
+  // Placeholder. Authoring this properly needs the signal-chain answers still open in
+  // SPEC.md section 8: console model, wireless mic count, IEM setup, and how audio
+  // actually reaches vMix (Dante / NDI / analog). Until then these are manual items —
+  // an audioDevicePresent verifier cannot be configured without knowing the device name.
+  "station": "Livestream Video",
+  "name": "Livestream Audio",
+  "items": [
+    {
+      "label": "Console powered on and Sunday scene recalled",
+      "type": "manual",
+      "section": "Console"
+    },
+    {
+      "label": "Stream mix bus assigned and unmuted",
+      "type": "manual",
+      "section": "Console"
+    },
+    {
+      "label": "Wireless packs on, batteries above half",
+      "type": "manual",
+      "section": "Console"
+    },
+    {
+      "label": "Audio reaching vMix — meters moving on the stream input",
+      "type": "manual",
+      "section": "Into the stream"
+    },
+    {
+      "label": "Talkback to the booth working both ways",
+      "type": "manual",
+      "section": "Into the stream"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using SundayReady.Models;
+using SundayReady.Services;
+using SundayReady.ViewModels;
+using SundayReady.Views;
+
+namespace SundayReady;
+
+public partial class App : Application
+{
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var viewModel = BuildStation();
+            desktop.MainWindow = new MainWindow { DataContext = viewModel };
+            desktop.ShutdownRequested += (_, _) => viewModel.Dispose();
+            viewModel.Start();
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private static StationViewModel BuildStation()
+    {
+        AppPaths.EnsureDataDirectories();
+
+        var checklists = new ChecklistLoader();
+        var stationLoader = new StationConfigLoader(checklists);
+        var config = stationLoader.Load();
+
+        var definitions = new List<ChecklistDefinition>();
+        var errors = new List<string>();
+
+        foreach (var file in config.Checklists)
+        {
+            try
+            {
+                definitions.Add(checklists.Load(file));
+            }
+            catch (Exception ex)
+            {
+                // One bad file must not cost the operator the other tabs.
+                errors.Add($"{file}: {ex.Message}");
+            }
+        }
+
+        if (definitions.Count == 0 && errors.Count == 0)
+        {
+            errors.Add($"No checklist files found in {checklists.Directory}.");
+        }
+
+        if (config.Updates.Enabled)
+        {
+            _ = CheckForUpdatesAsync(config);
+        }
+
+        return new StationViewModel(
+            config,
+            definitions,
+            VerifierRegistry.CreateDefault(),
+            new ProcessLauncher(),
+            new DailyStateStore(),
+            new CompletionLogger(),
+            checklists,
+            stationLoader,
+            errors.Count == 0 ? null : string.Join("  ·  ", errors));
+    }
+
+    /// <summary>
+    /// Looks for a newer release and downloads it in the background. Nothing is swapped in
+    /// now — <see cref="UpdateInstaller"/> does that at the next launch, so an operator is
+    /// never interrupted mid-service. Failure is silent by design; Settings shows the detail.
+    /// </summary>
+    private static async Task CheckForUpdatesAsync(Models.StationConfig config)
+    {
+        try
+        {
+            using var updates = new UpdateService(config.Updates.Repository);
+            if (await updates.CheckAsync(CancellationToken.None) is { } available)
+            {
+                await updates.StageAsync(available, CancellationToken.None);
+            }
+        }
+        catch (Exception)
+        {
+            // Booth PCs boot before the network settles, and a church firewall may block this
+            // entirely. Neither is worth a dialog on a Sunday morning.
+        }
+    }
+}

@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SundayReady.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="720"
+             x:Class="SundayReady.Views.FailedVerifyView"
+             x:DataType="vm:FailedVerifyViewModel">
+
+    <Border Width="760" Background="{StaticResource PanelBrush}" CornerRadius="10" Padding="32,30">
+        <StackPanel Spacing="22">
+
+            <!-- Header -->
+            <Grid ColumnDefinitions="Auto,16,*,Auto">
+                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
+                        Background="{StaticResource FailBrush}" VerticalAlignment="Top">
+                    <TextBlock Text="!" FontSize="21" FontWeight="Bold"
+                               Foreground="{StaticResource OnStatusBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"
+                               LineHeight="30" TextWrapping="Wrap" />
+                    <TextBlock Classes="mono" Text="{Binding Provenance}" FontSize="12"
+                               Foreground="{StaticResource TextFaintBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Button Grid.Column="3" Command="{Binding CloseCommand}" Background="Transparent"
+                        BorderThickness="0" Padding="8,2" VerticalAlignment="Top">
+                    <TextBlock Text="&#x2715;" FontSize="22" Foreground="{StaticResource TextFainterBrush}" />
+                </Button>
+            </Grid>
+
+            <!-- What the app tried: the real spec, not a canned string -->
+            <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource Overlay08Brush}"
+                    BorderThickness="1" CornerRadius="8" Padding="18,16">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="microLabel" Text="WHAT THE APP TRIED" />
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding SpecLines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="x:String">
+                                    <TextBlock Classes="mono" Text="{Binding}" FontSize="13" LineHeight="22"
+                                               Foreground="{StaticResource TextMutedBrush}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="mono" Text="{Binding ResultLine}" FontSize="13" LineHeight="22"
+                                   Foreground="{StaticResource FailTextBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Authored per item in the checklist JSON — human troubleshooting copy -->
+            <StackPanel Spacing="12" IsVisible="{Binding HasSteps}">
+                <TextBlock Classes="microLabel" Text="CHECK THESE, IN ORDER" />
+                <ItemsControl ItemsSource="{Binding Steps}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="12" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:CheckStepViewModel">
+                            <Grid ColumnDefinitions="24,13,*">
+                                <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12"
+                                        Background="{StaticResource Overlay06Brush}" VerticalAlignment="Top">
+                                    <TextBlock Classes="mono" Text="{Binding Number}" FontSize="12"
+                                               FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="16" LineHeight="24"
+                                           TextWrapping="Wrap" Foreground="{StaticResource TextDimBrush}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Override sits apart, on the right, so it reads as the last resort -->
+            <Grid ColumnDefinitions="Auto,11,Auto,*,Auto" Margin="0,4,0,0">
+                <Button Grid.Column="0" Classes="primary" Content="Retry now" Padding="22,12" FontSize="15"
+                        CornerRadius="6" Command="{Binding RetryNowCommand}" />
+                <Button Grid.Column="2" Classes="secondary" Content="{Binding RemediationLabel}" Padding="22,12"
+                        FontSize="15" CornerRadius="6" IsVisible="{Binding HasRemediation}"
+                        Command="{Binding RemediateCommand}" />
+                <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="0"
+                        Command="{Binding OverrideCommand}">
+                    <Grid>
+                        <Rectangle RadiusX="6" RadiusY="6" Stroke="{StaticResource Overlay20Brush}"
+                                   StrokeThickness="1" StrokeDashArray="4,3" />
+                        <TextBlock Text="Override &amp; note" FontSize="15" FontWeight="Medium"
+                                   Foreground="{StaticResource TextFaintBrush}" Margin="22,12" />
+                    </Grid>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>
