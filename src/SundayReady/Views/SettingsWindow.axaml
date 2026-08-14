@@ -298,6 +298,55 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <!-- Viewer counts -->
+                        <StackPanel x:Name="Section_viewers" Spacing="14">
+                            <TextBlock Classes="microLabel" Text="VIEWER COUNTS" />
+                            <TextBlock Classes="railBody" FontSize="14"
+                                       Text="Live audience figures for the techdesk. Telemetry only — a failed fetch never affects whether a station reads as ready." />
+
+                            <CheckBox IsChecked="{Binding ViewerCountsEnabled, Mode=TwoWay}"
+                                      Content="Show live viewer counts on the techdesk" />
+
+                            <TextBlock Classes="fieldLabel" Text="YOUTUBE DATA API KEY" />
+                            <TextBox Classes="field mono" Text="{Binding YouTubeApiKey, Mode=TwoWay}" FontSize="14"
+                                     Watermark="From the Google Cloud Console — enable YouTube Data API v3" />
+
+                            <Grid ColumnDefinitions="*,16,*">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Classes="fieldLabel" Text="CHANNEL ID" />
+                                    <TextBox Classes="field mono" Text="{Binding YouTubeChannelId, Mode=TwoWay}"
+                                             FontSize="14" Watermark="UC..." />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Classes="fieldLabel" Text="OR A SPECIFIC BROADCAST" />
+                                    <TextBox Classes="field mono" Text="{Binding YouTubeVideoId, Mode=TwoWay}"
+                                             FontSize="14" Watermark="Video id or URL" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Classes="railBody" FontSize="13"
+                                       Text="With a channel id the app finds whatever is live on it. That search costs 100 of the 10,000 free daily quota units, so it happens once per session; reading the count afterwards costs 1. Pinning a broadcast skips the search entirely." />
+
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Button Classes="primary" Content="Test now" Padding="18,10"
+                                        IsEnabled="{Binding !IsTestingViewers}"
+                                        Command="{Binding TestViewerCountsCommand}" />
+                                <TextBlock Classes="railBody" FontSize="14" VerticalAlignment="Center"
+                                           TextWrapping="Wrap" Text="{Binding ViewerStatus}" />
+                            </StackPanel>
+
+                            <Grid Margin="0,4,0,0">
+                                <Rectangle RadiusX="7" RadiusY="7" Fill="{StaticResource Overlay02Brush}"
+                                           Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                           StrokeDashArray="4,3" />
+                                <StackPanel Margin="16,14" Spacing="6">
+                                    <TextBlock Classes="microLabel" Text="FACEBOOK — NOT SUPPORTED" />
+                                    <TextBlock Classes="railBody" FontSize="14"
+                                               Text="Facebook live viewer counts need a Page access token from an app that has passed Meta App Review, plus ANALYZE rights on the Page. That is an app submission and a review queue, not a settings field. The techdesk shows an em-dash for Facebook until someone decides it is worth going through." />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
                         <!-- Logging -->
                         <StackPanel x:Name="Section_logging" Spacing="14">
                             <TextBlock Classes="microLabel" Text="LOGGING" />

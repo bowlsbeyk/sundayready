@@ -21,6 +21,30 @@ public sealed class StationConfig
     public bool Techdesk { get; set; }
 
     public UpdateSettings Updates { get; set; } = new();
+
+    public ViewerCountSettings ViewerCounts { get; set; } = new();
+}
+
+/// <summary>
+/// Live audience figures for the techdesk. Telemetry, never an input to readiness.
+/// </summary>
+public sealed class ViewerCountSettings
+{
+    public bool Enabled { get; set; }
+
+    /// <summary>A YouTube Data API v3 key. Reading a count costs one quota unit of 10,000/day.</summary>
+    public string? YouTubeApiKey { get; set; }
+
+    /// <summary>
+    /// The church's channel. The app finds whatever is live on it — which costs 100 quota
+    /// units, so it is resolved once per session rather than on every poll.
+    /// </summary>
+    public string? YouTubeChannelId { get; set; }
+
+    /// <summary>
+    /// Optional. Pin a specific broadcast (id or URL) to skip the channel search entirely.
+    /// </summary>
+    public string? YouTubeVideoId { get; set; }
 }
 
 public sealed class UpdateSettings

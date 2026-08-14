@@ -120,6 +120,28 @@ that stopped being true.
 
 An unrecognised `kind` degrades that one item and logs a warning; the file still loads.
 
+## Live viewer counts
+
+Audience figures are techdesk telemetry. A failed fetch never affects whether a station reads
+as ready — the tile just shows an em-dash.
+
+**YouTube** works with an ordinary API key:
+
+1. Google Cloud Console → new project → **APIs & Services → Library** → enable
+   **YouTube Data API v3**.
+2. **Credentials → Create credentials → API key.** Restrict it to the YouTube Data API.
+3. Paste it into **Settings → Viewer counts**, along with the church's channel id (`UC…`).
+   Press **Test now** — it reports the current count, or says why it can't.
+
+Quota is 10,000 units a day, free. Reading a count costs 1 unit; finding *which* broadcast is
+live costs 100, so that lookup happens once per session rather than per poll. Pinning a
+specific broadcast id or URL skips it entirely.
+
+**Facebook is not supported.** Live viewer counts there need a Page access token from an app
+that has passed [Meta App Review][fb-live], plus ANALYZE rights on the Page — an app
+submission and a review queue, not a settings field. The techdesk shows an em-dash for
+Facebook.
+
 ## Releases and updating
 
 Cutting a release is pushing a tag:
@@ -147,3 +169,4 @@ dotnet run --project src/SundayReady
 Avalonia · C# · .NET 9 · MVVM (CommunityToolkit.Mvvm) · win-x64.
 
 [releases]: https://github.com/bowlsbeyk/sundayready/releases/latest
+[fb-live]: https://developers.facebook.com/docs/live-video-api/

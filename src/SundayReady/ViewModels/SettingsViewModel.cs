@@ -171,6 +171,24 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _startupStatus = string.Empty;
 
+    [ObservableProperty]
+    private bool _viewerCountsEnabled;
+
+    [ObservableProperty]
+    private string _youTubeApiKey = string.Empty;
+
+    [ObservableProperty]
+    private string _youTubeChannelId = string.Empty;
+
+    [ObservableProperty]
+    private string _youTubeVideoId = string.Empty;
+
+    [ObservableProperty]
+    private string _viewerStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool _isTestingViewers;
+
     public SettingsViewModel(
         StationConfig config,
         ChecklistLoader checklists,
@@ -191,6 +209,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                      ("verifiers", "Verifiers"),
                      ("service", "Service times"),
                      ("startup", "Start at logon"),
+                     ("viewers", "Viewer counts"),
                      ("logging", "Logging"),
                      ("updates", "Updates"),
                      ("techdesk", "Techdesk mode"),
@@ -265,10 +284,52 @@ public sealed partial class SettingsViewModel : ObservableObject
         Venue = Config.Service?.Venue ?? string.Empty;
         UpdatesEnabled = Config.Updates.Enabled;
 
+        ViewerCountsEnabled = Config.ViewerCounts.Enabled;
+        YouTubeApiKey = Config.ViewerCounts.YouTubeApiKey ?? string.Empty;
+        YouTubeChannelId = Config.ViewerCounts.YouTubeChannelId ?? string.Empty;
+        YouTubeVideoId = Config.ViewerCounts.YouTubeVideoId ?? string.Empty;
+
         Tiles.Clear();
         foreach (var tile in Config.QuickLaunch)
         {
             Tiles.Add(new QuickLaunchEditViewModel(tile));
+        }
+    }
+
+    /// <summary>
+    /// Asks YouTube for the count right now. Worth having separately from the techdesk: it
+    /// means an API key can be proven on a weekday instead of discovered wrong on a Sunday.
+    /// </summary>
+    [RelayCommand]
+    private async Task TestViewerCountsAsync()
+    {
+        IsTestingViewers = true;
+        ViewerStatus = "Asking YouTube…";
+
+        try
+        {
+            using var service = new ViewerCountService();
+            var counts = await service.ReadAsync(
+                new ViewerCountSettings
+                {
+                    Enabled = true,
+                    YouTubeApiKey = Blank(YouTubeApiKey),
+                    YouTubeChannelId = Blank(YouTubeChannelId),
+                    YouTubeVideoId = Blank(YouTubeVideoId),
+                },
+                CancellationToken.None);
+
+            ViewerStatus = counts.YouTube is { } viewers
+                ? $"{viewers:N0} watching{(counts.YouTubeTitle is null ? "" : $" — “{counts.YouTubeTitle}”")}"
+                : counts.Note ?? "No count came back, and YouTube did not say why.";
+        }
+        catch (Exception ex)
+        {
+            ViewerStatus = ex.Message;
+        }
+        finally
+        {
+            IsTestingViewers = false;
         }
     }
 
@@ -366,6 +427,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         Config.Techdesk = Techdesk;
         Config.Updates.Enabled = UpdatesEnabled;
         Config.QuickLaunch = Tiles.Where(t => t.IsUsable).Select(t => t.ToModel()).ToList();
+        Config.ViewerCounts = new ViewerCountSettings
+        {
+            Enabled = ViewerCountsEnabled,
+            YouTubeApiKey = Blank(YouTubeApiKey),
+            YouTubeChannelId = Blank(YouTubeChannelId),
+            YouTubeVideoId = Blank(YouTubeVideoId),
+        };
         Config.Service = new ServiceTimes
         {
             DoorsAt = Blank(DoorsAt),
