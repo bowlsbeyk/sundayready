@@ -8,6 +8,7 @@
         x:Class="SundayReady.Views.MainWindow"
         x:DataType="vm:StationViewModel"
         Title="SundayReady"
+        Icon="/Assets/logo.png"
         Width="1920" Height="1080"
         MinWidth="1280" MinHeight="800"
         Background="{StaticResource BgBrush}"

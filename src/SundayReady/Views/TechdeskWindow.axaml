@@ -8,6 +8,7 @@
         x:Class="SundayReady.Views.TechdeskWindow"
         x:DataType="vm:TechdeskViewModel"
         Title="SundayReady Techdesk"
+        Icon="/Assets/logo.png"
         Width="1920" Height="1080"
         MinWidth="1280" MinHeight="800"
         Background="{StaticResource BgBrush}"

@@ -7,6 +7,7 @@
         x:Class="SundayReady.Views.ChecklistEditorWindow"
         x:DataType="vm:ChecklistEditorViewModel"
         Title="Checklists"
+        Icon="/Assets/logo.png"
         Width="1400" Height="900"
         MinWidth="1100" MinHeight="700"
         Background="{StaticResource BgBrush}"

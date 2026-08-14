@@ -94,6 +94,8 @@
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="32,0">
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                    <Image Source="/Assets/logo.png" Width="34" Height="34" VerticalAlignment="Center"
+                           Margin="0,0,4,0" />
                     <TextBlock Classes="wordmark" Text="SundayReady" />
                     <TextBlock Classes="wordmark" Text="Techdesk" FontWeight="Normal"
                                Foreground="{StaticResource TextFaintBrush}" />

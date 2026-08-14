@@ -7,6 +7,7 @@
         x:Class="SundayReady.Views.CompletionLogWindow"
         x:DataType="vm:CompletionLogViewModel"
         Title="Completion log"
+        Icon="/Assets/logo.png"
         Width="1180" Height="800"
         Background="{StaticResource BgBrush}"
         WindowStartupLocation="CenterOwner">
