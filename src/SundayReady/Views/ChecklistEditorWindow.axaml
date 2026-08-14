@@ -221,11 +221,18 @@
                             <TextBox Classes="field" Text="{Binding Contains, Mode=TwoWay}" FontSize="14" />
                         </StackPanel>
 
-                        <StackPanel IsVisible="{Binding ShowHost}">
-                            <TextBlock Classes="fieldLabel" Text="HOST" />
-                            <TextBox Classes="field" Text="{Binding Host, Mode=TwoWay}" FontSize="14"
-                                     Watermark="1.1.1.1" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="*,14,120" IsVisible="{Binding ShowHost}">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="fieldLabel" Text="HOST OR ADDRESS" />
+                                <TextBox Classes="field" Text="{Binding Host, Mode=TwoWay}" FontSize="14"
+                                         Watermark="cam3.local or 10.0.4.51" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" IsVisible="{Binding ShowPort}">
+                                <TextBlock Classes="fieldLabel" Text="PORT" />
+                                <TextBox Classes="field mono" Text="{Binding Port, Mode=TwoWay}" FontSize="14"
+                                         Watermark="ping" />
+                            </StackPanel>
+                        </Grid>
 
                         <StackPanel IsVisible="{Binding ShowNameContains}">
                             <TextBlock Classes="fieldLabel" Text="DEVICE NAME CONTAINS" />

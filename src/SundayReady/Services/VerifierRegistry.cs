@@ -23,6 +23,7 @@ public sealed class VerifierRegistry : IDisposable
         new HttpContainsVerifier(),
         new FileExistsVerifier(),
         new InternetReachableVerifier(),
+        new HostReachableVerifier(),
         new AudioDevicePresentVerifier(),
     });
 

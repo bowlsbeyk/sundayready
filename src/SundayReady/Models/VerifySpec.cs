@@ -29,8 +29,17 @@ public sealed class VerifySpec
     /// <summary>httpContains: the substring the response body must contain.</summary>
     public string? Contains { get; set; }
 
-    /// <summary>internetReachable: host to probe. Optional; the verifier has a default.</summary>
+    /// <summary>
+    /// internetReachable: host to probe, optional (the verifier has a default).
+    /// hostReachable: the device's address or name, required.
+    /// </summary>
     public string? Host { get; set; }
+
+    /// <summary>
+    /// hostReachable: a TCP port to connect to instead of pinging. Proves something is
+    /// listening, not just that the box is on the network.
+    /// </summary>
+    public int? Port { get; set; }
 
     /// <summary>audioDevicePresent: substring to look for in audio device names.</summary>
     public string? NameContains { get; set; }
@@ -50,6 +59,7 @@ public sealed class VerifySpec
         if (!string.IsNullOrWhiteSpace(Url)) yield return new("url", Url);
         if (!string.IsNullOrEmpty(Contains)) yield return new("contains", $"\"{Contains}\"");
         if (!string.IsNullOrWhiteSpace(Host)) yield return new("host", Host);
+        if (Port is > 0) yield return new("port", Port.Value.ToString());
         if (!string.IsNullOrWhiteSpace(NameContains)) yield return new("nameContains", $"\"{NameContains}\"");
         if (!string.IsNullOrWhiteSpace(Path)) yield return new("path", Path);
     }

@@ -9,7 +9,7 @@
 
         <!-- The release workflow overrides this with the pushed tag. The updater compares
              against it, so it must be a real three-part version, not a marketing string. -->
-        <Version>0.6.0</Version>
+        <Version>0.6.1</Version>
 
         <!-- Booth PCs have no .NET runtime installed, so releases ship as one file. -->
         <RuntimeIdentifier Condition="'$(PublishSingleFile)' == 'true'">win-x64</RuntimeIdentifier>

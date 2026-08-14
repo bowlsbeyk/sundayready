@@ -111,7 +111,21 @@ verifier agrees.
 | `httpContains` | `url`, `contains` | GET returns a body containing the string |
 | `fileExists` | `path` | Path exists (environment variables are expanded) |
 | `internetReachable` | `host` (optional) | Host answers ICMP, or TCP/443 if ping is blocked |
+| `hostReachable` | `host`, `port` (optional) | A device answers — ping with no port, TCP connect with one |
 | `audioDevicePresent` | `nameContains` | **Not implemented yet** — always fails |
+
+**Checking cameras and other devices.** `hostReachable` is the one for gear on the network.
+With no port it pings; with a port it connects, which is the stronger statement — a camera
+that answers on 80 has its web UI up, not just an IP. Be clear on what it proves though: the
+device is powered and on the network. It says nothing about where it is pointed, whether the
+lens cap is off, or whether the feed reaches the switcher. For *that*, ask the switcher —
+`httpContains` against the vMix API looking for the input's name is what proves a camera is
+actually usable. Many stations want both: `hostReachable` tells you *which* thing broke,
+`httpContains` tells you the shot is not there.
+
+> Devices addressed by IP are a hostage to DHCP. If a camera's lease moves, the check fails
+> and the camera is fine. Use a DNS or mDNS name (`cam3.local`) where you can, or give the
+> gear static addresses — then the IP in the checklist stays true.
 
 `maxAttempts` (default 10) is how many failed polls to absorb as "still starting" before the
 item goes red. Polling runs every 5 seconds. A verifier that was passing and starts failing
