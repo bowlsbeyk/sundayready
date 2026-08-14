@@ -271,6 +271,176 @@
         <Setter Property="Margin" Value="0,4,0,0" />
     </Style>
 
+    <!-- ==== Techdesk ==== -->
+
+    <!--
+        Station state is carried by a class on the container, and every colour inside it hangs
+        off that class. Set here rather than inline on the children: a local value outranks a
+        style setter, so an inline Foreground would leave the state selectors doing nothing.
+        No class at all is the silent station — grey, because no human has looked at it.
+    -->
+
+    <Style Selector="Border.stationCard">
+        <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="9" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.stationCard.failing">
+        <Setter Property="BorderBrush" Value="{StaticResource FailPillBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.stationHeader">
+        <Setter Property="Background" Value="{StaticResource Overlay03Brush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Overlay08Brush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="18,16" />
+    </Style>
+    <Style Selector="Border.stationHeader.ok">
+        <Setter Property="Background" Value="{StaticResource OkFillBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OkTintBorderBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.failing">
+        <Setter Property="Background" Value="{StaticResource FailTintBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource FailTintBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.stationHeader Ellipse.statusDot">
+        <Setter Property="Fill" Value="{StaticResource TextLockedBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.ok Ellipse.statusDot">
+        <Setter Property="Fill" Value="{StaticResource OkBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.failing Ellipse.statusDot">
+        <Setter Property="Fill" Value="{StaticResource FailBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.partial Ellipse.statusDot">
+        <Setter Property="Fill" Value="{StaticResource WaitBrush}" />
+    </Style>
+
+    <Style Selector="Border.stationHeader TextBlock.stationFigure">
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.ok TextBlock.stationFigure">
+        <Setter Property="Foreground" Value="{StaticResource OkBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.failing TextBlock.stationFigure">
+        <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+    </Style>
+    <Style Selector="Border.stationHeader.partial TextBlock.stationFigure">
+        <Setter Property="Foreground" Value="{StaticResource WaitTextBrush}" />
+    </Style>
+
+    <!-- 1d's station tile: the same states, one size up and without the card body. -->
+    <Style Selector="Border.boardTile">
+        <Setter Property="Background" Value="{StaticResource Overlay03Brush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Overlay09Brush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="22" />
+    </Style>
+    <Style Selector="Border.boardTile.ok">
+        <Setter Property="Background" Value="{StaticResource OkFillBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OkTintBorderStrongBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.failing">
+        <Setter Property="Background" Value="{StaticResource FailTintBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource FailBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.boardTile TextBlock.tilePercent">
+        <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.ok TextBlock.tilePercent">
+        <Setter Property="Foreground" Value="{StaticResource OkBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.failing TextBlock.tilePercent">
+        <Setter Property="Foreground" Value="{StaticResource FailStrongBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.partial TextBlock.tilePercent">
+        <Setter Property="Foreground" Value="{StaticResource WaitBrush}" />
+    </Style>
+
+    <Style Selector="Border.boardTile TextBlock.tileStatus">
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.ok TextBlock.tileStatus">
+        <Setter Property="Foreground" Value="{StaticResource OkTextBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.failing TextBlock.tileStatus">
+        <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+    </Style>
+    <Style Selector="Border.boardTile.partial TextBlock.tileStatus">
+        <Setter Property="Foreground" Value="{StaticResource WaitTextBrush}" />
+    </Style>
+
+    <!-- Telemetry rail card. Same surface either layout, different padding. -->
+    <Style Selector="Border.railCard">
+        <Setter Property="Background" Value="{StaticResource PanelRaisedBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+    <Style Selector="Border.railCard.panel">
+        <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="24,22" />
+    </Style>
+
+    <!-- Mono section label. One step larger and wider-tracked than the station screen's. -->
+    <Style Selector="TextBlock.railLabel">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="1.68" />
+        <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+    </Style>
+
+    <!--
+        The techdesk's only buttons. Quiet on purpose: nothing here should compete with a red
+        station card for attention.
+    -->
+    <Style Selector="Button.quiet">
+        <Setter Property="Background" Value="{StaticResource Overlay06Brush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Overlay10Brush}" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource Overlay08Brush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource TextDimBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Overlay14Brush}" />
+    </Style>
+
+    <!-- Sits over a dashed Rectangle: "advisory / not yet real", the same as the gate card. -->
+    <Style Selector="Button.quiet.dashed">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.quiet.dashed:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource Overlay03Brush}" />
+        <Setter Property="TextElement.Foreground" Value="{StaticResource TextDimBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <!-- 1d's row action, sized to be pressable from a standing position. -->
+    <Style Selector="Button.quiet.board">
+        <Setter Property="Background" Value="{StaticResource Overlay06Brush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Overlay14Brush}" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="Padding" Value="22,13" />
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
     <!-- ==== Inputs ==== -->
 
     <Style Selector="TextBox.field">

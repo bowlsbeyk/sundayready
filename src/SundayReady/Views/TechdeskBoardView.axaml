@@ -1,0 +1,346 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SundayReady.ViewModels"
+             xmlns:controls="using:SundayReady.Controls"
+             mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+             x:Class="SundayReady.Views.TechdeskBoardView"
+             x:DataType="vm:TechdeskViewModel">
+
+    <!-- 1d. Big type, exceptions only: the layout for a screen glanced at from across the
+         room. Completed items are never listed here — they live in the log. -->
+
+    <UserControl.Styles>
+        <Style Selector="Border.exception">
+            <Setter Property="Background" Value="{StaticResource Overlay03Brush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Overlay09Brush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="22,20" />
+        </Style>
+        <Style Selector="Border.exception.fail">
+            <Setter Property="Background" Value="{StaticResource FailFillBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource FailPillBorderBrush}" />
+        </Style>
+        <Style Selector="Border.exception.wait">
+            <Setter Property="Background" Value="{StaticResource WaitFillBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource WaitBorderBrush}" />
+        </Style>
+
+        <!-- The 46px glyph square, and the mono detail line beneath the headline. -->
+        <Style Selector="Border.exception Border.glyph">
+            <Setter Property="Background" Value="{StaticResource Overlay08Brush}" />
+        </Style>
+        <Style Selector="Border.exception.fail Border.glyph">
+            <Setter Property="Background" Value="{StaticResource FailBrush}" />
+        </Style>
+        <Style Selector="Border.exception.wait Border.glyph">
+            <Setter Property="Background" Value="{StaticResource WaitBrush}" />
+        </Style>
+        <Style Selector="Border.exception Border.glyph TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        </Style>
+        <Style Selector="Border.exception.fail Border.glyph TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource OnStatusBrush}" />
+        </Style>
+        <Style Selector="Border.exception.wait Border.glyph TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource OnStatusBrush}" />
+        </Style>
+
+        <Style Selector="Border.exception TextBlock.exceptionDetail">
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        </Style>
+        <Style Selector="Border.exception.fail TextBlock.exceptionDetail">
+            <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+        </Style>
+        <Style Selector="Border.exception.wait TextBlock.exceptionDetail">
+            <Setter Property="Foreground" Value="{StaticResource WaitTextBrush}" />
+        </Style>
+
+        <Style Selector="Ellipse.mapDot">
+            <Setter Property="Fill" Value="{StaticResource OkBrush}" />
+        </Style>
+        <Style Selector="Ellipse.mapDot.idle">
+            <Setter Property="Fill" Value="{StaticResource WaitBrush}" />
+        </Style>
+        <Style Selector="Ellipse.mapDot.down">
+            <Setter Property="Fill" Value="{StaticResource FailBrush}" />
+        </Style>
+        <Style Selector="TextBlock.mapDetail">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource TextDisabledBrush}" />
+        </Style>
+        <Style Selector="TextBlock.mapDetail.idle">
+            <Setter Property="Foreground" Value="{StaticResource WaitTextBrush}" />
+        </Style>
+        <Style Selector="TextBlock.mapDetail.down">
+            <Setter Property="Foreground" Value="{StaticResource FailDimBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid Background="{StaticResource BgBrush}">
+        <Grid Margin="40,34" RowDefinitions="Auto,26,*">
+
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,28,Auto" VerticalAlignment="Bottom">
+                <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Bottom">
+                    <TextBlock Classes="mono" Text="{Binding Kicker}" FontSize="12" FontWeight="Medium"
+                               LetterSpacing="1.92" Foreground="{StaticResource TextFainterBrush}" />
+                    <!-- Line height is above the design's 1.0: a clipped descender on the one
+                         word read from across the room is worse than three extra pixels. -->
+                    <TextBlock Text="{Binding Verdict}" FontSize="66" FontWeight="SemiBold" LetterSpacing="-1.98"
+                               LineHeight="80" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Spacing="10" VerticalAlignment="Bottom"
+                            HorizontalAlignment="Right">
+                    <TextBlock Classes="mono" Text="{Binding TimesLine}" FontSize="12" FontWeight="Medium"
+                               LetterSpacing="1.92" LineHeight="16.8" HorizontalAlignment="Right"
+                               Foreground="{StaticResource TextFainterBrush}" />
+                    <!-- Anything over an hour formats H:MM:SS: a three-digit minute count at
+                         this size is unreadable and collides with the label above it. -->
+                    <TextBlock Classes="mono" Text="{Binding Countdown}" FontSize="84" FontWeight="SemiBold"
+                               LetterSpacing="-3.36" LineHeight="96" HorizontalAlignment="Right"
+                               Foreground="{StaticResource WaitBrush}" />
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="2" ColumnDefinitions="*,22,420">
+
+                <Grid Grid.Column="0" RowDefinitions="Auto,16,*">
+
+                    <!-- Station strip. The 8px item margin gives the 16px gutter. -->
+                    <ItemsControl Grid.Row="0" ItemsSource="{Binding Stations}" Margin="-8,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="4" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:TechdeskStationViewModel">
+                                <Border Classes="boardTile"
+                                        Classes.ok="{Binding IsReady}"
+                                        Classes.failing="{Binding IsFailing}"
+                                        Classes.partial="{Binding IsInProgress}"
+                                        Margin="8,0">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
+                                                   LineHeight="18" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Classes="mono tilePercent" Text="{Binding PercentText}"
+                                                   FontSize="52" FontWeight="SemiBold" LetterSpacing="-2.08" />
+                                        <TextBlock Classes="mono tileStatus" Text="{Binding BoardStatusText}"
+                                                   FontSize="11" FontWeight="Medium" LetterSpacing="1.1"
+                                                   LineHeight="14.3" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- NEEDS A HUMAN -->
+                    <Border Grid.Row="2" Classes="railCard panel" Padding="26,24">
+                        <Grid RowDefinitions="Auto,18,*,Auto">
+
+                            <Grid Grid.Row="0" ColumnDefinitions="Auto,12,*,12,Auto">
+                                <TextBlock Grid.Column="0" Classes="railLabel" Text="NEEDS A HUMAN"
+                                           LetterSpacing="1.68" VerticalAlignment="Center" />
+                                <Rectangle Grid.Column="2" Height="1" Fill="{StaticResource HairlineBrush}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Classes="mono" Text="{Binding ExceptionCountText}"
+                                           FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextFainterBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
+                                          VerticalAlignment="Top">
+                                <ItemsControl ItemsSource="{Binding Exceptions}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="14" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:TechdeskExceptionViewModel">
+                                            <Border Classes="exception" Classes.fail="{Binding IsFail}"
+                                                    Classes.wait="{Binding IsWait}">
+                                                <Grid ColumnDefinitions="46,20,*,20,Auto">
+                                                    <Border Grid.Column="0" Classes="glyph" Width="46" Height="46"
+                                                            CornerRadius="9" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Glyph}" FontSize="24"
+                                                                   FontWeight="Bold" HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center" />
+                                                    </Border>
+
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Headline}" FontSize="26"
+                                                                   FontWeight="SemiBold" LineHeight="32.5"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Classes="mono exceptionDetail"
+                                                                   Text="{Binding Detail}" FontSize="14"
+                                                                   LineHeight="19.6" Margin="0,5,0,0"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Classes="mono" IsVisible="{Binding HasActionStatus}"
+                                                                   Text="{Binding ActionStatus}" FontSize="12"
+                                                                   LineHeight="17" Margin="0,5,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   Foreground="{StaticResource TextDisabledBrush}" />
+                                                    </StackPanel>
+
+                                                    <Button Grid.Column="4" Classes="quiet board"
+                                                            Content="{Binding ActionLabel}"
+                                                            Command="{Binding ActCommand}"
+                                                            VerticalAlignment="Center" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <StackPanel Grid.Row="3" Spacing="6" Margin="0,18,0,0">
+                                <TextBlock Classes="mono" IsVisible="{Binding HasOverflow}"
+                                           Text="{Binding OverflowText}" FontSize="12"
+                                           Foreground="{StaticResource TextFainterBrush}" />
+                                <TextBlock Text="{Binding DoneFooter}" FontSize="13" LineHeight="19.5"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource TextDisabledBrush}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <Grid Grid.Column="2" RowDefinitions="Auto,16,Auto,16,*">
+
+                    <!-- WATCHING NOW -->
+                    <Border Grid.Row="0" Classes="railCard panel">
+                        <StackPanel Spacing="18">
+                            <TextBlock Classes="railLabel" Text="WATCHING NOW" LetterSpacing="1.68" />
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <TextBlock Classes="mono" Text="{Binding TotalWatching}" FontSize="84"
+                                           FontWeight="SemiBold" LetterSpacing="-4.2" LineHeight="84" />
+                                <StackPanel Spacing="3" VerticalAlignment="Bottom" Margin="0,0,0,10">
+                                    <TextBlock Classes="mono" Text="NO VIEWER FEED" FontSize="12" FontWeight="Medium"
+                                               Foreground="{StaticResource TextFaintBrush}" />
+                                    <TextBlock Classes="mono" Text="{Binding PeakLine}" FontSize="11"
+                                               Foreground="{StaticResource TextDisabledBrush}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,12,*">
+                                <Border Grid.Column="0" Background="{StaticResource Overlay03Brush}"
+                                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                        CornerRadius="7" Padding="15,13">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="mono" Text="YOUTUBE" FontSize="11" FontWeight="Medium"
+                                                   Foreground="{StaticResource TextFaintBrush}" />
+                                        <TextBlock Classes="mono" Text="{Binding YouTubeCount}" FontSize="30"
+                                                   FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Background="{StaticResource Overlay03Brush}"
+                                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                        CornerRadius="7" Padding="15,13">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="mono" Text="FACEBOOK" FontSize="11" FontWeight="Medium"
+                                                   Foreground="{StaticResource TextFaintBrush}" />
+                                        <TextBlock Classes="mono" Text="{Binding FacebookCount}" FontSize="30"
+                                                   FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- UPLINK -->
+                    <Border Grid.Row="2" Classes="railCard panel">
+                        <StackPanel Spacing="16">
+                            <TextBlock Classes="railLabel" Text="UPLINK" LetterSpacing="1.68" />
+                            <!-- One TextBlock, two runs: the unit has to sit on the figure's
+                                 baseline, and an em-dash placeholder floats if they are
+                                 separate elements bottom-aligned to each other. -->
+                            <TextBlock Classes="mono" FontSize="46" FontWeight="SemiBold" LetterSpacing="-1.38">
+                                <Run Text="{Binding UpText}" />
+                                <Run Text=" Mb/s up" FontSize="16"
+                                     Foreground="{StaticResource TextFaintBrush}" />
+                            </TextBlock>
+
+                            <controls:Sparkline Height="60" IsVisible="{Binding HasSamples}"
+                                                Samples="{Binding PingSamples}" MaxBars="10" RecentBars="5"
+                                                BarBrush="{StaticResource Overlay13Brush}"
+                                                RecentBrush="{StaticResource ActionBrush}" />
+                            <Grid Height="60" IsVisible="{Binding !HasSamples}">
+                                <Rectangle RadiusX="4" RadiusY="4" Fill="{StaticResource Overlay02Brush}"
+                                           Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                           StrokeDashArray="4,3" />
+                                <TextBlock Classes="mono" Text="NO SAMPLES YET" FontSize="11"
+                                           Foreground="{StaticResource TextDisabledBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <TextBlock Classes="mono" Text="{Binding SparklineCaption}" FontSize="11"
+                                       LineHeight="15" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextDisabledBrush}" />
+
+                            <Grid ColumnDefinitions="*,*,*">
+                                <TextBlock Grid.Column="0" Classes="mono" FontSize="11"
+                                           Foreground="{StaticResource TextDisabledBrush}"
+                                           Text="{Binding DownText, StringFormat='{}{0} Mb/s DOWN'}" />
+                                <TextBlock Grid.Column="1" Classes="mono" FontSize="11"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource TextDisabledBrush}"
+                                           Text="{Binding PingText, StringFormat='{}{0} ms'}" />
+                                <TextBlock Grid.Column="2" Classes="mono" FontSize="11"
+                                           HorizontalAlignment="Right"
+                                           Foreground="{StaticResource TextDisabledBrush}"
+                                           Text="{Binding DropsText, StringFormat='{}{0} DROPS'}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- DEVICE MAP -->
+                    <Border Grid.Row="4" Classes="railCard panel">
+                        <Grid RowDefinitions="Auto,14,*,Auto">
+                            <TextBlock Grid.Row="0" Classes="railLabel" Text="DEVICE MAP" LetterSpacing="1.68" />
+
+                            <ItemsControl Grid.Row="2" ItemsSource="{Binding DeviceGroups}" VerticalAlignment="Top">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="9" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:TechdeskDeviceGroupViewModel">
+                                        <Grid ColumnDefinitions="Auto,11,*,11,Auto">
+                                            <Ellipse Grid.Column="0" Classes="mapDot"
+                                                     Classes.idle="{Binding IsIdle}"
+                                                     Classes.down="{Binding IsDown}"
+                                                     Width="9" Height="9" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Names}" FontSize="15"
+                                                       FontWeight="Medium" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{StaticResource TextDimBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="4" Classes="mapDetail"
+                                                       Classes.idle="{Binding IsIdle}"
+                                                       Classes.down="{Binding IsDown}"
+                                                       Text="{Binding Detail}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Grid.Row="3" Spacing="4" Margin="0,14,0,0">
+                                <TextBlock Classes="mono" Text="{Binding SweepLine}" FontSize="12" LineHeight="18"
+                                           Foreground="{StaticResource TextDisabledBrush}" />
+                                <TextBlock Classes="mono" Text="{Binding ShareLine}" FontSize="11"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource TextLockedBrush}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

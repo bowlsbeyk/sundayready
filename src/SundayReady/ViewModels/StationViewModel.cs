@@ -42,11 +42,14 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _pollTimer;
     private readonly DispatcherTimer _reloadDebounce;
+    private readonly DispatcherTimer _heartbeatTimer;
     private readonly CancellationTokenSource _cancellation = new();
     private readonly ProcessLauncher _launcher;
 
+    private SnapshotStore _snapshots;
     private FileSystemWatcher? _watcher;
     private DateTime? _serviceStart;
+    private DateTimeOffset? _readyAt;
     private bool _polling;
     private bool _disposed;
 
@@ -113,6 +116,7 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
         _state = stateStore.Load(DateOnly.FromDateTime(DateTime.Now));
         _logger.OperatorInitials = _state.OperatorInitials;
+        _snapshots = new SnapshotStore(config.TechdeskShare);
 
         ApplyConfig(config);
         BuildTabs(definitions);
@@ -131,6 +135,9 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
             _reloadDebounce.Stop();
             Reload(automatic: true);
         };
+
+        _heartbeatTimer = new DispatcherTimer { Interval = SnapshotStore.PublishInterval };
+        _heartbeatTimer.Tick += (_, _) => Publish();
 
         UpdateClock();
         Refresh();
@@ -283,8 +290,59 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     {
         _clockTimer.Start();
         _pollTimer.Start();
+        _heartbeatTimer.Start();
         StartWatching();
+        Publish();
         _ = PollAsync();
+    }
+
+    /// <summary>
+    /// Writes this station's heartbeat to the techdesk share. Every station does this whether
+    /// or not a techdesk is running — a station has no way to know, and a snapshot nobody
+    /// reads costs a few kilobytes a minute.
+    /// </summary>
+    private void Publish()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _snapshots.Publish(new StationSnapshot
+        {
+            Station = StationName,
+            Host = Environment.MachineName.ToUpperInvariant(),
+            Address = SnapshotStore.Address,
+            Completed = StationCompleted,
+            Total = StationTotal,
+            Percentage = StationTotal == 0 ? 0 : (int)Math.Round(100.0 * StationCompleted / StationTotal),
+            Failing = StationFailing,
+            Operator = _config.Operator,
+            ReadyAt = IsGateOpen ? _readyAt : null,
+            LastHeartbeat = DateTimeOffset.Now,
+            PingMs = MeasuredPing(),
+            Items = AllItems.Select(i => i.ToSnapshotItem()).ToList(),
+        });
+    }
+
+    /// <summary>
+    /// The one network figure the app actually measures: the round trip this station's
+    /// <c>internetReachable</c> verifier last reported. Nothing else on the techdesk's
+    /// telemetry rail is real, and nothing else is invented to fill it.
+    /// </summary>
+    private int? MeasuredPing()
+    {
+        var internet = AllItems.FirstOrDefault(i =>
+            string.Equals(i.Item.Verify?.Kind, "internetReachable", StringComparison.OrdinalIgnoreCase)
+            && i.Status == VerifyStatus.Passed);
+
+        if (internet?.LastResult is not { } result)
+        {
+            return null;
+        }
+
+        var digits = new string(result.TakeWhile(char.IsAsciiDigit).ToArray());
+        return int.TryParse(digits, out var milliseconds) ? milliseconds : null;
     }
 
     /// <summary>
@@ -421,6 +479,11 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     private void ApplyConfig(StationConfig config)
     {
         _config = config;
+
+        if (!string.Equals(_snapshots.Directory, SnapshotStore.Resolve(config.TechdeskShare), StringComparison.OrdinalIgnoreCase))
+        {
+            _snapshots = new SnapshotStore(config.TechdeskShare);
+        }
 
         StationName = string.IsNullOrWhiteSpace(config.Station) ? "SundayReady" : config.Station;
         _serviceStart = ParseServiceTime(config.Service?.StartsAt);
@@ -602,6 +665,11 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
             tab.Refresh();
         }
 
+        // The moment the gate opened, which is what the techdesk stamps as READY 10:06 AM.
+        // Taken here rather than in ReadyToGo: the gate opens when the last item ticks, and
+        // nobody has to press the button for that to be the truth.
+        _readyAt = IsGateOpen ? _readyAt ?? _state.SignedOffAt ?? DateTimeOffset.Now : null;
+
         RefreshRing();
 
         OnPropertyChanged(nameof(StationFailing));
@@ -725,6 +793,7 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         _clockTimer.Stop();
         _pollTimer.Stop();
         _reloadDebounce.Stop();
+        _heartbeatTimer.Stop();
 
         if (_watcher is not null)
         {

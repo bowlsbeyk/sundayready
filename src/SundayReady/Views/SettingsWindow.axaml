@@ -128,11 +128,30 @@
                                 <Rectangle RadiusX="7" RadiusY="7" Fill="{StaticResource Overlay02Brush}"
                                            Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
                                            StrokeDashArray="4,3" />
-                                <StackPanel Margin="16,14" Spacing="8">
+                                <StackPanel Margin="16,14" Spacing="12">
                                     <CheckBox IsChecked="{Binding Techdesk, Mode=TwoWay}"
                                               Content="Run as techdesk instead — show every station's list on this screen" />
                                     <TextBlock Classes="railBody" FontSize="13"
-                                               Text="Not built yet. This writes the setting so the station is ready when the techdesk view lands." />
+                                               Text="Stations write a snapshot to the share below every 15 seconds; the techdesk reads all of them. Takes effect at the next restart." />
+
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="TECHDESK SHARE" />
+                                        <TextBox Classes="field" Text="{Binding TechdeskShare, Mode=TwoWay}"
+                                                 FontSize="14" FontFamily="{StaticResource MonoFont}"
+                                                 Watermark="{Binding TechdeskShareFallback}" />
+                                    </StackPanel>
+
+                                    <!-- Both dashboard layouts are built; the design offered them as
+                                         alternatives and the choice belongs to the room. -->
+                                    <StackPanel Spacing="7">
+                                        <TextBlock Classes="fieldLabel" Text="TECHDESK LAYOUT" Margin="0" />
+                                        <RadioButton GroupName="techdeskLayout"
+                                                     IsChecked="{Binding LayoutIsColumns, Mode=TwoWay}"
+                                                     Content="Station columns — every station's list plus a telemetry rail" />
+                                        <RadioButton GroupName="techdeskLayout"
+                                                     IsChecked="{Binding LayoutIsBoard, Mode=TwoWay}"
+                                                     Content="Wall board — big type, exceptions only" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>

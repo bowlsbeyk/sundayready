@@ -121,6 +121,11 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
         }
     }
 
+    partial void OnStatusChanged(VerifyStatus value)
+    {
+        FailingSince = value == VerifyStatus.Failed ? FailingSince ?? DateTimeOffset.Now : null;
+    }
+
     public ChecklistItem Item { get; }
 
     public ChecklistDefinition Source { get; }
@@ -159,6 +164,13 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
     public string? LastResult { get; private set; }
 
     public DateTimeOffset? LastPassAt { get; private set; }
+
+    /// <summary>
+    /// When this item first went red and stayed red. The techdesk headlines how long a thing
+    /// has been broken, and "failing for 26 minutes" is a different conversation from
+    /// "failing since the last poll".
+    /// </summary>
+    public DateTimeOffset? FailingSince { get; private set; }
 
     public int MaxAttempts => Item.Verify?.MaxAttempts ?? VerifySpec.DefaultMaxAttempts;
 
@@ -375,7 +387,29 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
         HasLaunched = previous.HasLaunched;
         Attempts = previous.Attempts;
         Status = previous.Status;
+
+        // After Status, whose change handler would otherwise restart the clock.
+        FailingSince = previous.FailingSince;
     }
+
+    /// <summary>Flattens this item for the techdesk share.</summary>
+    public SnapshotItem ToSnapshotItem() => new()
+    {
+        Label = Label,
+        Tab = TabLabel,
+        Type = Item.Type,
+        State = IsChecked
+            ? SnapshotItemStates.Done
+            : Status switch
+            {
+                VerifyStatus.Failed => SnapshotItemStates.Failing,
+                VerifyStatus.Polling => SnapshotItemStates.Polling,
+                _ => SnapshotItemStates.Open,
+            },
+        Detail = string.IsNullOrEmpty(LastResult) ? null : LastResult,
+        FailingSince = FailingSince,
+        LastPassAt = LastPassAt,
+    };
 
     /// <summary>
     /// Runs this item's verifier once. Called on the UI thread from the poll timer, and the
