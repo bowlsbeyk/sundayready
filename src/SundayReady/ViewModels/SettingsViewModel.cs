@@ -200,6 +200,19 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _isTestingViewers;
 
+    [ObservableProperty]
+    private string _facebookPageId = string.Empty;
+
+    /// <summary>Never populated from storage — the saved token is described, not shown.</summary>
+    [ObservableProperty]
+    private string _facebookToken = string.Empty;
+
+    [ObservableProperty]
+    private string _facebookTokenState = string.Empty;
+
+    [ObservableProperty]
+    private string _facebookStatus = string.Empty;
+
     public SettingsViewModel(
         StationConfig config,
         ChecklistLoader checklists,
@@ -310,6 +323,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         YouTubeApiKey = Config.ViewerCounts.YouTubeApiKey ?? string.Empty;
         YouTubeChannelId = Config.ViewerCounts.YouTubeChannelId ?? string.Empty;
         YouTubeVideoId = Config.ViewerCounts.YouTubeVideoId ?? string.Empty;
+        FacebookPageId = Config.ViewerCounts.FacebookPageId ?? string.Empty;
+        FacebookToken = string.Empty;
+        FacebookTokenState = SecretStore.Describe(ViewerCountService.FacebookTokenName);
 
         Tiles.Clear();
         foreach (var tile in Config.QuickLaunch)
@@ -340,6 +356,8 @@ public sealed partial class SettingsViewModel : ObservableObject
                     YouTubeVideoId = Blank(YouTubeVideoId),
                 },
                 CancellationToken.None);
+
+            _ = counts;
 
             ViewerStatus = counts.YouTube is { } viewers
                 ? $"{viewers:N0} watching{(counts.YouTubeTitle is null ? "" : $" — “{counts.YouTubeTitle}”")}"
@@ -457,6 +475,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             YouTubeApiKey = Blank(YouTubeApiKey),
             YouTubeChannelId = Blank(YouTubeChannelId),
             YouTubeVideoId = Blank(YouTubeVideoId),
+            FacebookPageId = Blank(FacebookPageId),
         };
         Config.Service = new ServiceTimes
         {
@@ -511,6 +530,54 @@ public sealed partial class SettingsViewModel : ObservableObject
         finally
         {
             IsCheckingUpdate = false;
+        }
+    }
+
+    /// <summary>
+    /// Saves the pasted token straight away rather than waiting for the page's Save button:
+    /// it goes to the encrypted store, not to station.json, so it is not part of that save.
+    /// </summary>
+    [RelayCommand]
+    private void SaveFacebookToken()
+    {
+        SecretStore.Write(ViewerCountService.FacebookTokenName, FacebookToken);
+        FacebookToken = string.Empty;
+        FacebookTokenState = SecretStore.Describe(ViewerCountService.FacebookTokenName);
+        FacebookStatus = "Token saved, encrypted for this Windows user.";
+    }
+
+    [RelayCommand]
+    private void ForgetFacebookToken()
+    {
+        SecretStore.Delete(ViewerCountService.FacebookTokenName);
+        FacebookToken = string.Empty;
+        FacebookTokenState = SecretStore.Describe(ViewerCountService.FacebookTokenName);
+        FacebookStatus = "Token removed from this PC.";
+    }
+
+    [RelayCommand]
+    private async Task TestFacebookAsync()
+    {
+        FacebookStatus = "Asking Facebook…";
+
+        // The pasted box wins if there is something in it, so a token can be tried before
+        // it is committed to disk.
+        var token = string.IsNullOrWhiteSpace(FacebookToken)
+            ? SecretStore.Read(ViewerCountService.FacebookTokenName)
+            : FacebookToken;
+
+        try
+        {
+            using var service = new ViewerCountService();
+            var probe = await service.ProbeFacebookAsync(FacebookPageId, token, CancellationToken.None);
+
+            FacebookStatus = probe.Viewers is { } viewers
+                ? $"{viewers:N0} watching{(probe.Title is null ? "" : $" — “{probe.Title}”")}"
+                : string.Join("  ", new[] { probe.Note, probe.Detail }.Where(p => !string.IsNullOrEmpty(p)));
+        }
+        catch (Exception ex)
+        {
+            FacebookStatus = ex.Message;
         }
     }
 

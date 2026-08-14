@@ -69,6 +69,13 @@ public sealed class ViewerCountSettings
     /// Optional. Pin a specific broadcast (id or URL) to skip the channel search entirely.
     /// </summary>
     public string? YouTubeVideoId { get; set; }
+
+    /// <summary>
+    /// The church's Facebook Page id. The Page access token that goes with it is NOT stored
+    /// here — see <see cref="Services.SecretStore"/>. A token in a file people copy between
+    /// stations is a token that leaks.
+    /// </summary>
+    public string? FacebookPageId { get; set; }
 }
 
 public static class TechdeskLayouts

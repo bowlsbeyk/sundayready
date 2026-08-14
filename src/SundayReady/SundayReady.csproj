@@ -10,7 +10,7 @@
 
         <!-- The release workflow overrides this with the pushed tag. The updater compares
              against it, so it must be a real three-part version, not a marketing string. -->
-        <Version>0.7.1</Version>
+        <Version>0.8.0</Version>
 
         <!-- Booth PCs have no .NET runtime installed, so releases ship as one file. -->
         <RuntimeIdentifier Condition="'$(PublishSingleFile)' == 'true'">win-x64</RuntimeIdentifier>
@@ -20,27 +20,28 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.3.10"/>
-        <PackageReference Include="Avalonia.Desktop" Version="11.3.10"/>
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10"/>
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.10"/>
+        <PackageReference Include="Avalonia" Version="11.3.10" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.10" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.10" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Avalonia.Diagnostics" Version="11.3.10">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0"/>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     </ItemGroup>
 
     <ItemGroup>
         <!-- The logo, unlike the checklists, is part of the app and is embedded. -->
-        <AvaloniaResource Include="Assets\**"/>
+        <AvaloniaResource Include="Assets\**" />
     </ItemGroup>
 
     <ItemGroup>
         <!-- Checklists ship beside the exe and are loaded at runtime, never embedded:
              editing one must not require a rebuild. -->
-        <None Update="checklists\**\*.json" CopyToOutputDirectory="PreserveNewest"/>
-        <None Update="station.json" CopyToOutputDirectory="PreserveNewest"/>
+        <None Update="checklists\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="station.json" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 </Project>

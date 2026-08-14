@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using SundayReady.Models;
 
@@ -21,9 +22,21 @@ public sealed record ViewerCounts(int? YouTube, int? Facebook, string? YouTubeTi
 /// Meta App Review, which is a different order of effort — see the settings screen.
 /// </para>
 /// </summary>
+/// <summary>What a Facebook probe found, including enough detail to diagnose a bad setup.</summary>
+public sealed record FacebookProbe(int? Viewers, string? Title, string? Status, string? Note, string? Detail);
+
 public sealed class ViewerCountService : IDisposable
 {
     private const string ApiRoot = "https://www.googleapis.com/youtube/v3";
+
+    /// <summary>Name under which the Page token is kept, encrypted, by <see cref="SecretStore"/>.</summary>
+    public const string FacebookTokenName = "facebook-page-token";
+
+    /// <summary>
+    /// Graph API versions are supported for roughly two years and then start refusing calls.
+    /// When Facebook counts stop arriving and the error mentions the version, bump this.
+    /// </summary>
+    private const string GraphVersion = "v21.0";
 
     private readonly HttpClient _client = new() { Timeout = TimeSpan.FromSeconds(10) };
 
@@ -63,12 +76,27 @@ public sealed class ViewerCountService : IDisposable
                 return new ViewerCounts(null, null, video?.Snippet?.Title, "That broadcast is not reporting a live count.");
             }
 
-            return new ViewerCounts(viewers, null, video.Snippet?.Title, null);
+            var facebook = await ReadFacebookAsync(settings, cancellationToken).ConfigureAwait(true);
+            return new ViewerCounts(viewers, facebook, video.Snippet?.Title, null);
         }
         catch (Exception ex)
         {
-            return new ViewerCounts(null, null, null, Explain(ex));
+            var facebook = await ReadFacebookAsync(settings, cancellationToken).ConfigureAwait(true);
+            return new ViewerCounts(null, facebook, null, Explain(ex));
         }
+    }
+
+    /// <summary>Facebook alone, failing soft to null. Never lets one platform break the other.</summary>
+    private async Task<int?> ReadFacebookAsync(ViewerCountSettings settings, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(settings.FacebookPageId))
+        {
+            return null;
+        }
+
+        var token = SecretStore.Read(FacebookTokenName);
+        var probe = await ProbeFacebookAsync(settings.FacebookPageId, token, cancellationToken).ConfigureAwait(true);
+        return probe.Viewers;
     }
 
     private async Task<string?> ResolveVideoIdAsync(ViewerCountSettings settings, CancellationToken cancellationToken)
@@ -99,6 +127,87 @@ public sealed class ViewerCountService : IDisposable
         _resolvedForChannel = settings.YouTubeChannelId;
 
         return _resolvedVideoId;
+    }
+
+    /// <summary>
+    /// Reads the Page's current live broadcast and its viewer count.
+    /// <para>
+    /// Reading your own Page needs no App Review — an app left in Development mode can request
+    /// <c>pages_read_engagement</c> from anyone with a role on it, which the church's own admin
+    /// has. A Page token derived from a long-lived user token then does not expire.
+    /// </para>
+    /// <para>
+    /// Deliberately verbose about what it found. The likely failures here are configuration,
+    /// not code — wrong Page id, a token missing the permission, an expired token, a Graph
+    /// version that has aged out — and each needs a different fix.
+    /// </para>
+    /// </summary>
+    public async Task<FacebookProbe> ProbeFacebookAsync(string? pageId, string? token, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(pageId) || string.IsNullOrWhiteSpace(token))
+        {
+            return new FacebookProbe(null, null, null, "Page id and access token are both needed.", null);
+        }
+
+        var url = $"https://graph.facebook.com/{GraphVersion}/{Uri.EscapeDataString(pageId.Trim())}/live_videos"
+                  + "?fields=id,status,live_views,title&limit=10"
+                  + $"&access_token={Uri.EscapeDataString(token.Trim())}";
+
+        try
+        {
+            using var response = await _client.GetAsync(url, cancellationToken).ConfigureAwait(true);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(true);
+
+            using var document = JsonDocument.Parse(body);
+
+            if (document.RootElement.TryGetProperty("error", out var error))
+            {
+                var message = error.TryGetProperty("message", out var m) ? m.GetString() : "unknown error";
+                return new FacebookProbe(null, null, null, $"Facebook said: {message}", null);
+            }
+
+            if (!document.RootElement.TryGetProperty("data", out var data) || data.GetArrayLength() == 0)
+            {
+                return new FacebookProbe(null, null, null, "That Page has no live videos at all.", null);
+            }
+
+            foreach (var item in data.EnumerateArray())
+            {
+                var status = item.TryGetProperty("status", out var s) ? s.GetString() : null;
+                if (!string.Equals(status, "LIVE", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var title = item.TryGetProperty("title", out var t) ? t.GetString() : null;
+
+                if (item.TryGetProperty("live_views", out var views) && views.TryGetInt32(out var count))
+                {
+                    return new FacebookProbe(count, title, status, null, null);
+                }
+
+                // Live, but no count came back — usually the token lacks the permission that
+                // exposes it. Say which fields did arrive so the cause is visible.
+                var got = string.Join(", ", item.EnumerateObject().Select(p => p.Name));
+                return new FacebookProbe(null, title, status,
+                    "Live, but Facebook returned no live_views for it.", $"fields returned: {got}");
+            }
+
+            var statuses = data.EnumerateArray()
+                .Select(i => i.TryGetProperty("status", out var s) ? s.GetString() : "?")
+                .Distinct();
+
+            return new FacebookProbe(null, null, null,
+                "Nothing is live on that Page right now.", $"recent broadcasts: {string.Join(", ", statuses)}");
+        }
+        catch (TaskCanceledException)
+        {
+            return new FacebookProbe(null, null, null, "Facebook did not answer in time.", null);
+        }
+        catch (Exception ex)
+        {
+            return new FacebookProbe(null, null, null, ex.Message, null);
+        }
     }
 
     /// <summary>Accepts a bare id or any of the URL shapes someone might paste.</summary>

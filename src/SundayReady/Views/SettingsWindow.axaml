@@ -355,16 +355,34 @@
                                            TextWrapping="Wrap" Text="{Binding ViewerStatus}" />
                             </StackPanel>
 
-                            <Grid Margin="0,4,0,0">
-                                <Rectangle RadiusX="7" RadiusY="7" Fill="{StaticResource Overlay02Brush}"
-                                           Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
-                                           StrokeDashArray="4,3" />
-                                <StackPanel Margin="16,14" Spacing="6">
-                                    <TextBlock Classes="microLabel" Text="FACEBOOK — NOT SUPPORTED" />
-                                    <TextBlock Classes="railBody" FontSize="14"
-                                               Text="Facebook live viewer counts need a Page access token from an app that has passed Meta App Review, plus ANALYZE rights on the Page. That is an app submission and a review queue, not a settings field. The techdesk shows an em-dash for Facebook until someone decides it is worth going through." />
-                                </StackPanel>
-                            </Grid>
+                            <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" Margin="0,8" />
+                            <TextBlock Classes="microLabel" Text="FACEBOOK" />
+                            <TextBlock Classes="railBody" FontSize="13"
+                                       Text="Reading your own Page needs no Meta App Review — an app left in Development mode can request pages_read_engagement from anyone with a role on it. A Page token made from a long-lived user token then does not expire. See the README for the six steps." />
+
+                            <TextBlock Classes="fieldLabel" Text="PAGE ID" />
+                            <TextBox Classes="field mono" Text="{Binding FacebookPageId, Mode=TwoWay}" FontSize="14"
+                                     Watermark="The numeric id of the church's Page" />
+
+                            <TextBlock Classes="fieldLabel" Text="PAGE ACCESS TOKEN" />
+                            <TextBox Classes="field mono" Text="{Binding FacebookToken, Mode=TwoWay}" FontSize="14"
+                                     PasswordChar="•" Watermark="Paste to replace the stored token" />
+                            <TextBlock Classes="railBody" FontSize="13" Margin="0,0,0,10"
+                                       Text="{Binding FacebookTokenState}" />
+                            <TextBlock Classes="railBody" FontSize="13" Margin="0,0,0,10"
+                                       Foreground="{StaticResource TextFaintBrush}"
+                                       Text="Stored encrypted for this Windows user, outside station.json — so copying a station's config never carries its token with it." />
+
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Button Classes="primary" Content="Save token" Padding="18,10"
+                                        Command="{Binding SaveFacebookTokenCommand}" />
+                                <Button Classes="secondary" Content="Test Facebook"
+                                        Command="{Binding TestFacebookCommand}" />
+                                <Button Classes="secondary" Content="Forget token"
+                                        Command="{Binding ForgetFacebookTokenCommand}" />
+                            </StackPanel>
+                            <TextBlock Classes="railBody" FontSize="14" TextWrapping="Wrap"
+                                       Text="{Binding FacebookStatus}" />
                         </StackPanel>
 
                         <!-- Logging -->

@@ -175,10 +175,29 @@ Quota is 10,000 units a day, free. Reading a count costs 1 unit; finding *which*
 live costs 100, so that lookup happens once per session rather than per poll. Pinning a
 specific broadcast id or URL skips it entirely.
 
-**Facebook is not supported.** Live viewer counts there need a Page access token from an app
-that has passed [Meta App Review][fb-live], plus ANALYZE rights on the Page — an app
-submission and a review queue, not a settings field. The techdesk shows an em-dash for
-Facebook.
+**Facebook** works too, and does **not** need Meta App Review — that only applies to apps
+reading data you don't own. An app left in **Development mode** can request permissions from
+anyone with a role on it, and the church's own admin has a role on the church's own Page.
+
+Getting a token that never expires, once:
+
+1. [developers.facebook.com](https://developers.facebook.com) → **My Apps → Create app**.
+   Leave it in **Development** mode — do not submit it for review.
+2. **Graph API Explorer**, select that app → **Get User Access Token** → tick
+   `pages_read_engagement` and `pages_show_list` → Generate.
+3. That token is short-lived. Exchange it:
+   `GET /oauth/access_token?grant_type=fb_exchange_token&client_id={app-id}&client_secret={app-secret}&fb_exchange_token={short-lived-token}`
+4. With the long-lived user token: `GET /me/accounts` — find the church's Page and copy its
+   `id` and its `access_token`. **A Page token derived from a long-lived user token has no
+   expiry**; it dies only if that person changes their password or loses their Page role.
+5. Settings → Viewer counts → paste the Page id and token → **Save token** → **Test Facebook**.
+
+The token is stored **encrypted with Windows DPAPI for that user**, in
+`%LOCALAPPDATA%\SundayReady\`, deliberately *not* in `station.json` — so copying a station's
+config between PCs never carries its credentials along. "Forget token" removes it.
+
+If Facebook counts stop arriving one day with an error mentioning the API version, bump
+`GraphVersion` in `ViewerCountService`; Graph versions age out after about two years.
 
 ## Releases and updating
 
