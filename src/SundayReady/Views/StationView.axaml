@@ -97,6 +97,7 @@
                          still gets an operator there. -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,20,0"
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Classes="chip" Content="RELOAD" Command="{Binding ReloadCommand}" />
                         <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick" />
                         <Button Classes="chip" Content="LOG" Click="OnLogClick" />
                     </StackPanel>
@@ -124,16 +125,26 @@
                 <!-- Left column: tabs and the list -->
                 <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" Margin="32,26,32,0">
 
-                    <Border Grid.Row="0" IsVisible="{Binding HasLoadError}" Margin="0,0,0,16"
-                            Background="{StaticResource FailFillBrush}" BorderBrush="{StaticResource FailBorderBrush}"
-                            BorderThickness="1" CornerRadius="7" Padding="18,14">
-                        <StackPanel Spacing="6">
-                            <TextBlock Classes="microLabel" Text="CHECKLIST FAILED TO LOAD"
-                                       Foreground="{StaticResource FailTextBrush}" />
-                            <TextBlock Classes="railBody" Text="{Binding LoadError}"
-                                       Foreground="{StaticResource FailTextBrush}" />
-                        </StackPanel>
-                    </Border>
+                    <StackPanel Grid.Row="0">
+                        <Border IsVisible="{Binding HasLoadError}" Margin="0,0,0,16"
+                                Background="{StaticResource FailFillBrush}" BorderBrush="{StaticResource FailBorderBrush}"
+                                BorderThickness="1" CornerRadius="7" Padding="18,14">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="microLabel" Text="CHECKLIST FAILED TO LOAD"
+                                           Foreground="{StaticResource FailTextBrush}" />
+                                <TextBlock Classes="mono" Text="{Binding LoadError}" FontSize="13" LineHeight="20"
+                                           TextWrapping="Wrap" Foreground="{StaticResource FailTextBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Answers a save. Clears itself after a few seconds. -->
+                        <Border IsVisible="{Binding HasReloadStatus}" Margin="0,0,0,16"
+                                Background="{StaticResource OkFillBrush}" BorderThickness="0"
+                                CornerRadius="7" Padding="18,12">
+                            <TextBlock Classes="mono" Text="{Binding ReloadStatus}" FontSize="12"
+                                       Foreground="{StaticResource OkBrush}" />
+                        </Border>
+                    </StackPanel>
 
                     <ItemsControl Grid.Row="1" ItemsSource="{Binding Tabs}" Margin="0,0,0,22">
                         <ItemsControl.ItemsPanel>

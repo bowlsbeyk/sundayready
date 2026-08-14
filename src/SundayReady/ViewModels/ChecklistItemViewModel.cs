@@ -346,6 +346,38 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Identifies this item's verifier configuration. Two items with the same fingerprint are
+    /// asking reality the same question, so their poll state is interchangeable.
+    /// </summary>
+    public string VerifyFingerprint => Item.Verify is null
+        ? string.Empty
+        : string.Join("|", Item.Verify.DescribeFields().Select(f => $"{f.Key}={f.Value}"));
+
+    /// <summary>
+    /// Carries poll progress across a hot reload. Without this, saving a checklist would reset
+    /// every retry count and "last passed at" — so a station that has been failing for ten
+    /// minutes would look like it had just started.
+    /// <para>
+    /// Skipped when the verifier config changed, because then it really is a new question.
+    /// Checked state is not carried here: it comes back from the day's saved state.
+    /// </para>
+    /// </summary>
+    public void AdoptRuntimeStateFrom(ChecklistItemViewModel previous)
+    {
+        if (VerifyFingerprint != previous.VerifyFingerprint)
+        {
+            return;
+        }
+
+        LastResult = previous.LastResult;
+        LastDuration = previous.LastDuration;
+        LastPassAt = previous.LastPassAt;
+        HasLaunched = previous.HasLaunched;
+        Attempts = previous.Attempts;
+        Status = previous.Status;
+    }
+
+    /// <summary>
     /// Runs this item's verifier once. Called on the UI thread from the poll timer, and the
     /// awaited work returns to the UI thread, so property updates are safe.
     /// </summary>

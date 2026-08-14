@@ -41,9 +41,12 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     private readonly DailyState _state;
     private readonly DispatcherTimer _clockTimer;
     private readonly DispatcherTimer _pollTimer;
+    private readonly DispatcherTimer _reloadDebounce;
     private readonly CancellationTokenSource _cancellation = new();
-    private readonly DateTime? _serviceStart;
+    private readonly ProcessLauncher _launcher;
 
+    private FileSystemWatcher? _watcher;
+    private DateTime? _serviceStart;
     private bool _polling;
     private bool _disposed;
 
@@ -64,7 +67,25 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     [NotifyPropertyChangedFor(nameof(HasDialog))]
     private object? _activeDialog;
 
-    private readonly StationConfig _config;
+    [ObservableProperty]
+    private string _stationName = "SundayReady";
+
+    [ObservableProperty]
+    private string _serviceLine = string.Empty;
+
+    [ObservableProperty]
+    private string _operatorLine = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLoadError))]
+    private string? _loadError;
+
+    /// <summary>Confirms a reload happened, so an author saving a file gets an answer.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReloadStatus))]
+    private string? _reloadStatus;
+
+    private StationConfig _config;
     private readonly ChecklistLoader _checklists;
     private readonly StationConfigLoader _stationLoader;
 
@@ -85,54 +106,17 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         _config = config;
         _checklists = checklists;
         _stationLoader = stationLoader;
-        var hostLineSuffix = stationLoader.FileExists ? "station.json" : "hostname auto-detect";
+        _launcher = launcher;
 
-        StationName = string.IsNullOrWhiteSpace(config.Station) ? "SundayReady" : config.Station;
-        HostLine = $"HOST {Environment.MachineName.ToUpperInvariant()} · {hostLineSuffix ?? "hostname auto-detect"}";
-        LoadError = loadError;
+        HostLine = $"HOST {Environment.MachineName.ToUpperInvariant()} · "
+            + (stationLoader.FileExists ? "station.json" : "hostname auto-detect");
 
         _state = stateStore.Load(DateOnly.FromDateTime(DateTime.Now));
         _logger.OperatorInitials = _state.OperatorInitials;
 
-        foreach (var definition in definitions)
-        {
-            var items = definition.Items.Select(item =>
-            {
-                IVerifier? verifier = null;
-                if (item.Verify is not null)
-                {
-                    registry.TryGet(item.Verify, out verifier!);
-                }
-
-                _state.Items.TryGetValue(DailyStateStore.KeyFor(definition.SourceFile, item.Label), out var restored);
-                return new ChecklistItemViewModel(item, definition, launcher, this, verifier, restored);
-            }).ToList();
-
-            foreach (var item in items)
-            {
-                item.PropertyChanged += OnItemPropertyChanged;
-            }
-
-            var tab = new ChecklistTabViewModel(definition, items) { Selecting = SelectTab };
-            Tabs.Add(tab);
-        }
-
-        SelectedTab = Tabs.FirstOrDefault();
-        if (SelectedTab is not null)
-        {
-            SelectedTab.IsSelected = true;
-        }
-
-        foreach (var tile in config.QuickLaunch)
-        {
-            QuickLaunch.Add(new QuickLaunchTileViewModel(tile, launcher));
-        }
-
-        _serviceStart = ParseServiceTime(config.Service?.StartsAt);
-        ServiceLine = BuildServiceLine(config.Service);
-        OperatorLine = string.IsNullOrWhiteSpace(config.Operator)
-            ? "OPERATOR — NOT SET"
-            : $"OPERATOR — {config.Operator.ToUpperInvariant()}";
+        ApplyConfig(config);
+        BuildTabs(definitions);
+        LoadError = loadError;
 
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _clockTimer.Tick += (_, _) => UpdateClock();
@@ -140,21 +124,23 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         _pollTimer = new DispatcherTimer { Interval = PollInterval };
         _pollTimer.Tick += (_, _) => _ = PollAsync();
 
+        // Editors save in bursts — truncate, write, touch — so wait for the dust to settle.
+        _reloadDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+        _reloadDebounce.Tick += (_, _) =>
+        {
+            _reloadDebounce.Stop();
+            Reload(automatic: true);
+        };
+
         UpdateClock();
         Refresh();
     }
 
-    public string StationName { get; }
-
     public string HostLine { get; }
 
-    public string ServiceLine { get; }
-
-    public string OperatorLine { get; }
-
-    public string? LoadError { get; }
-
     public bool HasLoadError => !string.IsNullOrEmpty(LoadError);
+
+    public bool HasReloadStatus => !string.IsNullOrEmpty(ReloadStatus);
 
     public string Version => AppVersion.Display;
 
@@ -294,7 +280,214 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     {
         _clockTimer.Start();
         _pollTimer.Start();
+        StartWatching();
         _ = PollAsync();
+    }
+
+    /// <summary>
+    /// Watches for edits to the checklist files and station.json. Authoring a checklist means
+    /// saving a file and looking at the result, so a restart between every edit is the wrong
+    /// loop. Both live under the exe's folder, so one watcher covers them.
+    /// </summary>
+    private void StartWatching()
+    {
+        try
+        {
+            var root = Path.GetDirectoryName(_stationLoader.FilePath);
+            if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
+            {
+                return;
+            }
+
+            _watcher = new FileSystemWatcher(root, "*.json")
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true,
+            };
+
+            _watcher.Changed += OnWatchedFileChanged;
+            _watcher.Created += OnWatchedFileChanged;
+            _watcher.Deleted += OnWatchedFileChanged;
+            _watcher.Renamed += OnWatchedFileChanged;
+        }
+        catch (Exception)
+        {
+            // No watcher is survivable — the reload button still works.
+        }
+    }
+
+    private void OnWatchedFileChanged(object? sender, FileSystemEventArgs e)
+    {
+        // Watcher callbacks arrive on a pool thread; everything downstream touches the UI.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _reloadDebounce.Stop();
+            _reloadDebounce.Start();
+        });
+    }
+
+    [RelayCommand]
+    private void Reload() => Reload(automatic: false);
+
+    private void Reload(bool automatic)
+    {
+        StationConfig config;
+        try
+        {
+            config = _stationLoader.Load();
+        }
+        catch (Exception)
+        {
+            config = _config;
+        }
+
+        var definitions = new List<ChecklistDefinition>();
+        var errors = new List<string>();
+
+        foreach (var file in config.Checklists)
+        {
+            try
+            {
+                definitions.Add(_checklists.Load(file));
+            }
+            catch (ChecklistLoadException ex)
+            {
+                errors.Add(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{file} — {ex.Message}");
+            }
+        }
+
+        if (definitions.Count == 0 && errors.Count == 0)
+        {
+            errors.Add($"No checklist files found in {_checklists.Directory}.");
+        }
+
+        // Nothing usable came back but we already have tabs on screen: almost always a file
+        // caught mid-save. Report it and keep what the operator is looking at.
+        if (definitions.Count == 0 && Tabs.Count > 0)
+        {
+            LoadError = string.Join(Environment.NewLine, errors);
+            SetReloadStatus(null);
+            return;
+        }
+
+        ApplyConfig(config);
+        BuildTabs(definitions);
+        LoadError = errors.Count == 0 ? null : string.Join(Environment.NewLine, errors);
+
+        SetReloadStatus(errors.Count > 0
+            ? null
+            : $"{(automatic ? "Reloaded" : "Reloaded by hand")} · {definitions.Count} checklist"
+              + $"{(definitions.Count == 1 ? "" : "s")}, {StationTotal} items · {DateTime.Now:HH:mm:ss}");
+
+        Refresh();
+        _ = PollAsync();
+    }
+
+    private void SetReloadStatus(string? message)
+    {
+        ReloadStatus = message;
+
+        if (message is null)
+        {
+            return;
+        }
+
+        // Confirmation, not a permanent fixture.
+        var clear = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+        clear.Tick += (s, _) =>
+        {
+            ((DispatcherTimer)s!).Stop();
+            if (ReloadStatus == message)
+            {
+                ReloadStatus = null;
+            }
+        };
+        clear.Start();
+    }
+
+    private void ApplyConfig(StationConfig config)
+    {
+        _config = config;
+
+        StationName = string.IsNullOrWhiteSpace(config.Station) ? "SundayReady" : config.Station;
+        _serviceStart = ParseServiceTime(config.Service?.StartsAt);
+        ServiceLine = BuildServiceLine(config.Service);
+        OperatorLine = string.IsNullOrWhiteSpace(config.Operator)
+            ? "OPERATOR — NOT SET"
+            : $"OPERATOR — {config.Operator.ToUpperInvariant()}";
+
+        QuickLaunch.Clear();
+        foreach (var tile in config.QuickLaunch)
+        {
+            QuickLaunch.Add(new QuickLaunchTileViewModel(tile, _launcher));
+        }
+
+        OnPropertyChanged(nameof(HasQuickLaunch));
+        UpdateClock();
+    }
+
+    /// <summary>
+    /// Rebuilds the tabs, carrying poll progress and the selected tab across. Checked state
+    /// needs no carrying — it is keyed by file and label in the day's saved state.
+    /// </summary>
+    private void BuildTabs(IReadOnlyList<ChecklistDefinition> definitions)
+    {
+        var previous = new Dictionary<string, ChecklistItemViewModel>();
+        foreach (var item in AllItems)
+        {
+            previous[item.StateKey] = item;
+            item.PropertyChanged -= OnItemPropertyChanged;
+        }
+
+        var selectedLabel = SelectedTab?.Label;
+        Tabs.Clear();
+
+        foreach (var definition in definitions)
+        {
+            var items = definition.Items.Select(item =>
+            {
+                IVerifier? verifier = null;
+                if (item.Verify is not null)
+                {
+                    _registry.TryGet(item.Verify, out verifier!);
+                }
+
+                _state.Items.TryGetValue(DailyStateStore.KeyFor(definition.SourceFile, item.Label), out var restored);
+                var viewModel = new ChecklistItemViewModel(item, definition, _launcher, this, verifier, restored);
+
+                if (previous.TryGetValue(viewModel.StateKey, out var older))
+                {
+                    viewModel.AdoptRuntimeStateFrom(older);
+                }
+
+                return viewModel;
+            }).ToList();
+
+            foreach (var item in items)
+            {
+                item.PropertyChanged += OnItemPropertyChanged;
+            }
+
+            Tabs.Add(new ChecklistTabViewModel(definition, items) { Selecting = SelectTab });
+        }
+
+        var selected = Tabs.FirstOrDefault(t => t.Label == selectedLabel) ?? Tabs.FirstOrDefault();
+        foreach (var tab in Tabs)
+        {
+            tab.IsSelected = ReferenceEquals(tab, selected);
+        }
+
+        SelectedTab = selected;
     }
 
     private void SelectTab(ChecklistTabViewModel tab)
@@ -528,6 +721,17 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         _disposed = true;
         _clockTimer.Stop();
         _pollTimer.Stop();
+        _reloadDebounce.Stop();
+
+        if (_watcher is not null)
+        {
+            _watcher.EnableRaisingEvents = false;
+            _watcher.Changed -= OnWatchedFileChanged;
+            _watcher.Created -= OnWatchedFileChanged;
+            _watcher.Deleted -= OnWatchedFileChanged;
+            _watcher.Renamed -= OnWatchedFileChanged;
+            _watcher.Dispose();
+        }
 
         foreach (var item in AllItems)
         {
