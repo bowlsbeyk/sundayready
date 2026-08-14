@@ -52,10 +52,9 @@ public partial class App : Application
             }
         }
 
-        if (definitions.Count == 0 && errors.Count == 0)
-        {
-            errors.Add($"No checklist files found in {checklists.Directory}.");
-        }
+        // A station with no checklists at all is a fresh install, not a failure. The station
+        // view shows a getting-started panel for that; only genuine load errors go in the
+        // red banner, so nobody's first impression of the app is something in red.
 
         if (config.Updates.Enabled)
         {

@@ -142,6 +142,11 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public bool HasReloadStatus => !string.IsNullOrEmpty(ReloadStatus);
 
+    /// <summary>A freshly installed station with nothing set up yet. Not an error state.</summary>
+    public bool HasNoChecklists => Tabs.Count == 0 && !HasLoadError;
+
+    public string ChecklistsFolder => _checklists.Directory;
+
     public string Version => AppVersion.Display;
 
     /// <summary>
@@ -232,11 +237,25 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public string GateLabel => IsGateOpen ? "READY" : "NOT READY YET";
 
-    public string GateExplanation => IsGateOpen
-        ? IsPartial
-            ? "Every item is accounted for, but some were overridden — this service is recorded as partial."
-            : "Every item on every tab is checked. Have a good service."
-        : $"{ItemsLeft} item{(ItemsLeft == 1 ? "" : "s")} left. The Ready to go button unlocks when every item on every tab is checked.";
+    public string GateExplanation
+    {
+        get
+        {
+            if (StationTotal == 0)
+            {
+                return "Nothing to check yet. Build a checklist and this unlocks once every item on it is done.";
+            }
+
+            if (!IsGateOpen)
+            {
+                return $"{ItemsLeft} item{(ItemsLeft == 1 ? "" : "s")} left. The Ready to go button unlocks when every item on every tab is checked.";
+            }
+
+            return IsPartial
+                ? "Every item is accounted for, but some were overridden — this service is recorded as partial."
+                : "Every item on every tab is checked. Have a good service.";
+        }
+    }
 
     public bool ShowFailureAdvisory => StationFailing > 0;
 
@@ -367,11 +386,6 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
             {
                 errors.Add($"{file} — {ex.Message}");
             }
-        }
-
-        if (definitions.Count == 0 && errors.Count == 0)
-        {
-            errors.Add($"No checklist files found in {_checklists.Directory}.");
         }
 
         // Nothing usable came back but we already have tabs on screen: almost always a file
@@ -614,6 +628,7 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         OnPropertyChanged(nameof(GateLabel));
         OnPropertyChanged(nameof(GateExplanation));
         OnPropertyChanged(nameof(ShowFailureAdvisory));
+        OnPropertyChanged(nameof(HasNoChecklists));
     }
 
     private void RefreshRing()

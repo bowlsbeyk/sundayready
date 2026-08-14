@@ -170,7 +170,27 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,26">
+                    <!-- Fresh install: nothing set up yet. Deliberately not styled as an error. -->
+                    <Grid Grid.Row="2" IsVisible="{Binding HasNoChecklists}" VerticalAlignment="Top"
+                          Margin="0,10,0,0">
+                        <Rectangle RadiusX="8" RadiusY="8" Fill="{StaticResource Overlay02Brush}"
+                                   Stroke="{StaticResource HairlineDashedBrush}" StrokeThickness="1"
+                                   StrokeDashArray="4,3" />
+                        <StackPanel Margin="26,24" Spacing="12">
+                            <TextBlock Classes="microLabel" Text="NOTHING SET UP YET" />
+                            <TextBlock Classes="railBody" FontSize="16" MaxWidth="620"
+                                       HorizontalAlignment="Left"
+                                       Text="This station has no checklists. Press EDIT in the top bar to build one — add the things an operator has to get right before the service, and tick the checklist so it shows here as a tab." />
+                            <TextBlock Classes="railBody" FontSize="15" MaxWidth="620" HorizontalAlignment="Left"
+                                       Text="Then SETTINGS to name the station, set the service time, and have this PC open SundayReady at logon." />
+                            <TextBlock Classes="mono" FontSize="11" Margin="0,4,0,0"
+                                       Foreground="{StaticResource TextDisabledBrush}"
+                                       Text="{Binding ChecklistsFolder, StringFormat='CHECKLISTS LIVE IN {0}'}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,26"
+                                  IsVisible="{Binding !HasNoChecklists}">
                         <ItemsControl ItemsSource="{Binding SelectedTab.Sections}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:ChecklistSectionViewModel">

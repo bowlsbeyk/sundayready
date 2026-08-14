@@ -12,6 +12,13 @@ Adding a station is a config file, never a fork.
 
 ## Setting up a booth PC
 
+> **Windows will warn you the first time.** The exe is not code-signed, so a file downloaded
+> from GitHub carries the mark of the web and SmartScreen shows *"Windows protected your PC"*.
+> Click **More info → Run anyway**. To avoid it entirely, right-click the downloaded **zip** →
+> **Properties** → tick **Unblock** → OK, *then* extract. Some antivirus also takes an interest
+> in a 47 MB unsigned executable; allow it if prompted. Signing the releases would remove this,
+> but it needs a paid certificate.
+
 1. Download `SundayReady-win-x64.zip` from the [latest release][releases] and unzip it
    somewhere **writable** — `%LOCALAPPDATA%\Programs\SundayReady` is a good choice.
    Do not use `C:\Program Files`: the app updates itself in place and cannot write there.

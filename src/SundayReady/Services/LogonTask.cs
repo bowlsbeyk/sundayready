@@ -25,9 +25,13 @@ public static class LogonTask
         return exit == 0;
     }
 
-    public static TaskResult Register()
+    /// <param name="exePath">
+    /// Defaults to the running executable. Takes an override so the registration can be
+    /// exercised without the test harness registering <em>itself</em>.
+    /// </param>
+    public static TaskResult Register(string? exePath = null)
     {
-        var exe = Environment.ProcessPath;
+        var exe = exePath ?? Environment.ProcessPath;
         if (string.IsNullOrEmpty(exe) || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             return new TaskResult(false, "Only a published build can register itself — this looks like a dev run.");
