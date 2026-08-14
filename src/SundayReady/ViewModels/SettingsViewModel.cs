@@ -142,6 +142,17 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _techdesk;
 
     [ObservableProperty]
+    private string _techdeskShare = string.Empty;
+
+    /// <summary>
+    /// The two layouts are a radio pair, so one property drives both — binding a second
+    /// IsChecked to its inverse would fight the group.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LayoutIsBoard))]
+    private bool _layoutIsColumns = true;
+
+    [ObservableProperty]
     private string _doorsAt = string.Empty;
 
     [ObservableProperty]
@@ -253,6 +264,15 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string PollIntervalTile => "POLL INTERVAL 5 s";
 
+    public bool LayoutIsBoard
+    {
+        get => !LayoutIsColumns;
+        set => LayoutIsColumns = !value;
+    }
+
+    /// <summary>Shown as the share field's watermark, so an empty field is not a mystery.</summary>
+    public string TechdeskShareFallback => AppPaths.TechdeskDirectory;
+
     public string CurrentVersion => AppVersion.Display;
 
     public string Repository => _updates.Repository;
@@ -278,6 +298,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         StationName = Config.Station;
         Operator = Config.Operator ?? string.Empty;
         Techdesk = Config.Techdesk;
+        TechdeskShare = Config.TechdeskShare ?? string.Empty;
+        LayoutIsColumns = !string.Equals(Config.TechdeskLayout, TechdeskLayouts.Board, StringComparison.OrdinalIgnoreCase);
         DoorsAt = Config.Service?.DoorsAt ?? string.Empty;
         StreamAt = Config.Service?.StreamAt ?? string.Empty;
         StartsAt = Config.Service?.StartsAt ?? string.Empty;
@@ -425,6 +447,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Config.Station = StationName.Trim();
         Config.Operator = string.IsNullOrWhiteSpace(Operator) ? null : Operator.Trim();
         Config.Techdesk = Techdesk;
+        Config.TechdeskShare = Blank(TechdeskShare);
+        Config.TechdeskLayout = LayoutIsColumns ? TechdeskLayouts.Columns : TechdeskLayouts.Board;
         Config.Updates.Enabled = UpdatesEnabled;
         Config.QuickLaunch = Tiles.Where(t => t.IsUsable).Select(t => t.ToModel()).ToList();
         Config.ViewerCounts = new ViewerCountSettings

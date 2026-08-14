@@ -13,6 +13,12 @@
     "startsAt": "10:30",
     "venue": "SANCTUARY"
   },
+  // Techdesk. Set "techdesk": true on the tech director's PC — same binary, different screen.
+  // Every station writes a heartbeat snapshot to "techdeskShare"; leave it empty and it falls
+  // back to %LOCALAPPDATA%\SundayReady\techdesk, which only that PC can see.
+  // "techdeskShare": "\\\\CHURCH-NAS\\AV\\sundayready",
+  "techdeskLayout": "columns",
+  "techdeskHeartbeatMinutes": 22,
   "quickLaunch": [
     { "label": "vMix", "action": { "run": "C:\\Program Files (x86)\\vMix\\vMix64.exe" } },
     { "label": "Stream folder", "action": { "run": "E:\\Streams" } },

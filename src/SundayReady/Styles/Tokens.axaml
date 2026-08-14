@@ -28,6 +28,10 @@
     <SolidColorBrush x:Key="Overlay05Brush" Color="#0DFFFFFF" />
     <SolidColorBrush x:Key="Overlay06Brush" Color="#0FFFFFFF" />
     <SolidColorBrush x:Key="Overlay08Brush" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="Overlay09Brush" Color="#17FFFFFF" />
+    <SolidColorBrush x:Key="Overlay10Brush" Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="Overlay13Brush" Color="#21FFFFFF" />
+    <SolidColorBrush x:Key="Overlay14Brush" Color="#24FFFFFF" />
     <SolidColorBrush x:Key="Overlay20Brush" Color="#33FFFFFF" />
     <SolidColorBrush x:Key="Overlay22Brush" Color="#38FFFFFF" />
 
@@ -57,6 +61,24 @@
     <SolidColorBrush x:Key="WaitBorderBrush" Color="#59d6a53c" />
     <SolidColorBrush x:Key="WaitFillBrush" Color="#0Fd6a53c" />
     <SolidColorBrush x:Key="OkFillBrush" Color="#1A4ec27f" />
+
+    <!--
+        Techdesk tints. The station cards and the wall board fill a whole header or tile with a
+        status colour rather than just outlining a row, so they need the same hues one step up
+        in alpha, plus the lighter status text the handoff specifies on those fills.
+    -->
+    <SolidColorBrush x:Key="OkTintBorderBrush" Color="#4D4ec27f" />
+    <SolidColorBrush x:Key="OkTintBorderStrongBrush" Color="#594ec27f" />
+    <SolidColorBrush x:Key="OkTextBrush" Color="#7ecf9f" />
+    <SolidColorBrush x:Key="FailTintBrush" Color="#1Ad75a44" />
+    <SolidColorBrush x:Key="FailTintBorderBrush" Color="#59d75a44" />
+    <SolidColorBrush x:Key="FailStrongBrush" Color="#e5765c" />
+    <SolidColorBrush x:Key="FailBodyBrush" Color="#f2b5aa" />
+    <SolidColorBrush x:Key="FailDimBrush" Color="#dd8b78" />
+    <SolidColorBrush x:Key="WaitTintBrush" Color="#1Ad6a53c" />
+    <SolidColorBrush x:Key="WaitPillFillBrush" Color="#1Fd6a53c" />
+    <SolidColorBrush x:Key="WaitPillBorderBrush" Color="#61d6a53c" />
+    <SolidColorBrush x:Key="WaitTextBrush" Color="#e8bf62" />
 
     <!-- Text on a filled status button is never white. -->
     <SolidColorBrush x:Key="OnStatusBrush" Color="#0b0d10" />

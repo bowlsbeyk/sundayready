@@ -24,6 +24,12 @@ public static class AppPaths
 
     public static string UpdatesDirectory => Path.Combine(DataDirectory, "updates");
 
+    /// <summary>
+    /// Local stand-in for the techdesk share, used until <c>station.json</c> names a real one.
+    /// Everything works the same way; the techdesk just only sees this PC.
+    /// </summary>
+    public static string TechdeskDirectory => Path.Combine(DataDirectory, "techdesk");
+
     public static string PendingUpdateFile => Path.Combine(UpdatesDirectory, "pending.json");
 
     public static void EnsureDataDirectories()

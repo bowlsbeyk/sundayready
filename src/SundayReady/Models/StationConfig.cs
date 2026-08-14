@@ -20,6 +20,30 @@ public sealed class StationConfig
     /// <summary>Selects the techdesk aggregation view instead of this PC's own checklist.</summary>
     public bool Techdesk { get; set; }
 
+    /// <summary>
+    /// Folder every station writes its heartbeat snapshot to and the techdesk reads. A UNC
+    /// path in the building; unset falls back to a local folder so techdesk mode can be
+    /// driven on one PC before anyone has picked a share.
+    /// </summary>
+    public string? TechdeskShare { get; set; }
+
+    /// <summary>
+    /// Which techdesk layout this screen shows — see <see cref="TechdeskLayouts"/>. Both are
+    /// built: the design offered them as alternatives and the choice belongs to whoever is
+    /// standing in front of the actual display.
+    /// </summary>
+    public string TechdeskLayout { get; set; } = TechdeskLayouts.Columns;
+
+    /// <summary>Silence longer than this renders a station as not staffed.</summary>
+    public int TechdeskHeartbeatMinutes { get; set; } = 22;
+
+    /// <summary>
+    /// What "Page the volunteer" runs — a <c>tel:</c> or <c>sms:</c> link, a chat webhook
+    /// script, whatever the church actually uses. <c>{station}</c> and <c>{operator}</c> in
+    /// the arguments are substituted. Without one the button says so rather than pretending.
+    /// </summary>
+    public ActionSpec? TechdeskPage { get; set; }
+
     public UpdateSettings Updates { get; set; } = new();
 
     public ViewerCountSettings ViewerCounts { get; set; } = new();
@@ -45,6 +69,15 @@ public sealed class ViewerCountSettings
     /// Optional. Pin a specific broadcast (id or URL) to skip the channel search entirely.
     /// </summary>
     public string? YouTubeVideoId { get; set; }
+}
+
+public static class TechdeskLayouts
+{
+    /// <summary>1c — a column per station plus a telemetry rail. For a desk that is worked in.</summary>
+    public const string Columns = "columns";
+
+    /// <summary>1d — big type, exceptions only. For a screen glanced at from across the room.</summary>
+    public const string Board = "board";
 }
 
 public sealed class UpdateSettings

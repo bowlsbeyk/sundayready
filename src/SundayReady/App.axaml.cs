@@ -19,23 +19,39 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var viewModel = BuildStation();
-            desktop.MainWindow = new MainWindow { DataContext = viewModel };
-            desktop.ShutdownRequested += (_, _) => viewModel.Dispose();
-            viewModel.Start();
+            AppPaths.EnsureDataDirectories();
+
+            var checklists = new ChecklistLoader();
+            var stationLoader = new StationConfigLoader(checklists);
+            var config = stationLoader.Load();
+
+            if (config.Techdesk)
+            {
+                // Same binary, same station.json — this PC just aggregates instead of
+                // checking. It loads no checklists of its own and publishes no heartbeat.
+                var techdesk = new TechdeskViewModel(config, new ProcessLauncher());
+                desktop.MainWindow = new TechdeskWindow { DataContext = techdesk };
+                desktop.ShutdownRequested += (_, _) => techdesk.Dispose();
+                techdesk.Start();
+            }
+            else
+            {
+                var viewModel = BuildStation(checklists, stationLoader, config);
+                desktop.MainWindow = new MainWindow { DataContext = viewModel };
+                desktop.ShutdownRequested += (_, _) => viewModel.Dispose();
+                viewModel.Start();
+            }
         }
+
 
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static StationViewModel BuildStation()
+    private static StationViewModel BuildStation(
+        ChecklistLoader checklists,
+        StationConfigLoader stationLoader,
+        Models.StationConfig config)
     {
-        AppPaths.EnsureDataDirectories();
-
-        var checklists = new ChecklistLoader();
-        var stationLoader = new StationConfigLoader(checklists);
-        var config = stationLoader.Load();
-
         var definitions = new List<ChecklistDefinition>();
         var errors = new List<string>();
 
