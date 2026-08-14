@@ -19,10 +19,12 @@
   // "techdeskShare": "\\\\CHURCH-NAS\\AV\\sundayready",
   "techdeskLayout": "columns",
   "techdeskHeartbeatMinutes": 22,
+  // The four tiles in the bottom right of the station screen. Edit them in
+  // Settings → Quick launch; these are only a starting point.
   "quickLaunch": [
     { "label": "vMix", "action": { "run": "C:\\Program Files (x86)\\vMix\\vMix64.exe" } },
-    { "label": "Stream folder", "action": { "run": "E:\\Streams" } },
-    { "label": "Sound settings", "action": { "run": "ms-settings:sound" } },
-    { "label": "Planning Center", "action": { "run": "https://services.planningcenteronline.com" } }
+    { "label": "ProPresenter", "action": { "run": "C:\\Program Files\\Renewed Vision\\ProPresenter\\ProPresenter.exe" } },
+    { "label": "Subsplash", "action": { "run": "https://www.subsplash.com/login" } },
+    { "label": "Sound settings", "action": { "run": "ms-settings:sound" } }
   ]
 }

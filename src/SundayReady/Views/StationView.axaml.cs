@@ -38,6 +38,23 @@ public partial class StationView : UserControl
         }
     }
 
+    private void OnTechdeskClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not StationViewModel station)
+        {
+            return;
+        }
+
+        var techdesk = station.CreateTechdesk();
+        var window = new TechdeskWindow { DataContext = techdesk };
+
+        // Owns its own polling, so it has to be stopped when the window goes.
+        window.Closed += (_, _) => techdesk.Dispose();
+
+        Show(window);
+        techdesk.Start();
+    }
+
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is StationViewModel station)

@@ -164,6 +164,13 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public CompletionLogViewModel CreateLog() => new(this);
 
+    /// <summary>
+    /// The techdesk as a window from a station, so you can look at it without flipping this
+    /// PC into techdesk mode and restarting. The mode setting still exists for the PC that
+    /// really is the techdesk and should boot straight into it.
+    /// </summary>
+    public TechdeskViewModel CreateTechdesk() => new(_config, _launcher);
+
     public ChecklistEditorViewModel CreateEditor() =>
         new(_config, _checklists, new ChecklistWriter(_checklists.Directory), _stationLoader, _registry);
 
