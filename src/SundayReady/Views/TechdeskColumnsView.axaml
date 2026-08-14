@@ -111,6 +111,12 @@
                     <TextBlock Classes="mono" Text="{Binding SummaryText}" FontSize="12" FontWeight="SemiBold" />
                 </Border>
 
+                <!-- A techdesk PC shows nothing else, so this is the only way to Settings and
+                     the only way back out of techdesk mode. -->
+                <Button Grid.Column="3" Classes="chip" Content="SETTINGS" Click="OnSettingsClick"
+                        IsVisible="{Binding CanOpenSettings}" Margin="0,0,20,0"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" />
+
                 <StackPanel Grid.Column="4" Spacing="3" VerticalAlignment="Center" HorizontalAlignment="Right">
                     <TextBlock Classes="microLabel" Text="SERVICE IN" LetterSpacing="1.32"
                                HorizontalAlignment="Right" />

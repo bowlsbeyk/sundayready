@@ -154,10 +154,22 @@ public sealed partial class TechdeskViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _lastSweep = string.Empty;
 
-    public TechdeskViewModel(StationConfig config, ProcessLauncher launcher)
+    private readonly ChecklistLoader? _checklists;
+    private readonly StationConfigLoader? _stationLoader;
+    private readonly VerifierRegistry? _registry;
+
+    public TechdeskViewModel(
+        StationConfig config,
+        ProcessLauncher launcher,
+        ChecklistLoader? checklists = null,
+        StationConfigLoader? stationLoader = null,
+        VerifierRegistry? registry = null)
     {
         _config = config;
         _launcher = launcher;
+        _checklists = checklists;
+        _stationLoader = stationLoader;
+        _registry = registry;
         _snapshots = new SnapshotStore(config.TechdeskShare);
         _dayStore = new TechdeskDayStore();
         _day = _dayStore.Load(DateOnly.FromDateTime(DateTime.Now));
@@ -173,6 +185,18 @@ public sealed partial class TechdeskViewModel : ObservableObject, IDisposable
         Tick();
         Sweep();
     }
+
+    /// <summary>
+    /// A PC in techdesk mode shows nothing else, so without this the only way out of the mode
+    /// — or into any other setting — would be hand-editing station.json. Null when the
+    /// techdesk was opened as a window from a station, which has its own way to Settings.
+    /// </summary>
+    public bool CanOpenSettings => _checklists is not null && _stationLoader is not null && _registry is not null;
+
+    public SettingsViewModel? CreateSettings() =>
+        _checklists is not null && _stationLoader is not null && _registry is not null
+            ? new SettingsViewModel(_config, _checklists, _stationLoader, _registry)
+            : null;
 
     public ObservableCollection<TechdeskStationViewModel> Stations { get; } = new();
 

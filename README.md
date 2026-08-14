@@ -144,6 +144,8 @@ different download.
   instead", then restart. It boots straight into the board and loads no checklists of its own.
 - **Pick the layout** in Settings: station columns, or the wall board that reduces to
   exceptions and is readable across the room.
+- **To get back:** a techdesk PC shows no station screen, so both layouts carry a
+  **SETTINGS** button. Untick techdesk mode there and restart to return to a station.
 
 Stations publish a heartbeat every 15 seconds. Point every PC — stations *and* techdesk — at
 one folder they can all reach:

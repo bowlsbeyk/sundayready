@@ -29,7 +29,8 @@ public partial class App : Application
             {
                 // Same binary, same station.json — this PC just aggregates instead of
                 // checking. It loads no checklists of its own and publishes no heartbeat.
-                var techdesk = new TechdeskViewModel(config, new ProcessLauncher());
+                var techdesk = new TechdeskViewModel(
+                    config, new ProcessLauncher(), checklists, stationLoader, VerifierRegistry.CreateDefault());
                 desktop.MainWindow = new TechdeskWindow { DataContext = techdesk };
                 desktop.ShutdownRequested += (_, _) => techdesk.Dispose();
                 techdesk.Start();

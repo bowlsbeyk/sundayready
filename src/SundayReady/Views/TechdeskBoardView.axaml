@@ -86,8 +86,15 @@
             <!-- Header -->
             <Grid Grid.Row="0" ColumnDefinitions="*,28,Auto" VerticalAlignment="Bottom">
                 <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Bottom">
-                    <TextBlock Classes="mono" Text="{Binding Kicker}" FontSize="12" FontWeight="Medium"
-                               LetterSpacing="1.92" Foreground="{StaticResource TextFainterBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <TextBlock Classes="mono" Text="{Binding Kicker}" FontSize="12" FontWeight="Medium"
+                                   LetterSpacing="1.92" Foreground="{StaticResource TextFainterBrush}"
+                                   VerticalAlignment="Center" />
+                        <!-- Quiet, because this lives on a wall — but a techdesk PC shows
+                             nothing else, so it is the only way to Settings and back out. -->
+                        <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick"
+                                IsVisible="{Binding CanOpenSettings}" VerticalAlignment="Center" />
+                    </StackPanel>
                     <!-- Line height is above the design's 1.0: a clipped descender on the one
                          word read from across the room is worse than three extra pixels. -->
                     <TextBlock Text="{Binding Verdict}" FontSize="66" FontWeight="SemiBold" LetterSpacing="-1.98"
