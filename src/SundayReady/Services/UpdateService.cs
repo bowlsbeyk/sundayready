@@ -33,7 +33,7 @@ public sealed class PendingUpdate
 /// </summary>
 public sealed class UpdateService : IDisposable
 {
-    public const string DefaultRepository = "bowlsbeyk/SundayReady";
+    public const string DefaultRepository = "bowlsbeyk/sundayready";
 
     /// <summary>Matches the asset the release workflow uploads.</summary>
     private const string AssetName = "SundayReady-win-x64.exe";

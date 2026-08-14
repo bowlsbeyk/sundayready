@@ -128,4 +128,4 @@ dotnet run --project src/SundayReady
 
 Avalonia · C# · .NET 9 · MVVM (CommunityToolkit.Mvvm) · win-x64.
 
-[releases]: https://github.com/bowlsbeyk/SundayReady/releases/latest
+[releases]: https://github.com/bowlsbeyk/sundayready/releases/latest
