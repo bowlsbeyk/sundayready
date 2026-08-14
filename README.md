@@ -149,7 +149,7 @@ Stations publish a heartbeat every 15 seconds. Point every PC — stations *and*
 one folder they can all reach:
 
 ```jsonc
-"techdeskShare": "\\CHURCH-NAS\AV\sundayready"
+"techdeskShare": "\\\\CHURCH-NAS\\AV\\sundayready"
 ```
 
 Leave it unset and it falls back to a local folder, which only ever shows that one PC. A
