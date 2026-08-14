@@ -15,13 +15,16 @@ Adding a station is a config file, never a fork.
 1. Download `SundayReady-win-x64.zip` from the [latest release][releases] and unzip it
    somewhere **writable** — `%LOCALAPPDATA%\Programs\SundayReady` is a good choice.
    Do not use `C:\Program Files`: the app updates itself in place and cannot write there.
-2. Edit `station.json` for that station (see below), or delete it to fall back to hostname
-   auto-detect.
-3. Put the station's checklist files in `checklists\`.
-4. Create a Task Scheduler task: **At log on**, delay **30 seconds**, restart on failure.
-   `shell:startup` races with the services the verifiers check for.
+2. Run it. With no `station.json` it names itself after the PC's hostname and opens empty.
+3. **Settings** → set the station name, operator, service times and quick-launch tiles.
+4. **Edit** → build this station's checklists. Tick the ones this PC should show as tabs.
+5. **Settings → Start at logon** → registers the Task Scheduler task.
 
-Nothing needs the .NET runtime installed — releases are self-contained.
+That's the whole setup — no JSON editing required, though the files stay plain JSON if you
+prefer them (see below). Nothing needs the .NET runtime installed; releases are self-contained.
+
+The logon task waits 30 seconds and restarts on failure. The delay matters: `shell:startup`
+races the software the verifiers check for, so checks would fail before vMix was listening.
 
 ## Where things live
 
@@ -36,6 +39,14 @@ State and logs are not next to the exe because a locked-down booth PC often cann
 there. Checked state clears on a new calendar day; logs persist, one file per day per station.
 
 ## Configuration
+
+Everything below can be set in the app — **Settings** for the station, **Edit** for the
+checklists. The formats are documented because the files remain readable, diffable JSON that
+you can edit by hand or copy between stations. The app watches the folder, so a file saved
+from anywhere shows up immediately without a restart.
+
+One caveat: files written by the editor are regenerated, so **hand-written comments are lost**
+once you save that file in the app.
 
 ### `station.json`
 

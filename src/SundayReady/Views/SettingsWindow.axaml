@@ -181,6 +181,38 @@
                                     Command="{Binding OpenChecklistsFolderCommand}" />
                         </StackPanel>
 
+                        <!-- Quick launch -->
+                        <StackPanel x:Name="Section_quicklaunch" Spacing="14">
+                            <TextBlock Classes="microLabel" Text="QUICK LAUNCH" />
+                            <TextBlock Classes="railBody" FontSize="14"
+                                       Text="The tiles in the bottom right of the station screen. Handy for the things an operator opens every week that are not checklist items." />
+                            <ItemsControl ItemsSource="{Binding Tiles}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Spacing="8" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:QuickLaunchEditViewModel">
+                                        <Grid ColumnDefinitions="200,10,*,10,160,10,Auto">
+                                            <TextBox Grid.Column="0" Classes="field" Margin="0" FontSize="14"
+                                                     Text="{Binding Label, Mode=TwoWay}" Watermark="Label" />
+                                            <TextBox Grid.Column="2" Classes="field" Margin="0" FontSize="14"
+                                                     Text="{Binding Run, Mode=TwoWay}"
+                                                     Watermark="Exe, folder, or URL" />
+                                            <TextBox Grid.Column="4" Classes="field" Margin="0" FontSize="14"
+                                                     Text="{Binding Args, Mode=TwoWay}" Watermark="Arguments" />
+                                            <Button Grid.Column="6" Classes="secondary" Content="Remove"
+                                                    Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveTileCommand}"
+                                                    CommandParameter="{Binding}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Classes="secondary" Content="Add tile" HorizontalAlignment="Left"
+                                    Command="{Binding AddTileCommand}" />
+                        </StackPanel>
+
                         <!-- Verifiers -->
                         <StackPanel x:Name="Section_verifiers" Spacing="14">
                             <TextBlock Classes="microLabel" Text="VERIFIER HEALTH" />
@@ -237,6 +269,33 @@
                             </Grid>
                             <TextBlock Classes="railBody" FontSize="14"
                                        Text="24-hour times. The countdown on the station screen reads from SERVICE." />
+                        </StackPanel>
+
+                        <!-- Start at logon -->
+                        <StackPanel x:Name="Section_startup" Spacing="14">
+                            <TextBlock Classes="microLabel" Text="START AT LOGON" />
+                            <TextBlock Classes="railBody" FontSize="14"
+                                       Text="Registers a Task Scheduler task that opens SundayReady 30 seconds after sign-in, and restarts it if it stops. The delay matters: the startup folder races the software the verifiers check for, so the checks would fail before vMix was even listening." />
+                            <Border Classes="card" Padding="16,14">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                 Fill="{StaticResource OkBrush}" IsVisible="{Binding StartsAtLogon}" />
+                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                 Fill="{StaticResource TextDisabledBrush}"
+                                                 IsVisible="{Binding !StartsAtLogon}" />
+                                        <TextBlock Classes="railBody" FontSize="14" Text="{Binding StartupStatus}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <Button Classes="primary" Content="Start at logon" Padding="18,10"
+                                        IsEnabled="{Binding !StartsAtLogon}"
+                                        Command="{Binding RegisterStartupCommand}" />
+                                <Button Classes="secondary" Content="Stop starting at logon"
+                                        IsEnabled="{Binding StartsAtLogon}"
+                                        Command="{Binding UnregisterStartupCommand}" />
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Logging -->

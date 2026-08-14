@@ -81,6 +81,15 @@
         <Setter Property="Foreground" Value="{StaticResource FailTagBrush}" />
     </Style>
 
+    <Style Selector="TextBlock.fieldLabel">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="LetterSpacing" Value="1.32" />
+        <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+        <Setter Property="Margin" Value="0,0,0,7" />
+    </Style>
+
     <Style Selector="TextBlock.railBody">
         <Setter Property="FontSize" Value="15" />
         <Setter Property="LineHeight" Value="22.5" />

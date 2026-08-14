@@ -97,6 +97,7 @@
                          still gets an operator there. -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,20,0"
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Classes="chip" Content="EDIT" Click="OnEditClick" />
                         <Button Classes="chip" Content="RELOAD" Command="{Binding ReloadCommand}" />
                         <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick" />
                         <Button Classes="chip" Content="LOG" Click="OnLogClick" />

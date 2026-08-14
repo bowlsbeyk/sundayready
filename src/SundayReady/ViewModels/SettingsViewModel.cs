@@ -63,6 +63,42 @@ public sealed class ChecklistFileViewModel
     public bool IsBroken => Error is not null;
 }
 
+/// <summary>One quick-launch tile, open for editing.</summary>
+public sealed partial class QuickLaunchEditViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _label = string.Empty;
+
+    [ObservableProperty]
+    private string _run = string.Empty;
+
+    [ObservableProperty]
+    private string _args = string.Empty;
+
+    public QuickLaunchEditViewModel()
+    {
+    }
+
+    public QuickLaunchEditViewModel(QuickLaunchTile tile)
+    {
+        _label = tile.Label;
+        _run = tile.Action?.Run ?? string.Empty;
+        _args = tile.Action?.Args ?? string.Empty;
+    }
+
+    public bool IsUsable => !string.IsNullOrWhiteSpace(Label) && !string.IsNullOrWhiteSpace(Run);
+
+    public QuickLaunchTile ToModel() => new()
+    {
+        Label = Label.Trim(),
+        Action = new ActionSpec
+        {
+            Run = Run.Trim(),
+            Args = string.IsNullOrWhiteSpace(Args) ? null : Args.Trim(),
+        },
+    };
+}
+
 /// <summary>One tile of VERIFIER HEALTH.</summary>
 public sealed class VerifierTileViewModel
 {
@@ -129,6 +165,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _saveStatus = string.Empty;
 
+    [ObservableProperty]
+    private bool _startsAtLogon;
+
+    [ObservableProperty]
+    private string _startupStatus = string.Empty;
+
     public SettingsViewModel(
         StationConfig config,
         ChecklistLoader checklists,
@@ -145,8 +187,10 @@ public sealed partial class SettingsViewModel : ObservableObject
                  {
                      ("identity", "Identity"),
                      ("checklists", "Checklists"),
+                     ("quicklaunch", "Quick launch"),
                      ("verifiers", "Verifiers"),
                      ("service", "Service times"),
+                     ("startup", "Start at logon"),
                      ("logging", "Logging"),
                      ("updates", "Updates"),
                      ("techdesk", "Techdesk mode"),
@@ -161,7 +205,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         LoadFromConfig();
         RefreshInspection();
         UpdateStatus = DescribePending();
+
+        StartsAtLogon = LogonTask.IsRegistered();
+        StartupStatus = StartsAtLogon
+            ? "This PC opens SundayReady 30 seconds after logon."
+            : "SundayReady does not start on its own yet.";
     }
+
+    public ObservableCollection<QuickLaunchEditViewModel> Tiles { get; } = new();
 
     public StationConfig Config { get; }
 
@@ -189,20 +240,10 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public string ReleasesUrl => _updates.ReleasesUrl;
 
-    public bool ShowIdentity => SelectedPage?.Key == "identity";
-
-    public bool ShowChecklists => SelectedPage?.Key == "checklists";
-
-    public bool ShowVerifiers => SelectedPage?.Key == "verifiers";
-
-    public bool ShowService => SelectedPage?.Key == "service";
-
-    public bool ShowLogging => SelectedPage?.Key == "logging";
-
-    public bool ShowUpdates => SelectedPage?.Key == "updates";
-
-    public bool ShowTechdesk => SelectedPage?.Key == "techdesk";
-
+    /// <summary>
+    /// Every section is on one scrolling page; the nav is an index into it. The window
+    /// watches this and scrolls the matching section up.
+    /// </summary>
     private void SelectPage(SettingsPageViewModel page)
     {
         foreach (var candidate in Pages)
@@ -211,14 +252,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
 
         SelectedPage = page;
-
-        OnPropertyChanged(nameof(ShowIdentity));
-        OnPropertyChanged(nameof(ShowChecklists));
-        OnPropertyChanged(nameof(ShowVerifiers));
-        OnPropertyChanged(nameof(ShowService));
-        OnPropertyChanged(nameof(ShowLogging));
-        OnPropertyChanged(nameof(ShowUpdates));
-        OnPropertyChanged(nameof(ShowTechdesk));
     }
 
     private void LoadFromConfig()
@@ -231,6 +264,38 @@ public sealed partial class SettingsViewModel : ObservableObject
         StartsAt = Config.Service?.StartsAt ?? string.Empty;
         Venue = Config.Service?.Venue ?? string.Empty;
         UpdatesEnabled = Config.Updates.Enabled;
+
+        Tiles.Clear();
+        foreach (var tile in Config.QuickLaunch)
+        {
+            Tiles.Add(new QuickLaunchEditViewModel(tile));
+        }
+    }
+
+    [RelayCommand]
+    private void AddTile() => Tiles.Add(new QuickLaunchEditViewModel { Label = "New tile" });
+
+    [RelayCommand]
+    private void RemoveTile(QuickLaunchEditViewModel tile) => Tiles.Remove(tile);
+
+    /// <summary>
+    /// Registering the logon task is the operator's call, never automatic — it changes what
+    /// this PC does at every sign-in.
+    /// </summary>
+    [RelayCommand]
+    private void RegisterStartup()
+    {
+        var result = LogonTask.Register();
+        StartupStatus = result.Message;
+        StartsAtLogon = LogonTask.IsRegistered();
+    }
+
+    [RelayCommand]
+    private void UnregisterStartup()
+    {
+        var result = LogonTask.Unregister();
+        StartupStatus = result.Message;
+        StartsAtLogon = LogonTask.IsRegistered();
     }
 
     /// <summary>
@@ -300,6 +365,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Config.Operator = string.IsNullOrWhiteSpace(Operator) ? null : Operator.Trim();
         Config.Techdesk = Techdesk;
         Config.Updates.Enabled = UpdatesEnabled;
+        Config.QuickLaunch = Tiles.Where(t => t.IsUsable).Select(t => t.ToModel()).ToList();
         Config.Service = new ServiceTimes
         {
             DoorsAt = Blank(DoorsAt),

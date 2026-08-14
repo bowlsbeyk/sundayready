@@ -28,6 +28,16 @@ public partial class StationView : UserControl
         }
     }
 
+    private void OnEditClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is StationViewModel station)
+        {
+            // Saving in here writes the file; the station is watching the folder, so the
+            // checklist behind this window updates as soon as the save lands.
+            Show(new ChecklistEditorWindow { DataContext = station.CreateEditor() });
+        }
+    }
+
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is StationViewModel station)

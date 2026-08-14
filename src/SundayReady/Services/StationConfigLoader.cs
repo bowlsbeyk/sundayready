@@ -85,6 +85,8 @@ public sealed class StationConfigLoader
 
     public void Save(StationConfig config)
     {
-        File.WriteAllText(_path, JsonSerializer.Serialize(config, ChecklistLoader.JsonOptions));
+        // Written with the tidy options, not the tolerant read ones: this file gets opened by
+        // people, and "operator": null, "service": null, "quickLaunch": [] is just noise.
+        File.WriteAllText(_path, JsonSerializer.Serialize(config, ChecklistWriter.WriteOptions));
     }
 }

@@ -152,6 +152,9 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public CompletionLogViewModel CreateLog() => new(this);
 
+    public ChecklistEditorViewModel CreateEditor() =>
+        new(_config, _checklists, new ChecklistWriter(_checklists.Directory), _stationLoader, _registry);
+
     public string DateLine => DateTime.Now.ToString("ddd dd MMM yyyy").ToUpperInvariant();
 
     public string ResetLine => "RESET 12:01 AM";

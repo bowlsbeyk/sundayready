@@ -1,0 +1,290 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SundayReady.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="900"
+        x:Class="SundayReady.Views.ChecklistEditorWindow"
+        x:DataType="vm:ChecklistEditorViewModel"
+        Title="Checklists"
+        Width="1400" Height="900"
+        MinWidth="1100" MinHeight="700"
+        Background="{StaticResource BgBrush}"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="0,0,0,3" />
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay06Brush}" />
+        </Style>
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay03Brush}" />
+        </Style>
+        <Style Selector="TextBox.field">
+            <Setter Property="Margin" Value="0,0,0,16" />
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{StaticResource PanelRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Padding" Value="12,9" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="64,*,Auto">
+
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,Auto,*" Margin="28,0">
+                <TextBlock Grid.Column="0" Classes="screenTitle" Text="Checklists" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="mono" Text="{Binding Directory}" FontSize="11"
+                           Margin="16,0,0,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextFainterBrush}" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="270,*,460">
+
+            <!-- Files -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Margin="18,18,10,18">
+                <TextBlock Grid.Row="0" Classes="microLabel" Text="CHECKLIST FILES" Margin="4,0,0,12" />
+
+                <ListBox Grid.Row="1" ItemsSource="{Binding Files}"
+                         SelectedItem="{Binding SelectedFile, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="vm:EditorFileViewModel">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <CheckBox Grid.Column="0" IsChecked="{Binding IsLoadedHere, Mode=TwoWay}"
+                                          VerticalAlignment="Center" Margin="0,0,6,0"
+                                          ToolTip.Tip="Show this checklist as a tab on this PC" />
+                                <StackPanel Grid.Column="1" Spacing="3">
+                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Classes="mono" Text="{Binding FileName}" FontSize="11"
+                                               Foreground="{StaticResource TextFainterBrush}" />
+                                    <TextBlock Classes="mono" Text="{Binding LoadError}" FontSize="11"
+                                               TextWrapping="Wrap" IsVisible="{Binding IsBroken}"
+                                               Foreground="{StaticResource FailTextBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="2" Spacing="8" Margin="0,14,0,0">
+                    <TextBox Classes="field" Text="{Binding NewFileName, Mode=TwoWay}" Margin="0"
+                             Watermark="New checklist name" FontSize="14" />
+                    <Grid ColumnDefinitions="*,8,Auto">
+                        <Button Grid.Column="0" Classes="secondary" Content="Add checklist"
+                                HorizontalAlignment="Stretch" Command="{Binding NewFileCommand}" />
+                        <Button Grid.Column="2" Classes="secondary" Content="Delete"
+                                Command="{Binding DeleteFileCommand}" />
+                    </Grid>
+                </StackPanel>
+            </Grid>
+
+            <!-- Items in the selected file -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto" Margin="10,18"
+                  IsVisible="{Binding HasSelection}">
+
+                <Grid Grid.Row="0" ColumnDefinitions="*,14,*" Margin="0,0,0,16">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Classes="fieldLabel" Text="TAB NAME" />
+                        <TextBox Classes="field" Margin="0" FontSize="15"
+                                 Text="{Binding SelectedFile.TabName, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Classes="fieldLabel" Text="STATION" />
+                        <TextBox Classes="field" Margin="0" FontSize="15"
+                                 Text="{Binding SelectedFile.Station, Mode=TwoWay}" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Grid.Row="1" Classes="microLabel" Text="ITEMS" Margin="4,0,0,12" />
+
+                <ListBox Grid.Row="2" ItemsSource="{Binding SelectedFile.Items}"
+                         SelectedItem="{Binding SelectedFile.SelectedItem, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="vm:EditorItemViewModel">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="3">
+                                    <TextBlock Text="{Binding Label}" FontSize="15" TextWrapping="Wrap" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Classes="mono" Text="{Binding Section}" FontSize="11"
+                                                   Foreground="{StaticResource TextDisabledBrush}" />
+                                        <TextBlock Classes="mono" Text="{Binding TypeSummary}" FontSize="11"
+                                                   Foreground="{StaticResource TextFainterBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="!" FontWeight="Bold" FontSize="15"
+                                           VerticalAlignment="Center" IsVisible="{Binding HasProblem}"
+                                           Foreground="{StaticResource FailBrush}"
+                                           ToolTip.Tip="{Binding Problem}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
+                    <Button Classes="primary" Content="Add item" Padding="16,9"
+                            Command="{Binding SelectedFile.AddItemCommand}" />
+                    <Button Classes="secondary" Content="Delete"
+                            Command="{Binding SelectedFile.DeleteItemCommand}" />
+                    <Button Classes="secondary" Content="Move up"
+                            Command="{Binding SelectedFile.MoveUpCommand}" />
+                    <Button Classes="secondary" Content="Move down"
+                            Command="{Binding SelectedFile.MoveDownCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- The selected item -->
+            <Border Grid.Column="2" Background="{StaticResource RailBgBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0">
+                <ScrollViewer Padding="26,20">
+                    <StackPanel DataContext="{Binding SelectedFile.SelectedItem}"
+                                x:DataType="vm:EditorItemViewModel">
+
+                        <TextBlock Classes="microLabel" Text="ITEM" Margin="0,0,0,16" />
+
+                        <TextBlock Classes="fieldLabel" Text="LABEL" />
+                        <TextBox Classes="field" Text="{Binding Label, Mode=TwoWay}" FontSize="15"
+                                 TextWrapping="Wrap" AcceptsReturn="False" />
+
+                        <Grid ColumnDefinitions="*,14,*">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Classes="fieldLabel" Text="TYPE" />
+                                <ComboBox ItemsSource="{Binding $parent[Window].((vm:ChecklistEditorViewModel)DataContext).ItemTypes}"
+                                          SelectedItem="{Binding Type, Mode=TwoWay}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="fieldLabel" Text="SECTION" />
+                                <TextBox Classes="field" Text="{Binding Section, Mode=TwoWay}" FontSize="14"
+                                         Watermark="e.g. Cameras &amp; capture" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Action -->
+                        <StackPanel IsVisible="{Binding ShowAction}">
+                            <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" Margin="0,4,0,16" />
+                            <TextBlock Classes="microLabel" Text="WHAT THE BUTTON LAUNCHES" Margin="0,0,0,14" />
+
+                            <TextBlock Classes="fieldLabel" Text="RUN" />
+                            <TextBox Classes="field" Text="{Binding ActionRun, Mode=TwoWay}" FontSize="14"
+                                     Watermark="An exe, a script, or a URL" TextWrapping="Wrap" />
+
+                            <TextBlock Classes="fieldLabel" Text="ARGUMENTS" />
+                            <TextBox Classes="field" Text="{Binding ActionArgs, Mode=TwoWay}" FontSize="14"
+                                     TextWrapping="Wrap" />
+
+                            <TextBlock Classes="fieldLabel" Text="BUTTON LABEL" />
+                            <TextBox Classes="field" Text="{Binding ActionLabel, Mode=TwoWay}" FontSize="14"
+                                     Watermark="Launch" />
+
+                            <TextBlock Classes="fieldLabel" Text="ALSO LAUNCH (ONE PER LINE)" />
+                            <TextBox Classes="field" Text="{Binding ActionAlso, Mode=TwoWay}" FontSize="14"
+                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" />
+                        </StackPanel>
+
+                        <!-- Verifier -->
+                        <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" Margin="0,4,0,16" />
+                        <TextBlock Classes="microLabel" Text="HOW THE APP CHECKS IT" Margin="0,0,0,14" />
+
+                        <TextBlock Classes="fieldLabel" Text="VERIFIER" />
+                        <ComboBox ItemsSource="{Binding $parent[Window].((vm:ChecklistEditorViewModel)DataContext).VerifierKinds}"
+                                  SelectedItem="{Binding VerifyKind, Mode=TwoWay}" />
+
+                        <StackPanel IsVisible="{Binding ShowProcessName}">
+                            <TextBlock Classes="fieldLabel" Text="PROCESS NAME" />
+                            <TextBox Classes="field" Text="{Binding ProcessName, Mode=TwoWay}" FontSize="14"
+                                     Watermark="vMix64" />
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding ShowUrl}">
+                            <TextBlock Classes="fieldLabel" Text="URL" />
+                            <TextBox Classes="field" Text="{Binding Url, Mode=TwoWay}" FontSize="14"
+                                     Watermark="http://127.0.0.1:8088/api" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding ShowContains}">
+                            <TextBlock Classes="fieldLabel" Text="RESPONSE MUST CONTAIN" />
+                            <TextBox Classes="field" Text="{Binding Contains, Mode=TwoWay}" FontSize="14" />
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding ShowHost}">
+                            <TextBlock Classes="fieldLabel" Text="HOST" />
+                            <TextBox Classes="field" Text="{Binding Host, Mode=TwoWay}" FontSize="14"
+                                     Watermark="1.1.1.1" />
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding ShowNameContains}">
+                            <TextBlock Classes="fieldLabel" Text="DEVICE NAME CONTAINS" />
+                            <TextBox Classes="field" Text="{Binding NameContains, Mode=TwoWay}" FontSize="14" />
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding ShowPath}">
+                            <TextBlock Classes="fieldLabel" Text="PATH" />
+                            <TextBox Classes="field" Text="{Binding Path, Mode=TwoWay}" FontSize="14"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <StackPanel IsVisible="{Binding HasVerifier}">
+                            <TextBlock Classes="fieldLabel" Text="FAILED POLLS BEFORE IT GOES RED" />
+                            <NumericUpDown Value="{Binding MaxAttempts, Mode=TwoWay}" Minimum="1" Maximum="99"
+                                           Increment="1" FormatString="0" Margin="0,0,0,16" />
+
+                            <TextBlock Classes="fieldLabel" Text="CHECK THESE, IN ORDER (ONE PER LINE)" />
+                            <TextBox Classes="field" Text="{Binding CheckSteps, Mode=TwoWay}" FontSize="14"
+                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+
+                            <Grid ColumnDefinitions="*,14,*">
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Classes="fieldLabel" Text="FIX BUTTON LABEL" />
+                                    <TextBox Classes="field" Text="{Binding RemediationLabel, Mode=TwoWay}"
+                                             FontSize="14" Watermark="Reload preset" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Classes="fieldLabel" Text="FIX RUNS" />
+                                    <TextBox Classes="field" Text="{Binding RemediationRun, Mode=TwoWay}"
+                                             FontSize="14" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+
+                        <Border Background="{StaticResource FailFillBrush}" BorderBrush="{StaticResource FailBorderBrush}"
+                                BorderThickness="1" CornerRadius="7" Padding="14,12"
+                                IsVisible="{Binding HasProblem}">
+                            <TextBlock Classes="railBody" FontSize="14" Text="{Binding Problem}"
+                                       Foreground="{StaticResource FailTextBrush}" />
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="28,16">
+            <Grid ColumnDefinitions="Auto,11,Auto,*,Auto">
+                <Button Grid.Column="0" Classes="primary" Content="Save" Padding="24,11" FontSize="15"
+                        CornerRadius="6" Command="{Binding SaveCommand}" />
+                <Button Grid.Column="2" Classes="secondary" Content="Revert to disk" Padding="20,11"
+                        FontSize="15" CornerRadius="6" Command="{Binding RevertCommand}" />
+                <TextBlock Grid.Column="3" Classes="railBody" FontSize="13" Margin="18,0"
+                           VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding Status}" />
+                <TextBlock Grid.Column="4" Classes="mono" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource TextDisabledBrush}"
+                           Text="TICKED FILES SHOW AS TABS ON THIS PC" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
