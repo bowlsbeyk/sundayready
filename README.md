@@ -134,6 +134,28 @@ that stopped being true.
 
 An unrecognised `kind` degrades that one item and logs a warning; the file still loads.
 
+## The techdesk
+
+One screen showing every station. Same binary — a PC becomes the techdesk by data, not by a
+different download.
+
+- **To look at it from any station:** press **TECHDESK** in the top bar. It opens as a window.
+- **To make a PC the techdesk permanently:** Settings → Techdesk mode → tick "Run as techdesk
+  instead", then restart. It boots straight into the board and loads no checklists of its own.
+- **Pick the layout** in Settings: station columns, or the wall board that reduces to
+  exceptions and is readable across the room.
+
+Stations publish a heartbeat every 15 seconds. Point every PC — stations *and* techdesk — at
+one folder they can all reach:
+
+```jsonc
+"techdeskShare": "\\CHURCH-NAS\AV\sundayready"
+```
+
+Leave it unset and it falls back to a local folder, which only ever shows that one PC. A
+station silent for 22 minutes (configurable with `techdeskHeartbeatMinutes`) shows as not
+staffed, with buttons to page the volunteer or mark it not staffed for the day.
+
 ## Live viewer counts
 
 Audience figures are techdesk telemetry. A failed fetch never affects whether a station reads
