@@ -114,10 +114,14 @@
                     </StackPanel>
                 </Grid>
 
-                <CheckBox Grid.Row="1" IsChecked="{Binding SelectedFile.CountsTowardReady, Mode=TwoWay}"
-                          Margin="0,0,0,14"
-                          Content="Must be finished before the station counts as ready"
-                          ToolTip.Tip="Untick for a shutdown list — it happens after the service, so it should not hold the gate shut." />
+                <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,0,14">
+                    <CheckBox IsChecked="{Binding SelectedFile.CountsTowardReady, Mode=TwoWay}"
+                              Content="Must be finished before the station counts as ready"
+                              ToolTip.Tip="Untick for a post-show or shutdown list — it happens after the service, so it should not hold the gate shut." />
+                    <CheckBox IsChecked="{Binding SelectedFile.OpenAfterService, Mode=TwoWay}"
+                              Content="Open this checklist when the operator presses Service finished"
+                              ToolTip.Tip="Tick this on the one list that should come up the moment the service ends." />
+                </StackPanel>
 
                 <TextBlock Grid.Row="2" Classes="microLabel" Text="ITEMS" Margin="4,0,0,12" />
 

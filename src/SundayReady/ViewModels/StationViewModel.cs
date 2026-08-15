@@ -722,10 +722,20 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         SetPhase(StationPhases.PostService);
 
         // Put the after-the-service work in front of them, which is the point of the change.
-        var after = Tabs.FirstOrDefault(t => !t.CountsTowardReady);
+        // An explicit choice wins; otherwise fall back to the first list that sits outside the
+        // gate, which is nearly always the right guess.
+        var after = Tabs.FirstOrDefault(t => t.OpenAfterService)
+                    ?? Tabs.FirstOrDefault(t => !t.CountsTowardReady);
+
         if (after is not null)
         {
             SelectTab(after);
+        }
+        else
+        {
+            // Saying nothing was the old behaviour, and it read as the button being broken.
+            SetReloadStatus("No checklist is set to open after the service. Tick “Open this "
+                + "checklist after the service” on one of them in EDIT.");
         }
 
         _logger.Log(new LogEntry(StationName, after?.Label ?? StationName, "Service finished",

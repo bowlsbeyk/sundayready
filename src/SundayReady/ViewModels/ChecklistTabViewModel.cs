@@ -69,6 +69,9 @@ public sealed partial class ChecklistTabViewModel : ObservableObject
     /// <summary>False for a shutdown list, which happens after the service, not before it.</summary>
     public bool CountsTowardReady => Definition.CountsTowardReady;
 
+    /// <summary>Opened by "Service finished".</summary>
+    public bool OpenAfterService => Definition.OpenAfterService;
+
     public int TotalCount => Items.Count;
 
     public int FailingCount => Items.Count(i => i.IsFailing);

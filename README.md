@@ -185,7 +185,10 @@ matters is not the list but whether something that was true has quietly stopped 
 *Show the checklist* brings the list back whenever you want it.
 
 **Service finished** is a button, not a guess: services run long and short, and only the person
-in the room knows. Pressing it opens the post-service list.
+in the room knows. It opens whichever checklist has **"Open this checklist after the service"**
+ticked in the editor — tick it on your post-show list. If nothing is nominated it falls back to
+the first list that sits outside the gate, and if there is no such list it tells you so rather
+than appearing to do nothing.
 
 If you have a second service that day, the changeover (see service times) puts the station back
 into setup with a fresh list on its own.

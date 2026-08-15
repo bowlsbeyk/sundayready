@@ -5,6 +5,8 @@
   "station": "Livestream Video",
   "name": "Post Show",
   "countsTowardReady": false,
+  // The one that comes up when the operator presses "Service finished".
+  "openAfterService": true,
   "items": [
     {
       "label": "Roll the outro and fade the stream out cleanly",

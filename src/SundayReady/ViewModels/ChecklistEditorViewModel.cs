@@ -29,6 +29,10 @@ public sealed partial class EditorFileViewModel : ObservableObject
     [ObservableProperty]
     private bool _countsTowardReady = true;
 
+    /// <summary>The list "Service finished" opens.</summary>
+    [ObservableProperty]
+    private bool _openAfterService;
+
     [ObservableProperty]
     private EditorItemViewModel? _selectedItem;
 
@@ -40,6 +44,7 @@ public sealed partial class EditorFileViewModel : ObservableObject
         _tabName = definition?.TabLabel ?? System.IO.Path.GetFileNameWithoutExtension(fileName);
         _station = definition?.Station ?? string.Empty;
         _countsTowardReady = definition?.CountsTowardReady ?? true;
+        _openAfterService = definition?.OpenAfterService ?? false;
 
         foreach (var item in definition?.Items ?? new List<ChecklistItem>())
         {
@@ -72,6 +77,8 @@ public sealed partial class EditorFileViewModel : ObservableObject
     partial void OnStationChanged(string value) => MarkDirty();
 
     partial void OnCountsTowardReadyChanged(bool value) => MarkDirty();
+
+    partial void OnOpenAfterServiceChanged(bool value) => MarkDirty();
 
     private void Add(EditorItemViewModel item)
     {
@@ -165,6 +172,7 @@ public sealed partial class EditorFileViewModel : ObservableObject
         Station = Station.Trim(),
         Name = string.IsNullOrWhiteSpace(TabName) ? null : TabName.Trim(),
         CountsTowardReady = CountsTowardReady,
+        OpenAfterService = OpenAfterService,
         Items = Items.Select(i => i.ToModel()).ToList(),
     };
 }

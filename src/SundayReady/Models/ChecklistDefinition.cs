@@ -25,6 +25,16 @@ public sealed class ChecklistDefinition
     /// </summary>
     public bool CountsTowardReady { get; set; } = true;
 
+    /// <summary>
+    /// Open this checklist when the operator presses "Service finished".
+    /// <para>
+    /// Separate from <see cref="CountsTowardReady"/> on purpose: a station can have several
+    /// lists that sit outside the gate — post-show and shutdown, say — and only one of them
+    /// is the one to put in front of someone the moment the service ends.
+    /// </para>
+    /// </summary>
+    public bool OpenAfterService { get; set; }
+
     public List<ChecklistItem> Items { get; set; } = new();
 
     /// <summary>File this was loaded from. Shown as provenance on the failed-verify screen.</summary>

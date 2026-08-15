@@ -132,7 +132,9 @@ public static class Guides
             + "passing since you went ready. The verifiers keep running the whole time — during a service what "
             + "matters is not the list but whether something that was true has stopped being true. "
             + "\"Show the checklist\" brings it back at any point. When the service is over, \"Service finished\" "
-            + "moves you on and opens the post-service list."),
+            + "moves you on and opens whichever checklist you ticked \"open this checklist after the service\" "
+            + "on in the editor. Without one, nothing has been nominated and the button says so rather than "
+            + "appearing to do nothing."),
 
         new Topic("Overriding a failing item",
             "When a verifier is red and you are out of time, Override & note ticks the item anyway. It asks "
