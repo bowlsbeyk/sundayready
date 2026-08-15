@@ -47,9 +47,13 @@ there. Logs persist, one file per day per station.
 
 **The checklist starts again** at whichever of these comes first:
 
-- **The PC restarts.** A booth PC is switched on for a service, so a restart means a new one.
-  It keys off when *Windows* last booted, so restarting SundayReady, a crash-and-restart, or
-  an update installing all keep an operator's ticks — only a restart of Windows clears them.
+- **The PC has been off and on.** It watches two things: when Windows last booted, and when
+  this logon session began. The second matters because Windows ships with **Fast Startup**
+  on, and with it a *Shut down* followed by powering the PC back on is a hybrid resume — the
+  boot time and uptime counter do not change at all. That is exactly what a booth PC does, so
+  boot time alone would never notice. The logon happens on every power-on either way.
+  Restarting SundayReady, a crash-and-restart, and an update installing all keep an
+  operator's ticks; only the machine going off and on clears them.
 - **The station rolls over to the next service.** With `starts: ["09:00", "11:00"]` and a
   90-minute lead, preparation for the 11:00 opens at 09:30, and that is when the list clears.
   This is the one that matters for a PC left switched on, because it will never see a restart.

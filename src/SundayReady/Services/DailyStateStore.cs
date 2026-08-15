@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace SundayReady.Services;
@@ -46,6 +47,12 @@ public sealed class DailyState
     /// </summary>
     public string? ServiceKey { get; set; }
 
+    /// <summary>
+    /// When the Windows session these ticks were made in began. Changes on every power-on
+    /// even when Fast Startup leaves <see cref="BootedAt"/> untouched.
+    /// </summary>
+    public DateTimeOffset? SessionStartedAt { get; set; }
+
     /// <summary>Keyed by <see cref="DailyStateStore.KeyFor"/>.</summary>
     public Dictionary<string, ItemState> Items { get; set; } = new();
 
@@ -92,6 +99,56 @@ public sealed class DailyStateStore
         DateTimeOffset.Now - TimeSpan.FromMilliseconds(Environment.TickCount64);
 
     /// <summary>
+    /// When this Windows session began, approximated by the start of its Explorer.
+    /// <para>
+    /// Boot time alone is not enough. Windows has Fast Startup on by default, and with it a
+    /// <em>Shut down</em> followed by powering the PC on is a hybrid resume: the kernel
+    /// session is restored, so the boot time and the uptime counter do not change. That is
+    /// exactly what a booth PC does — it gets switched off after a service and on again the
+    /// next Sunday — and it would look like the machine had never been off.
+    /// </para>
+    /// <para>
+    /// The logon does happen on every power-on, Fast Startup or not, and Explorer starts with
+    /// it. So this catches the case boot time misses.
+    /// </para>
+    /// </summary>
+    public static DateTimeOffset? SessionStartTime()
+    {
+        try
+        {
+            var session = Process.GetCurrentProcess().SessionId;
+
+            var earliest = Process.GetProcessesByName("explorer")
+                .Where(p => p.SessionId == session)
+                .Select(p =>
+                {
+                    try
+                    {
+                        return (DateTime?)p.StartTime;
+                    }
+                    catch (Exception)
+                    {
+                        return null;
+                    }
+                    finally
+                    {
+                        p.Dispose();
+                    }
+                })
+                .Where(t => t is not null)
+                .DefaultIfEmpty(null)
+                .Min();
+
+            return earliest is { } start ? new DateTimeOffset(start) : null;
+        }
+        catch (Exception)
+        {
+            // No Explorer, or no permission to ask. Boot time still applies on its own.
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Identifies an item across runs. Scoped by source file so two tabs can carry the same
     /// label. Editing a label in the JSON drops that item's tick for the rest of the day — an
     /// acceptable trade for not needing hand-maintained ids in the checklist files.
@@ -105,6 +162,7 @@ public sealed class DailyStateStore
     public DailyState Load(DateOnly today, string? serviceKey = null)
     {
         var booted = BootTime();
+        var session = SessionStartTime();
 
         try
         {
@@ -114,7 +172,7 @@ public sealed class DailyStateStore
 
                 if (state is not null
                     && state.Date == today
-                    && !HasRebooted(state, booted)
+                    && !HasRestarted(state, booted, session)
                     && !IsDifferentService(state, serviceKey))
                 {
                     return state;
@@ -126,7 +184,13 @@ public sealed class DailyStateStore
             // A corrupt state file is not worth blocking a service over. Start clean.
         }
 
-        return new DailyState { Date = today, BootedAt = booted, ServiceKey = serviceKey };
+        return new DailyState
+        {
+            Date = today,
+            BootedAt = booted,
+            SessionStartedAt = session,
+            ServiceKey = serviceKey,
+        };
     }
 
     /// <summary>
@@ -139,14 +203,29 @@ public sealed class DailyStateStore
         && !string.Equals(state.ServiceKey, serviceKey, StringComparison.Ordinal);
 
     /// <summary>
-    /// True when the PC has restarted since this state was written. State from before the
-    /// feature existed has no boot stamp; that counts as the same boot rather than throwing
-    /// away an operator's work the first time they update.
+    /// True when the PC has been off and on again since this state was written — either a
+    /// real reboot, or a Fast Startup power cycle that only the logon session reveals.
+    /// <para>
+    /// State from before these stamps existed has neither; that counts as no restart rather
+    /// than throwing away an operator's work the first time they update.
+    /// </para>
     /// </summary>
-    private bool HasRebooted(DailyState state, DateTimeOffset booted) =>
-        _resetOnRestart
-        && state.BootedAt is { } previous
-        && (booted - previous).Duration() > BootTolerance;
+    private bool HasRestarted(DailyState state, DateTimeOffset booted, DateTimeOffset? session)
+    {
+        if (!_resetOnRestart)
+        {
+            return false;
+        }
+
+        if (state.BootedAt is { } previousBoot && (booted - previousBoot).Duration() > BootTolerance)
+        {
+            return true;
+        }
+
+        return state.SessionStartedAt is { } previousSession
+               && session is { } currentSession
+               && (currentSession - previousSession).Duration() > BootTolerance;
+    }
 
     public void Save(DailyState state)
     {
@@ -154,8 +233,10 @@ public sealed class DailyStateStore
         {
             AppPaths.EnsureDataDirectories();
 
-            // Re-stamped on every save so the file always describes the boot it belongs to.
+            // Re-stamped on every save so the file always describes the boot and session it
+            // belongs to.
             state.BootedAt = BootTime();
+            state.SessionStartedAt = SessionStartTime();
 
             File.WriteAllText(_path, JsonSerializer.Serialize(state, ChecklistLoader.JsonOptions));
         }
