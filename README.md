@@ -45,21 +45,20 @@ races the software the verifiers check for, so checks would fail before vMix was
 State and logs are not next to the exe because a locked-down booth PC often cannot write
 there. Logs persist, one file per day per station.
 
-**The checklist starts again** at whichever of these comes first:
+**When the checklist starts again.** Settings → Service times, three options:
 
-- **The PC has been off and on.** It watches two things: when Windows last booted, and when
-  this logon session began. The second matters because Windows ships with **Fast Startup**
-  on, and with it a *Shut down* followed by powering the PC back on is a hybrid resume — the
-  boot time and uptime counter do not change at all. That is exactly what a booth PC does, so
-  boot time alone would never notice. The logon happens on every power-on either way.
-  Restarting SundayReady, a crash-and-restart, and an update installing all keep an
-  operator's ticks; only the machine going off and on clears them.
-- **The station rolls over to the next service.** With `starts: ["09:00", "11:00"]` and a
-  90-minute lead, preparation for the 11:00 opens at 09:30, and that is when the list clears.
-  This is the one that matters for a PC left switched on, because it will never see a restart.
-- **A new calendar day.**
+- **Every time SundayReady starts** *(default)* — the reliable one. If the app is opening, the
+  list is fresh. An update installing, or the logon task restarting a crashed app, also counts
+  as a start.
+- **Only when the PC has been off and on** — keeps ticks through an app restart or an update.
+  Be careful with this one: **sleep is not a power cycle**, and with Windows **Fast Startup**
+  neither is *Shut down* on many machines — the kernel session is restored, so boot time and
+  uptime do not change. If your PCs sleep rather than shut down, this will look like it is
+  doing nothing at all.
+- **Only at midnight.**
 
-Restart clearing can be turned off in Settings → Service times; the other two always apply.
+Whichever you pick, the **service times** above also start the list again at each changeover,
+and a new calendar day always clears it.
 
 ## Configuration
 

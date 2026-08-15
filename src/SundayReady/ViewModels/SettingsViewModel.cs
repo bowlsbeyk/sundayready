@@ -168,8 +168,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _venue = string.Empty;
 
+    // Three radio options rather than a checkbox: "clear on restart" turned out to mean
+    // different things to different machines, and picking one explicitly beats guessing.
     [ObservableProperty]
-    private bool _resetOnRestart = true;
+    private bool _resetEveryLaunch = true;
+
+    [ObservableProperty]
+    private bool _resetPowerCycle;
+
+    [ObservableProperty]
+    private bool _resetDaily;
 
     [ObservableProperty]
     private bool _updatesEnabled = true;
@@ -331,7 +339,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         ServiceTimes = string.Join(Environment.NewLine, starts);
         ResetLeadMinutes = Config.Service?.ResetLeadMinutes ?? ServiceSchedule.DefaultLeadMinutes;
         Venue = Config.Service?.Venue ?? string.Empty;
-        ResetOnRestart = Config.ResetOnRestart;
+        var mode = Config.EffectiveResetMode;
+        ResetEveryLaunch = mode == ResetModes.EveryLaunch;
+        ResetPowerCycle = mode == ResetModes.PowerCycle;
+        ResetDaily = mode == ResetModes.Daily;
         UpdatesEnabled = Config.Updates.Enabled;
 
         ViewerCountsEnabled = Config.ViewerCounts.Enabled;
@@ -480,7 +491,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         Config.Station = StationName.Trim();
         Config.Operator = string.IsNullOrWhiteSpace(Operator) ? null : Operator.Trim();
         Config.Techdesk = Techdesk;
-        Config.ResetOnRestart = ResetOnRestart;
+        Config.ResetMode = ResetPowerCycle ? ResetModes.PowerCycle
+            : ResetDaily ? ResetModes.Daily
+            : ResetModes.EveryLaunch;
         Config.TechdeskShare = Blank(TechdeskShare);
         Config.TechdeskLayout = LayoutIsColumns ? TechdeskLayouts.Columns : TechdeskLayouts.Board;
         Config.Updates.Enabled = UpdatesEnabled;

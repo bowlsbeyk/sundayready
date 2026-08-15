@@ -21,11 +21,24 @@ public sealed class StationConfig
     public bool Techdesk { get; set; }
 
     /// <summary>
-    /// Clear the checklist when the PC restarts, not just on a new calendar day. On by
-    /// default: a booth PC is switched on for a service, so a restart is a new service — and
-    /// it is the only thing that handles two services on one Sunday correctly.
+    /// When the checklist starts again. One of <see cref="ResetModes"/>.
+    /// <para>
+    /// Null means "not chosen", which falls back to <see cref="ResetOnRestart"/> so an older
+    /// station.json keeps behaving the way it was set up.
+    /// </para>
     /// </summary>
+    public string? ResetMode { get; set; }
+
+    /// <summary>The original switch. Superseded by <see cref="ResetMode"/>, still honoured.</summary>
     public bool ResetOnRestart { get; set; } = true;
+
+    /// <summary>What <see cref="ResetMode"/> actually resolves to. Derived, so never written.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string EffectiveResetMode => ResetMode switch
+    {
+        ResetModes.EveryLaunch or ResetModes.PowerCycle or ResetModes.Daily => ResetMode,
+        _ => ResetOnRestart ? ResetModes.EveryLaunch : ResetModes.Daily,
+    };
 
     /// <summary>
     /// Folder every station writes its heartbeat snapshot to and the techdesk reads. A UNC
@@ -54,6 +67,23 @@ public sealed class StationConfig
     public UpdateSettings Updates { get; set; } = new();
 
     public ViewerCountSettings ViewerCounts { get; set; } = new();
+}
+
+/// <summary>When the checklist starts again.</summary>
+public static class ResetModes
+{
+    /// <summary>
+    /// Clear whenever SundayReady starts. Blunt, but it never fails to notice — unlike
+    /// anything that tries to work out whether the machine was really off, which sleep, Fast
+    /// Startup and hibernation all defeat in different ways.
+    /// </summary>
+    public const string EveryLaunch = "everyLaunch";
+
+    /// <summary>Clear only when the PC has actually been off and on.</summary>
+    public const string PowerCycle = "powerCycle";
+
+    /// <summary>Clear only on a new calendar day.</summary>
+    public const string Daily = "daily";
 }
 
 /// <summary>

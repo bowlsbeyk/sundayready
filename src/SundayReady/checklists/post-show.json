@@ -1,0 +1,40 @@
+{
+  // Straight after the service — the stream is still up and the room is still full.
+  // "countsTowardReady": false keeps it out of the Ready to go gate, like any list whose work
+  // happens after the thing the station was getting ready for.
+  "station": "Livestream Video",
+  "name": "Post Show",
+  "countsTowardReady": false,
+  "items": [
+    {
+      "label": "Roll the outro and fade the stream out cleanly",
+      "type": "manual",
+      "section": "End the stream"
+    },
+    {
+      "label": "Stop the broadcast on YouTube and Facebook",
+      "type": "manual",
+      "section": "End the stream"
+    },
+    {
+      "label": "Stop recording and confirm the file closed",
+      "type": "manual",
+      "section": "End the stream"
+    },
+    {
+      "label": "Check the recording plays back with sound",
+      "type": "manual",
+      "section": "Media"
+    },
+    {
+      "label": "Copy the service recording to the archive folder",
+      "type": "manual",
+      "section": "Media"
+    },
+    {
+      "label": "Note anything that went wrong for the next operator",
+      "type": "manual",
+      "section": "Media"
+    }
+  ]
+}

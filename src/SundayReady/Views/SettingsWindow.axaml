@@ -295,10 +295,19 @@
                             <TextBlock Classes="railBody" FontSize="14"
                                        Text="24-hour times. The countdown targets the next one. The station starts preparing for a service RESET LEAD minutes before it begins — and that changeover is when the checklist starts again, which is how a PC that is never switched off gets a fresh list for the second service." />
 
-                            <CheckBox IsChecked="{Binding ResetOnRestart, Mode=TwoWay}"
-                                      Content="Clear the checklist when this PC restarts" />
-                            <TextBlock Classes="railBody" FontSize="13"
-                                       Text="On by default. A booth PC is switched on for a service, so a restart means a new one — and it is the only thing that handles two services on the same Sunday correctly. Restarting SundayReady itself, or an update installing, does not clear anything; only a restart of Windows does. Turn this off and the checklist clears at midnight instead." />
+                            <TextBlock Classes="microLabel" Text="WHEN THE CHECKLIST STARTS AGAIN" Margin="0,8,0,0" />
+                            <RadioButton GroupName="reset" IsChecked="{Binding ResetEveryLaunch, Mode=TwoWay}"
+                                         Content="Every time SundayReady starts" />
+                            <TextBlock Classes="railBody" FontSize="13" Margin="26,0,0,6"
+                                       Text="The reliable one. If the app is opening, the list is fresh. Note that an update installing, or the logon task restarting a crashed app, also counts as a start." />
+                            <RadioButton GroupName="reset" IsChecked="{Binding ResetPowerCycle, Mode=TwoWay}"
+                                         Content="Only when the PC has been off and on" />
+                            <TextBlock Classes="railBody" FontSize="13" Margin="26,0,0,6"
+                                       Text="Keeps ticks through an app restart or an update. Beware: sleep is not a power cycle, and with Windows Fast Startup neither is Shut down on some machines — if your PCs sleep rather than shut down, this will look like it is doing nothing." />
+                            <RadioButton GroupName="reset" IsChecked="{Binding ResetDaily, Mode=TwoWay}"
+                                         Content="Only at midnight" />
+                            <TextBlock Classes="railBody" FontSize="13" Margin="26,0,0,0"
+                                       Text="The service times above still start the list again at each changeover, whichever of these is chosen." />
                         </StackPanel>
 
                         <!-- Start at logon -->

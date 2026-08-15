@@ -82,12 +82,12 @@ public sealed class DailyStateStore
     private static readonly TimeSpan BootTolerance = TimeSpan.FromMinutes(2);
 
     private readonly string _path;
-    private readonly bool _resetOnRestart;
+    private readonly string _resetMode;
 
-    public DailyStateStore(string? path = null, bool resetOnRestart = true)
+    public DailyStateStore(string? path = null, string? resetMode = null)
     {
         _path = path ?? AppPaths.StateFile;
-        _resetOnRestart = resetOnRestart;
+        _resetMode = resetMode ?? Models.ResetModes.EveryLaunch;
     }
 
     /// <summary>
@@ -164,6 +164,19 @@ public sealed class DailyStateStore
         var booted = BootTime();
         var session = SessionStartTime();
 
+        // The blunt mode: the app is starting, so the checklist starts too. Nothing to detect
+        // and nothing to get wrong.
+        if (_resetMode == Models.ResetModes.EveryLaunch)
+        {
+            return new DailyState
+            {
+                Date = today,
+                BootedAt = booted,
+                SessionStartedAt = session,
+                ServiceKey = serviceKey,
+            };
+        }
+
         try
         {
             if (File.Exists(_path))
@@ -212,7 +225,7 @@ public sealed class DailyStateStore
     /// </summary>
     private bool HasRestarted(DailyState state, DateTimeOffset booted, DateTimeOffset? session)
     {
-        if (!_resetOnRestart)
+        if (_resetMode != Models.ResetModes.PowerCycle)
         {
             return false;
         }

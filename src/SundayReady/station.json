@@ -6,6 +6,7 @@
     "livestream-video.json",
     "livestream-audio.json",
     "go-live.json",
+    "post-show.json",
     "shutdown.json"
   ],
   "service": {
