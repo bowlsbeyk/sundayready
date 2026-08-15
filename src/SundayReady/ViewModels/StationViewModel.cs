@@ -48,7 +48,8 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     private SnapshotStore _snapshots;
     private FileSystemWatcher? _watcher;
-    private DateTime? _serviceStart;
+    private ServiceSchedule _schedule = new(null);
+    private string? _serviceKey;
     private DateTimeOffset? _readyAt;
     private bool _polling;
     private bool _disposed;
@@ -114,7 +115,12 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         HostLine = $"HOST {Environment.MachineName.ToUpperInvariant()} · "
             + (stationLoader.FileExists ? "station.json" : "hostname auto-detect");
 
-        _state = stateStore.Load(DateOnly.FromDateTime(DateTime.Now));
+        // The schedule has to exist before the state loads: which service is being prepared
+        // for is part of deciding whether the saved ticks still belong to it.
+        _schedule = new ServiceSchedule(config.Service);
+        _serviceKey = _schedule.Current(DateTime.Now)?.Key;
+
+        _state = stateStore.Load(DateOnly.FromDateTime(DateTime.Now), _serviceKey);
         _logger.OperatorInitials = _state.OperatorInitials;
         _snapshots = new SnapshotStore(config.TechdeskShare);
 
@@ -238,16 +244,24 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     // ---- The gate ----
 
-    public int StationTotal => AllItems.Count();
+    /// <summary>
+    /// Items on the tabs that gate readiness. A shutdown list is deliberately excluded — it
+    /// is done after the service, so counting it would keep the station from ever being ready
+    /// before the thing it is preparing for.
+    /// </summary>
+    public IEnumerable<ChecklistItemViewModel> GatedItems =>
+        Tabs.Where(t => t.CountsTowardReady).SelectMany(t => t.Items);
 
-    public int StationCompleted => AllItems.Count(i => i.IsChecked);
+    public int StationTotal => GatedItems.Count();
+
+    public int StationCompleted => GatedItems.Count(i => i.IsChecked);
 
     public int ItemsLeft => StationTotal - StationCompleted;
 
     /// <summary>Open only when every item on every tab is checked or overridden. Never per-tab.</summary>
     public bool IsGateOpen => StationTotal > 0 && ItemsLeft == 0;
 
-    public bool IsPartial => AllItems.Any(i => i.IsOverridden);
+    public bool IsPartial => GatedItems.Any(i => i.IsOverridden);
 
     public string GateLabel => IsGateOpen ? "READY" : "NOT READY YET";
 
@@ -507,8 +521,8 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         }
 
         StationName = string.IsNullOrWhiteSpace(config.Station) ? "SundayReady" : config.Station;
-        _serviceStart = ParseServiceTime(config.Service?.StartsAt);
-        ServiceLine = BuildServiceLine(config.Service);
+        _schedule = new ServiceSchedule(config.Service);
+        ServiceLine = BuildServiceLine(config.Service, _schedule);
         OperatorLine = string.IsNullOrWhiteSpace(config.Operator)
             ? "OPERATOR — NOT SET"
             : $"OPERATOR — {config.Operator.ToUpperInvariant()}";
@@ -645,16 +659,26 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     private void UpdateClock()
     {
-        Clock = DateTime.Now.ToString("h:mm");
+        var now = DateTime.Now;
+        Clock = now.ToString("h:mm");
 
-        if (_serviceStart is not { } start)
+        if (_schedule.Current(now) is not { } occurrence)
         {
             Countdown = "—";
             CountdownLabel = "NO SERVICE TIME SET";
             return;
         }
 
-        var remaining = start - DateTime.Now;
+        // The rollover to the next service happens here rather than only at startup, because
+        // a PC that is never switched off will never get a startup to do it at.
+        if (_serviceKey is not null && !string.Equals(occurrence.Key, _serviceKey, StringComparison.Ordinal))
+        {
+            RollOverTo(occurrence);
+        }
+
+        _serviceKey = occurrence.Key;
+
+        var remaining = occurrence.Start - now;
         if (remaining <= TimeSpan.Zero)
         {
             Countdown = "NOW";
@@ -669,6 +693,34 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         Countdown = remaining.TotalHours >= 1
             ? $"{(int)remaining.TotalHours}:{remaining.Minutes:00}:{remaining.Seconds:00}"
             : $"{remaining.Minutes:00}:{remaining.Seconds:00}";
+    }
+
+    /// <summary>
+    /// Starts the checklist again for the next service. Logged once, not once per item: the
+    /// rollover is the event, and twenty CLEARED lines would bury the line explaining them.
+    /// </summary>
+    private void RollOverTo(ServiceOccurrence occurrence)
+    {
+        _state.Items.Clear();
+        _state.SignedOffAt = null;
+        _state.Partial = false;
+        _state.ServiceKey = occurrence.Key;
+        _stateStore.Save(_state);
+
+        foreach (var item in AllItems)
+        {
+            item.ClearForNewService();
+        }
+
+        _logger.Log(new LogEntry(
+            StationName,
+            SelectedTab?.Label ?? StationName,
+            $"Preparing for the {occurrence.Display} service",
+            LogHow.Cleared,
+            "checklist started again for the next service"));
+
+        Refresh();
+        _ = PollAsync();
     }
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -769,36 +821,27 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
             () => ActiveDialog = null);
     }
 
-    private static DateTime? ParseServiceTime(string? value)
+    /// <summary>
+    /// The line under the countdown: every service time, then the venue. With one time this
+    /// reads exactly as it did before.
+    /// </summary>
+    private static string BuildServiceLine(ServiceTimes? service, ServiceSchedule schedule)
     {
-        if (string.IsNullOrWhiteSpace(value) || !TimeOnly.TryParse(value, out var time))
-        {
-            return null;
-        }
-
-        return DateTime.Today.Add(time.ToTimeSpan());
-    }
-
-    private static string BuildServiceLine(ServiceTimes? service)
-    {
-        if (service is null)
+        if (service is null && !schedule.HasTimes)
         {
             return string.Empty;
         }
 
         var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(service.StartsAt) && TimeOnly.TryParse(service.StartsAt, out var start))
+
+        if (schedule.Describe() is { Length: > 0 } times)
         {
-            parts.Add(start.ToString("h:mm tt").ToUpperInvariant());
+            parts.Add(times);
         }
 
-        if (!string.IsNullOrWhiteSpace(service.Venue))
+        if (!string.IsNullOrWhiteSpace(service?.Venue))
         {
             parts.Add(service.Venue.ToUpperInvariant());
-        }
-        else if (!string.IsNullOrWhiteSpace(service.StreamAt) && TimeOnly.TryParse(service.StreamAt, out var stream))
-        {
-            parts.Add($"STREAM {stream:h:mm}");
         }
 
         return string.Join(" · ", parts);

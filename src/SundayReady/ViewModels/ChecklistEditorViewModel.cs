@@ -25,6 +25,10 @@ public sealed partial class EditorFileViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoadedHere;
 
+    /// <summary>Untick for a shutdown list so it does not hold the Ready to go gate shut.</summary>
+    [ObservableProperty]
+    private bool _countsTowardReady = true;
+
     [ObservableProperty]
     private EditorItemViewModel? _selectedItem;
 
@@ -35,6 +39,7 @@ public sealed partial class EditorFileViewModel : ObservableObject
 
         _tabName = definition?.TabLabel ?? System.IO.Path.GetFileNameWithoutExtension(fileName);
         _station = definition?.Station ?? string.Empty;
+        _countsTowardReady = definition?.CountsTowardReady ?? true;
 
         foreach (var item in definition?.Items ?? new List<ChecklistItem>())
         {
@@ -65,6 +70,8 @@ public sealed partial class EditorFileViewModel : ObservableObject
     partial void OnTabNameChanged(string value) => MarkDirty();
 
     partial void OnStationChanged(string value) => MarkDirty();
+
+    partial void OnCountsTowardReadyChanged(bool value) => MarkDirty();
 
     private void Add(EditorItemViewModel item)
     {
@@ -157,6 +164,7 @@ public sealed partial class EditorFileViewModel : ObservableObject
     {
         Station = Station.Trim(),
         Name = string.IsNullOrWhiteSpace(TabName) ? null : TabName.Trim(),
+        CountsTowardReady = CountsTowardReady,
         Items = Items.Select(i => i.ToModel()).ToList(),
     };
 }

@@ -192,8 +192,12 @@
                         </StackPanel>
                     </Grid>
 
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,26"
-                                  IsVisible="{Binding !HasNoChecklists}">
+                    <!-- AllowAutoHide off on purpose: the default overlay bar is a hairline
+                         that fades out, and an operator scanning a long list has no way to
+                         tell there is more below. -->
+                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto" AllowAutoHide="False"
+                                  Padding="0,0,14,26" IsVisible="{Binding !HasNoChecklists}">
                         <ItemsControl ItemsSource="{Binding SelectedTab.Sections}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:ChecklistSectionViewModel">

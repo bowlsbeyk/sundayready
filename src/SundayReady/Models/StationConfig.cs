@@ -105,7 +105,23 @@ public sealed class UpdateSettings
 
 public sealed class ServiceTimes
 {
-    /// <summary>24-hour <c>HH:mm</c>. Drives the countdown.</summary>
+    /// <summary>
+    /// Every service on a service day, 24-hour <c>HH:mm</c>. The countdown targets the next
+    /// one, and the checklist starts again at each changeover — which is how a PC that is
+    /// never switched off gets a fresh list for the second service.
+    /// </summary>
+    public List<string> Starts { get; set; } = new();
+
+    /// <summary>
+    /// How long before a service the station starts preparing for it. That moment is also
+    /// when the previous service's checklist is cleared.
+    /// </summary>
+    public int ResetLeadMinutes { get; set; } = Services.ServiceSchedule.DefaultLeadMinutes;
+
+    /// <summary>
+    /// The original single service time. Still honoured so existing station.json files work,
+    /// but <see cref="Starts"/> is the model now.
+    /// </summary>
     public string? StartsAt { get; set; }
 
     public string? StreamAt { get; set; }

@@ -158,8 +158,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _streamAt = string.Empty;
 
+    /// <summary>One time per line. A list, because two services on a Sunday is normal.</summary>
     [ObservableProperty]
-    private string _startsAt = string.Empty;
+    private string _serviceTimes = string.Empty;
+
+    [ObservableProperty]
+    private int _resetLeadMinutes = ServiceSchedule.DefaultLeadMinutes;
 
     [ObservableProperty]
     private string _venue = string.Empty;
@@ -318,7 +322,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         LayoutIsColumns = !string.Equals(Config.TechdeskLayout, TechdeskLayouts.Board, StringComparison.OrdinalIgnoreCase);
         DoorsAt = Config.Service?.DoorsAt ?? string.Empty;
         StreamAt = Config.Service?.StreamAt ?? string.Empty;
-        StartsAt = Config.Service?.StartsAt ?? string.Empty;
+        var starts = new List<string>(Config.Service?.Starts ?? new List<string>());
+        if (starts.Count == 0 && !string.IsNullOrWhiteSpace(Config.Service?.StartsAt))
+        {
+            starts.Add(Config.Service.StartsAt);
+        }
+
+        ServiceTimes = string.Join(Environment.NewLine, starts);
+        ResetLeadMinutes = Config.Service?.ResetLeadMinutes ?? ServiceSchedule.DefaultLeadMinutes;
         Venue = Config.Service?.Venue ?? string.Empty;
         ResetOnRestart = Config.ResetOnRestart;
         UpdatesEnabled = Config.Updates.Enabled;
@@ -486,7 +497,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             DoorsAt = Blank(DoorsAt),
             StreamAt = Blank(StreamAt),
-            StartsAt = Blank(StartsAt),
+            Starts = ServiceTimes
+                .Split('\n')
+                .Select(l => l.Trim().TrimEnd('\r'))
+                .Where(l => l.Length > 0)
+                .ToList(),
+            ResetLeadMinutes = ResetLeadMinutes,
+            // The old single field is cleared once the list is in use, so the two cannot disagree.
+            StartsAt = null,
             Venue = Blank(Venue),
         };
 

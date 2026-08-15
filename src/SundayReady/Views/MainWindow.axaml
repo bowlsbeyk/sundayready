@@ -9,8 +9,9 @@
         x:DataType="vm:StationViewModel"
         Title="SundayReady"
         Icon="/Assets/logo.png"
-        Width="1920" Height="1080"
-        MinWidth="1280" MinHeight="800"
+        Width="1600" Height="960"
+        MinWidth="1280" MinHeight="760"
+        WindowState="Maximized"
         Background="{StaticResource BgBrush}"
         WindowStartupLocation="CenterScreen">
 

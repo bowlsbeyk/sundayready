@@ -412,6 +412,33 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
     };
 
     /// <summary>
+    /// Returns the item to its start-of-service condition when the station rolls over to the
+    /// next service. Silent on purpose: the rollover is logged once, not once per item, and
+    /// twenty CLEARED lines would bury the one entry that explains them.
+    /// </summary>
+    public void ClearForNewService()
+    {
+        CheckedBy = null;
+        CheckedAt = null;
+        OverrideNote = null;
+        CompletionSource = CompletionSources.Manual;
+        HasLaunched = false;
+        Attempts = 0;
+        LastResult = null;
+        LastPassAt = null;
+        IsChecked = false;
+
+        // Verified items go straight back to polling so they re-establish themselves; action
+        // items wait to be launched again.
+        Status = Item.Verify is null || Verifier is null
+            ? VerifyStatus.Unknown
+            : IsActionType ? VerifyStatus.Unknown : VerifyStatus.Polling;
+
+        OnPropertyChanged(nameof(IsOverridden));
+        OnPropertyChanged(nameof(SubLine));
+    }
+
+    /// <summary>
     /// Runs this item's verifier once. Called on the UI thread from the poll timer, and the
     /// awaited work returns to the UI thread, so property updates are safe.
     /// </summary>

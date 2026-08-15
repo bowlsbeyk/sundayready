@@ -279,16 +279,21 @@
                                     <TextBox Classes="field mono" Text="{Binding StreamAt, Mode=TwoWay}" Watermark="10:25" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="4">
-                                    <TextBlock Classes="fieldLabel" Text="SERVICE" />
-                                    <TextBox Classes="field mono" Text="{Binding StartsAt, Mode=TwoWay}" Watermark="10:30" />
+                                    <TextBlock Classes="fieldLabel" Text="RESET LEAD (MIN)" />
+                                    <NumericUpDown Value="{Binding ResetLeadMinutes, Mode=TwoWay}" Minimum="1"
+                                                   Maximum="1440" Increment="15" FormatString="0" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="6">
                                     <TextBlock Classes="fieldLabel" Text="VENUE" />
                                     <TextBox Classes="field" Text="{Binding Venue, Mode=TwoWay}" Watermark="Sanctuary" />
                                 </StackPanel>
                             </Grid>
+                            <TextBlock Classes="fieldLabel" Text="SERVICE TIMES — ONE PER LINE" />
+                            <TextBox Classes="field mono" Text="{Binding ServiceTimes, Mode=TwoWay}"
+                                     AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="86" FontSize="15"
+                                     Watermark="09:00&#x0a;11:00" />
                             <TextBlock Classes="railBody" FontSize="14"
-                                       Text="24-hour times. The countdown on the station screen reads from SERVICE." />
+                                       Text="24-hour times. The countdown targets the next one. The station starts preparing for a service RESET LEAD minutes before it begins — and that changeover is when the checklist starts again, which is how a PC that is never switched off gets a fresh list for the second service." />
 
                             <CheckBox IsChecked="{Binding ResetOnRestart, Mode=TwoWay}"
                                       Content="Clear the checklist when this PC restarts" />

@@ -5,12 +5,17 @@
   "checklists": [
     "livestream-video.json",
     "livestream-audio.json",
-    "go-live.json"
+    "go-live.json",
+    "shutdown.json"
   ],
   "service": {
     "doorsAt": "10:15",
     "streamAt": "10:25",
-    "startsAt": "10:30",
+    // Every service on a service day. The countdown targets the next one, and the checklist
+    // starts again 90 minutes (resetLeadMinutes) before each — which is what a PC that is
+    // never switched off needs, since it will never see a restart.
+    "starts": ["09:00", "11:00"],
+    "resetLeadMinutes": 90,
     "venue": "SANCTUARY"
   },
   // Techdesk. Set "techdesk": true on the tech director's PC — same binary, different screen.

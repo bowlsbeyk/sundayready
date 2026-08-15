@@ -45,13 +45,17 @@ races the software the verifiers check for, so checks would fail before vMix was
 State and logs are not next to the exe because a locked-down booth PC often cannot write
 there. Logs persist, one file per day per station.
 
-**The checklist clears when the PC restarts.** A booth PC is switched on for a service, so
-a restart means a new one — and it is the only thing that handles two services on the same
-Sunday correctly, which a date check cannot. Restarting SundayReady itself does not clear
-anything, and neither does an update installing: it keys off when *Windows* last booted, so
-an operator part-way through setup never loses their ticks to a crash or an update. It also
-still clears on a new calendar day. Turn it off in Settings → Service times to go back to a
-midnight-only reset.
+**The checklist starts again** at whichever of these comes first:
+
+- **The PC restarts.** A booth PC is switched on for a service, so a restart means a new one.
+  It keys off when *Windows* last booted, so restarting SundayReady, a crash-and-restart, or
+  an update installing all keep an operator's ticks — only a restart of Windows clears them.
+- **The station rolls over to the next service.** With `starts: ["09:00", "11:00"]` and a
+  90-minute lead, preparation for the 11:00 opens at 09:30, and that is when the list clears.
+  This is the one that matters for a PC left switched on, because it will never see a restart.
+- **A new calendar day.**
+
+Restart clearing can be turned off in Settings → Service times; the other two always apply.
 
 ## Configuration
 
@@ -70,7 +74,11 @@ once you save that file in the app.
   "station": "Livestream Video",
   "operator": "J. Mercer",
   "checklists": ["livestream-video.json", "livestream-audio.json"],
-  "service": { "doorsAt": "10:15", "streamAt": "10:25", "startsAt": "10:30", "venue": "SANCTUARY" },
+  "service": {
+    "doorsAt": "10:15", "streamAt": "10:25", "venue": "SANCTUARY",
+    "starts": ["09:00", "11:00"],   // every service that day; the countdown targets the next
+    "resetLeadMinutes": 90          // preparation for a service opens this long before it
+  },
   "quickLaunch": [{ "label": "vMix", "action": { "run": "C:\\Program Files (x86)\\vMix\\vMix64.exe" } }],
   "updates": { "enabled": true }
 }
@@ -105,6 +113,11 @@ One file per tab. Comments and trailing commas are allowed.
   ]
 }
 ```
+
+**A shutdown checklist** is just another file with `"countsTowardReady": false`. It shows as a
+tab and works like any other list, but it is left out of the **Ready to go** gate — otherwise a
+station could never be ready before the service it is getting ready for, because the packing-up
+items would still be open. There is a tick-box for it in the editor.
 
 **Item types.** `manual` is a checkbox. `action` is a button that launches something — add
 `"label"` to rename it, and `"also"` to launch several things at once. `verified` is checked

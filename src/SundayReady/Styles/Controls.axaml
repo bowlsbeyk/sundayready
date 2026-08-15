@@ -441,6 +441,23 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <!-- A scrollbar someone can actually see and grab, rather than the default hairline. -->
+    <Style Selector="ScrollBar:vertical">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Background" Value="{StaticResource Overlay02Brush}" />
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Border#TrackRect">
+        <Setter Property="Background" Value="{StaticResource Overlay02Brush}" />
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Thumb">
+        <Setter Property="MinHeight" Value="40" />
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Thumb /template/ Border">
+        <Setter Property="Background" Value="{StaticResource Overlay20Brush}" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
     <!-- ==== Inputs ==== -->
 
     <Style Selector="TextBox.field">

@@ -39,6 +39,13 @@ public sealed class DailyState
     /// </summary>
     public DateTimeOffset? BootedAt { get; set; }
 
+    /// <summary>
+    /// Which service occurrence these ticks belong to, from <see cref="ServiceSchedule"/>.
+    /// When the station rolls over to preparing for the next one, this stops matching and the
+    /// checklist starts again — the only reset a PC that is never switched off will ever see.
+    /// </summary>
+    public string? ServiceKey { get; set; }
+
     /// <summary>Keyed by <see cref="DailyStateStore.KeyFor"/>.</summary>
     public Dictionary<string, ItemState> Items { get; set; } = new();
 
@@ -91,7 +98,11 @@ public sealed class DailyStateStore
     /// </summary>
     public static string KeyFor(string sourceFile, string label) => $"{sourceFile}|{label}";
 
-    public DailyState Load(DateOnly today)
+    /// <param name="serviceKey">
+    /// The service now being prepared for. State belonging to a different one is discarded.
+    /// Null when no service times are configured, which disables that check.
+    /// </param>
+    public DailyState Load(DateOnly today, string? serviceKey = null)
     {
         var booted = BootTime();
 
@@ -101,7 +112,10 @@ public sealed class DailyStateStore
             {
                 var state = JsonSerializer.Deserialize<DailyState>(File.ReadAllText(_path), ChecklistLoader.JsonOptions);
 
-                if (state is not null && state.Date == today && !HasRebooted(state, booted))
+                if (state is not null
+                    && state.Date == today
+                    && !HasRebooted(state, booted)
+                    && !IsDifferentService(state, serviceKey))
                 {
                     return state;
                 }
@@ -112,8 +126,17 @@ public sealed class DailyStateStore
             // A corrupt state file is not worth blocking a service over. Start clean.
         }
 
-        return new DailyState { Date = today, BootedAt = booted };
+        return new DailyState { Date = today, BootedAt = booted, ServiceKey = serviceKey };
     }
+
+    /// <summary>
+    /// True when the saved ticks belong to a different service. State written before this
+    /// existed has no key, which counts as a match rather than losing someone's work.
+    /// </summary>
+    private static bool IsDifferentService(DailyState state, string? serviceKey) =>
+        serviceKey is not null
+        && state.ServiceKey is not null
+        && !string.Equals(state.ServiceKey, serviceKey, StringComparison.Ordinal);
 
     /// <summary>
     /// True when the PC has restarted since this state was written. State from before the

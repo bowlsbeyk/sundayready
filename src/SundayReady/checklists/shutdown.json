@@ -1,0 +1,40 @@
+{
+  // A shutdown list: work that happens AFTER the service.
+  // "countsTowardReady": false keeps it out of the Ready to go gate — otherwise the station
+  // could never be ready before the service it is getting ready for.
+  "station": "Livestream Video",
+  "name": "Shutdown",
+  "countsTowardReady": false,
+  "items": [
+    {
+      "label": "Stop the stream on both platforms and confirm it ended",
+      "type": "manual",
+      "section": "Stream down"
+    },
+    {
+      "label": "Stop recording and check the file is on E:",
+      "type": "manual",
+      "section": "Stream down"
+    },
+    {
+      "label": "Copy today's recording to the archive folder",
+      "type": "manual",
+      "section": "Media"
+    },
+    {
+      "label": "Lens caps on, cameras powered down",
+      "type": "manual",
+      "section": "Room"
+    },
+    {
+      "label": "Close vMix without saving over the Sunday preset",
+      "type": "manual",
+      "section": "Room"
+    },
+    {
+      "label": "Booth tidy, doors locked, lights off",
+      "type": "manual",
+      "section": "Room"
+    }
+  ]
+}
