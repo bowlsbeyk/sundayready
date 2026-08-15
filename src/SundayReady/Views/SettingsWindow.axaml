@@ -289,6 +289,11 @@
                             </Grid>
                             <TextBlock Classes="railBody" FontSize="14"
                                        Text="24-hour times. The countdown on the station screen reads from SERVICE." />
+
+                            <CheckBox IsChecked="{Binding ResetOnRestart, Mode=TwoWay}"
+                                      Content="Clear the checklist when this PC restarts" />
+                            <TextBlock Classes="railBody" FontSize="13"
+                                       Text="On by default. A booth PC is switched on for a service, so a restart means a new one — and it is the only thing that handles two services on the same Sunday correctly. Restarting SundayReady itself, or an update installing, does not clear anything; only a restart of Windows does. Turn this off and the checklist clears at midnight instead." />
                         </StackPanel>
 
                         <!-- Start at logon -->

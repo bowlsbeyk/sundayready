@@ -82,7 +82,7 @@ public partial class App : Application
             definitions,
             VerifierRegistry.CreateDefault(),
             new ProcessLauncher(),
-            new DailyStateStore(),
+            new DailyStateStore(null, config.ResetOnRestart),
             new CompletionLogger(),
             checklists,
             stationLoader,

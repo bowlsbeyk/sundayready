@@ -26,12 +26,18 @@ public sealed class ItemState
 }
 
 /// <summary>
-/// Everything about today's service that survives a restart. The checklist is per-service,
-/// so this is thrown away wholesale on a new calendar day.
+/// Everything about the service being set up. The checklist is per-service, so this is thrown
+/// away wholesale when the PC restarts or the calendar day turns.
 /// </summary>
 public sealed class DailyState
 {
     public DateOnly Date { get; set; }
+
+    /// <summary>
+    /// When Windows last booted, as of the moment this state was written. A different value
+    /// means the PC has restarted since, which means a new service.
+    /// </summary>
+    public DateTimeOffset? BootedAt { get; set; }
 
     /// <summary>Keyed by <see cref="DailyStateStore.KeyFor"/>.</summary>
     public Dictionary<string, ItemState> Items { get; set; } = new();
@@ -45,17 +51,38 @@ public sealed class DailyState
 }
 
 /// <summary>
-/// Loads and saves <see cref="DailyState"/>, discarding it on a new calendar day, so Sunday's
-/// ticks are not still showing on Wednesday.
+/// Loads and saves <see cref="DailyState"/>, discarding it when the service it belongs to is
+/// over: a new calendar day, or a restart of the PC.
+/// <para>
+/// Booth PCs are switched on for a service and off afterwards, so a restart is the truest
+/// signal that this is a new one. It also handles the case a date check cannot: two services
+/// on the same Sunday, where the second must not start with the first one's ticks.
+/// </para>
 /// </summary>
 public sealed class DailyStateStore
 {
-    private readonly string _path;
+    /// <summary>
+    /// Boot time is derived from the uptime counter against the wall clock, and the two drift
+    /// by seconds. Anything inside this window is the same boot.
+    /// </summary>
+    private static readonly TimeSpan BootTolerance = TimeSpan.FromMinutes(2);
 
-    public DailyStateStore(string? path = null)
+    private readonly string _path;
+    private readonly bool _resetOnRestart;
+
+    public DailyStateStore(string? path = null, bool resetOnRestart = true)
     {
         _path = path ?? AppPaths.StateFile;
+        _resetOnRestart = resetOnRestart;
     }
+
+    /// <summary>
+    /// When Windows last booted. Environment.TickCount64 is milliseconds of uptime, so the
+    /// wall clock minus uptime is the moment of boot — stable across app restarts, unlike a
+    /// process start time, which is exactly the distinction that matters here.
+    /// </summary>
+    public static DateTimeOffset BootTime() =>
+        DateTimeOffset.Now - TimeSpan.FromMilliseconds(Environment.TickCount64);
 
     /// <summary>
     /// Identifies an item across runs. Scoped by source file so two tabs can carry the same
@@ -66,12 +93,15 @@ public sealed class DailyStateStore
 
     public DailyState Load(DateOnly today)
     {
+        var booted = BootTime();
+
         try
         {
             if (File.Exists(_path))
             {
                 var state = JsonSerializer.Deserialize<DailyState>(File.ReadAllText(_path), ChecklistLoader.JsonOptions);
-                if (state is not null && state.Date == today)
+
+                if (state is not null && state.Date == today && !HasRebooted(state, booted))
                 {
                     return state;
                 }
@@ -82,14 +112,28 @@ public sealed class DailyStateStore
             // A corrupt state file is not worth blocking a service over. Start clean.
         }
 
-        return new DailyState { Date = today };
+        return new DailyState { Date = today, BootedAt = booted };
     }
+
+    /// <summary>
+    /// True when the PC has restarted since this state was written. State from before the
+    /// feature existed has no boot stamp; that counts as the same boot rather than throwing
+    /// away an operator's work the first time they update.
+    /// </summary>
+    private bool HasRebooted(DailyState state, DateTimeOffset booted) =>
+        _resetOnRestart
+        && state.BootedAt is { } previous
+        && (booted - previous).Duration() > BootTolerance;
 
     public void Save(DailyState state)
     {
         try
         {
             AppPaths.EnsureDataDirectories();
+
+            // Re-stamped on every save so the file always describes the boot it belongs to.
+            state.BootedAt = BootTime();
+
             File.WriteAllText(_path, JsonSerializer.Serialize(state, ChecklistLoader.JsonOptions));
         }
         catch (Exception)

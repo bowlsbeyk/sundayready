@@ -21,6 +21,13 @@ public sealed class StationConfig
     public bool Techdesk { get; set; }
 
     /// <summary>
+    /// Clear the checklist when the PC restarts, not just on a new calendar day. On by
+    /// default: a booth PC is switched on for a service, so a restart is a new service — and
+    /// it is the only thing that handles two services on one Sunday correctly.
+    /// </summary>
+    public bool ResetOnRestart { get; set; } = true;
+
+    /// <summary>
     /// Folder every station writes its heartbeat snapshot to and the techdesk reads. A UNC
     /// path in the building; unset falls back to a local folder so techdesk mode can be
     /// driven on one PC before anyone has picked a share.

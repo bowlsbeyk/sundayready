@@ -165,6 +165,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _venue = string.Empty;
 
     [ObservableProperty]
+    private bool _resetOnRestart = true;
+
+    [ObservableProperty]
     private bool _updatesEnabled = true;
 
     [ObservableProperty]
@@ -317,6 +320,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         StreamAt = Config.Service?.StreamAt ?? string.Empty;
         StartsAt = Config.Service?.StartsAt ?? string.Empty;
         Venue = Config.Service?.Venue ?? string.Empty;
+        ResetOnRestart = Config.ResetOnRestart;
         UpdatesEnabled = Config.Updates.Enabled;
 
         ViewerCountsEnabled = Config.ViewerCounts.Enabled;
@@ -465,6 +469,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Config.Station = StationName.Trim();
         Config.Operator = string.IsNullOrWhiteSpace(Operator) ? null : Operator.Trim();
         Config.Techdesk = Techdesk;
+        Config.ResetOnRestart = ResetOnRestart;
         Config.TechdeskShare = Blank(TechdeskShare);
         Config.TechdeskLayout = LayoutIsColumns ? TechdeskLayouts.Columns : TechdeskLayouts.Board;
         Config.Updates.Enabled = UpdatesEnabled;

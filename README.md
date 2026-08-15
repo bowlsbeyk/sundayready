@@ -43,7 +43,15 @@ races the software the verifiers check for, so checks would fail before vMix was
 | Staged updates | `%LOCALAPPDATA%\SundayReady\updates\` |
 
 State and logs are not next to the exe because a locked-down booth PC often cannot write
-there. Checked state clears on a new calendar day; logs persist, one file per day per station.
+there. Logs persist, one file per day per station.
+
+**The checklist clears when the PC restarts.** A booth PC is switched on for a service, so
+a restart means a new one — and it is the only thing that handles two services on the same
+Sunday correctly, which a date check cannot. Restarting SundayReady itself does not clear
+anything, and neither does an update installing: it keys off when *Windows* last booted, so
+an operator part-way through setup never loses their ticks to a crash or an update. It also
+still clears on a new calendar day. Turn it off in Settings → Service times to go back to a
+midnight-only reset.
 
 ## Configuration
 

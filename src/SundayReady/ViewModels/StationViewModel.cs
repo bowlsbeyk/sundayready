@@ -176,7 +176,7 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public string DateLine => DateTime.Now.ToString("ddd dd MMM yyyy").ToUpperInvariant();
 
-    public string ResetLine => "RESET 12:01 AM";
+    public string ResetLine => _config.ResetOnRestart ? "CLEARS ON RESTART" : "RESET 12:01 AM";
 
     public bool HasDialog => ActiveDialog is not null;
 
