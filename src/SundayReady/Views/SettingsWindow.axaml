@@ -97,8 +97,11 @@
             </ItemsControl>
 
             <Grid Grid.Column="1" RowDefinitions="*,Auto" Background="{StaticResource BgBrush}">
-                <ScrollViewer Grid.Row="0" Padding="30,26">
-                    <StackPanel Spacing="24">
+                <ScrollViewer Grid.Row="0">
+                    <!-- Trailing space as a margin, not ScrollViewer.Padding: Avalonia lays
+                         padding out around the viewport, so it adds nothing to the scrollable
+                         extent and the last section ends cut off. -->
+                    <StackPanel Spacing="24" Margin="30,26,30,44">
 
                         <!-- Identity -->
                         <StackPanel x:Name="Section_identity" Spacing="18">

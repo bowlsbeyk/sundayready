@@ -75,7 +75,7 @@
                 </Grid>
 
                 <ScrollViewer Grid.Row="1">
-                    <StackPanel>
+                    <StackPanel Margin="0,0,0,24">
                         <TextBlock Classes="railBody" IsVisible="{Binding IsEmpty}" Margin="4,14"
                                    Text="Nothing logged yet today. Rows appear as items are checked, verified, or overridden." />
                         <ItemsControl ItemsSource="{Binding Rows}">

@@ -195,10 +195,14 @@
                     <!-- AllowAutoHide off on purpose: the default overlay bar is a hairline
                          that fades out, and an operator scanning a long list has no way to
                          tell there is more below. -->
-                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
+                    <ScrollViewer x:Name="ChecklistScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto" AllowAutoHide="False"
-                                  Padding="0,0,14,26" IsVisible="{Binding !HasNoChecklists}">
-                        <ItemsControl ItemsSource="{Binding SelectedTab.Sections}">
+                                  IsVisible="{Binding !HasNoChecklists}">
+                        <!-- The trailing space is a margin on the content, not Padding on the
+                             ScrollViewer: Avalonia lays that out around the viewport, so it
+                             adds nothing to the scrollable extent and the last row ends flush
+                             against the window edge, half cut off. -->
+                        <ItemsControl ItemsSource="{Binding SelectedTab.Sections}" Margin="0,0,16,40">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:ChecklistSectionViewModel">
                                     <StackPanel Margin="0,0,0,14">
