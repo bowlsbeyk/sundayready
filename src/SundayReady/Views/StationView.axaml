@@ -151,7 +151,13 @@
                         </Border>
                     </StackPanel>
 
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tabs}" Margin="0,0,0,22">
+                    <Button Grid.Row="1" Classes="chip" Content="BACK TO THE SERVICE"
+                            HorizontalAlignment="Left" Margin="0,0,0,14"
+                            IsVisible="{Binding ChecklistPinned}"
+                            Command="{Binding ToggleChecklistCommand}" />
+
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tabs}" Margin="0,0,0,22"
+                                  IsVisible="{Binding ShowChecklistArea}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" Spacing="4" />
@@ -196,9 +202,97 @@
                     <!-- AllowAutoHide off on purpose: the default overlay bar is a hairline
                          that fades out, and an operator scanning a long list has no way to
                          tell there is more below. -->
+                    <!-- Signed off: the list has done its job, so it gets out of the way and
+                         the screen watches instead. -->
+                    <ScrollViewer Grid.Row="2" IsVisible="{Binding ShowServicePanel}" AllowAutoHide="False">
+                      <StackPanel Margin="0,4,16,40" Spacing="22">
+
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="microLabel" Text="{Binding ServiceTimerLabel}" />
+                            <TextBlock Classes="mono" Text="{Binding ServiceTimer}" FontSize="96"
+                                       FontWeight="SemiBold" LetterSpacing="-3.84" />
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <TextBlock Classes="mono" Text="{Binding Clock}" FontSize="30"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextFaintBrush}" />
+                                <TextBlock Classes="mono" Text="{Binding ServiceLine}" FontSize="13"
+                                           VerticalAlignment="Bottom" Margin="0,0,0,6"
+                                           Foreground="{StaticResource TextDisabledBrush}" />
+                            </StackPanel>
+                            <TextBlock Classes="mono" Text="{Binding SignedOffLine}" FontSize="11"
+                                       Foreground="{StaticResource OkBrush}" />
+                        </StackPanel>
+
+                        <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="microLabel" Text="WATCHING NOW" />
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <Border Background="{StaticResource PanelRaisedBrush}"
+                                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                        CornerRadius="8" Padding="20,16" Width="220">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="microLabel" Text="YOUTUBE" />
+                                        <TextBlock Classes="mono" Text="{Binding YouTubeViewers}" FontSize="40"
+                                                   FontWeight="SemiBold" LetterSpacing="-1.2" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{StaticResource PanelRaisedBrush}"
+                                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                        CornerRadius="8" Padding="20,16" Width="220">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="microLabel" Text="FACEBOOK" />
+                                        <TextBlock Classes="mono" Text="{Binding FacebookViewers}" FontSize="40"
+                                                   FontWeight="SemiBold" LetterSpacing="-1.2" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Classes="mono" Text="{Binding ViewersNote}" FontSize="12"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding ViewersNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       Foreground="{StaticResource TextDisabledBrush}" />
+                        </StackPanel>
+
+                        <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="microLabel" Text="STILL WATCHING THE CHECKS" />
+                            <TextBlock Classes="railBody" FontSize="16" Text="{Binding WatchLine}" />
+                            <ItemsControl ItemsSource="{Binding FailingNow}" IsVisible="{Binding AnythingFailing}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:ChecklistItemViewModel">
+                                        <Border Background="{StaticResource FailFillBrush}"
+                                                BorderBrush="{StaticResource FailBorderBrush}"
+                                                BorderThickness="1" CornerRadius="7" Padding="16,13">
+                                            <StackPanel Spacing="5">
+                                                <TextBlock Text="{Binding Label}" FontSize="17"
+                                                           FontWeight="Medium" TextWrapping="Wrap" />
+                                                <TextBlock Classes="mono" Text="{Binding SubLine}" FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{StaticResource FailTextBrush}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                            <Button Classes="primary" Content="Service finished" Padding="24,13" FontSize="16"
+                                    CornerRadius="7" Command="{Binding ServiceFinishedCommand}" />
+                            <Button Classes="secondary" Content="Show the checklist" Padding="20,13"
+                                    FontSize="15" CornerRadius="7"
+                                    Command="{Binding ToggleChecklistCommand}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </ScrollViewer>
+
                     <ScrollViewer x:Name="ChecklistScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto" AllowAutoHide="False"
-                                  IsVisible="{Binding !HasNoChecklists}">
+                                  IsVisible="{Binding ShowChecklistArea}">
                         <!-- The trailing space is a margin on the content, not Padding on the
                              ScrollViewer: Avalonia lays that out around the viewport, so it
                              adds nothing to the scrollable extent and the last row ends flush
@@ -355,7 +449,7 @@
 
                             <Border Background="{StaticResource Overlay03Brush}"
                                     BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
-                                    CornerRadius="8" Padding="16">
+                                    CornerRadius="8" Padding="16" IsVisible="{Binding IsSetup}">
                                 <StackPanel Spacing="6" HorizontalAlignment="Center">
                                     <TextBlock Classes="microLabel" Text="{Binding CountdownLabel}"
                                                LetterSpacing="1.54" Foreground="{StaticResource TextFaintBrush}"
@@ -379,8 +473,11 @@
                                 <TextBlock Classes="microLabel" Text="{Binding GateLabel}" />
                                 <TextBlock Classes="railBody" Text="{Binding GateExplanation}" />
                                 <Button Classes="gate" Classes.open="{Binding IsGateOpen}"
-                                        IsEnabled="{Binding IsGateOpen}" Content="Ready to go"
+                                        IsEnabled="{Binding IsGateOpen}" Content="Ready to go" IsVisible="{Binding IsSetup}"
                                         Command="{Binding ReadyToGoCommand}" Margin="0,4,0,0" />
+                                <TextBlock Classes="mono" Text="{Binding SignedOffLine}" FontSize="12"
+                                           Margin="0,4,0,0" IsVisible="{Binding !IsSetup}"
+                                           Foreground="{StaticResource OkBrush}" />
                             </StackPanel>
                         </Grid>
 

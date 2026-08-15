@@ -51,7 +51,10 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     private ServiceSchedule _schedule = new(null);
     private string? _serviceKey;
     private DateTimeOffset? _readyAt;
+    private readonly DispatcherTimer _viewerTimer;
+    private ViewerCountService? _viewers;
     private bool _polling;
+    private bool _pollingViewers;
     private bool _disposed;
 
     [ObservableProperty]
@@ -65,6 +68,32 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     [ObservableProperty]
     private string _countdownLabel = "SERVICE STARTS IN";
+
+    /// <summary>setup / service / postService — see <see cref="StationPhases"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSetup), nameof(IsService), nameof(IsPostService),
+        nameof(ShowServicePanel), nameof(ShowChecklistArea), nameof(GateLabel), nameof(GateExplanation))]
+    private string _phase = StationPhases.Setup;
+
+    /// <summary>Lets an operator look at the list again without leaving the service.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowServicePanel), nameof(ShowChecklistArea))]
+    private bool _checklistPinned;
+
+    [ObservableProperty]
+    private string _serviceTimer = "0:00";
+
+    [ObservableProperty]
+    private string _serviceTimerLabel = "SERVICE STARTS IN";
+
+    [ObservableProperty]
+    private string _youTubeViewers = "—";
+
+    [ObservableProperty]
+    private string _facebookViewers = "—";
+
+    [ObservableProperty]
+    private string _viewersNote = string.Empty;
 
     /// <summary>The 1e / override modal currently up, or null. Rendered as an overlay.</summary>
     [ObservableProperty]
@@ -142,6 +171,15 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
             Reload(automatic: true);
         };
 
+        _phase = _state.Phase switch
+        {
+            StationPhases.Service or StationPhases.PostService => _state.Phase,
+            _ => StationPhases.Setup,
+        };
+
+        _viewerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _viewerTimer.Tick += (_, _) => _ = PollViewersAsync();
+
         _heartbeatTimer = new DispatcherTimer { Interval = SnapshotStore.PublishInterval };
         _heartbeatTimer.Tick += (_, _) => Publish();
 
@@ -196,6 +234,32 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     public ObservableCollection<QuickLaunchTileViewModel> QuickLaunch { get; } = new();
 
     public bool HasQuickLaunch => QuickLaunch.Count > 0;
+
+    public bool IsSetup => Phase == StationPhases.Setup;
+
+    public bool IsService => Phase == StationPhases.Service;
+
+    public bool IsPostService => Phase == StationPhases.PostService;
+
+    /// <summary>The big calm panel that replaces the checklist once the station is signed off.</summary>
+    public bool ShowServicePanel => IsService && !ChecklistPinned;
+
+    public bool ShowChecklistArea => !ShowServicePanel;
+
+    /// <summary>What has stopped being true since the operator said they were ready.</summary>
+    public IEnumerable<ChecklistItemViewModel> FailingNow => AllItems.Where(i => i.IsFailing);
+
+    public bool AnythingFailing => StationFailing > 0;
+
+    public string WatchLine => StationFailing == 0
+        ? "Everything that can be checked is still checking out."
+        : StationFailing == 1
+            ? "One check has stopped passing since you went ready."
+            : $"{StationFailing} checks have stopped passing since you went ready.";
+
+    public string SignedOffLine => _state.SignedOffAt is { } at
+        ? $"SIGNED OFF {at:h:mm tt}{(_state.OperatorInitials is { Length: > 0 } who ? $" · {who}" : "")}"
+        : string.Empty;
 
     public IEnumerable<ChecklistItemViewModel> AllItems => Tabs.SelectMany(t => t.Items);
 
@@ -268,12 +332,27 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public bool IsPartial => GatedItems.Any(i => i.IsOverridden);
 
-    public string GateLabel => IsGateOpen ? "READY" : "NOT READY YET";
+    public string GateLabel => Phase switch
+    {
+        StationPhases.Service => "IN SERVICE",
+        StationPhases.PostService => "AFTER THE SERVICE",
+        _ => IsGateOpen ? "READY" : "NOT READY YET",
+    };
 
     public string GateExplanation
     {
         get
         {
+            if (Phase == StationPhases.Service)
+            {
+                return "Signed off and under way. The checks are still running — anything that stops passing shows up on the left.";
+            }
+
+            if (Phase == StationPhases.PostService)
+            {
+                return "The service is over. Work through the post-service list; it does not affect readiness.";
+            }
+
             if (StationTotal == 0)
             {
                 return "Nothing to check yet. Build a checklist and this unlocks once every item on it is done.";
@@ -335,6 +414,8 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     {
         _clockTimer.Start();
         _pollTimer.Start();
+        _viewerTimer.Start();
+        _ = PollViewersAsync();
         _heartbeatTimer.Start();
         StartWatching();
         Publish();
@@ -626,8 +707,42 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
             LogHow.SignOff,
             IsPartial ? "signed off with overrides — service marked partial" : "all items verified"));
 
-        OnPropertyChanged(nameof(GateLabel));
-        OnPropertyChanged(nameof(GateExplanation));
+        // The checklist is done, so it stops being the point. From here the screen watches.
+        SetPhase(StationPhases.Service);
+        OnPropertyChanged(nameof(SignedOffLine));
+    }
+
+    /// <summary>
+    /// The operator saying the service is over. Deliberately theirs to press: a service that
+    /// runs long or finishes early is normal, and the app has no way to know which.
+    /// </summary>
+    [RelayCommand]
+    private void ServiceFinished()
+    {
+        SetPhase(StationPhases.PostService);
+
+        // Put the after-the-service work in front of them, which is the point of the change.
+        var after = Tabs.FirstOrDefault(t => !t.CountsTowardReady);
+        if (after is not null)
+        {
+            SelectTab(after);
+        }
+
+        _logger.Log(new LogEntry(StationName, after?.Label ?? StationName, "Service finished",
+            LogHow.SignOff, "moved on to the post-service checklist"));
+    }
+
+    /// <summary>Back to the checklist during a service, and back out again.</summary>
+    [RelayCommand]
+    private void ToggleChecklist() => ChecklistPinned = !ChecklistPinned;
+
+    private void SetPhase(string phase)
+    {
+        Phase = phase;
+        ChecklistPinned = false;
+        _state.Phase = phase;
+        _stateStore.Save(_state);
+        UpdateClock();
     }
 
     private async Task PollAsync()
@@ -662,6 +777,38 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         }
     }
 
+    /// <summary>
+    /// Audience figures for the service panel. Telemetry: a failure is an em-dash, never
+    /// anything that affects whether the station reads as ready.
+    /// </summary>
+    private async Task PollViewersAsync()
+    {
+        if (_pollingViewers || _disposed || !_config.ViewerCounts.Enabled)
+        {
+            return;
+        }
+
+        _pollingViewers = true;
+        try
+        {
+            _viewers ??= new ViewerCountService();
+            var counts = await _viewers.ReadAsync(_config.ViewerCounts, _cancellation.Token);
+
+            YouTubeViewers = counts.YouTube?.ToString("N0") ?? "—";
+            FacebookViewers = counts.Facebook?.ToString("N0") ?? "—";
+            ViewersNote = counts.Note ?? string.Empty;
+        }
+        catch (Exception)
+        {
+            YouTubeViewers = "—";
+            FacebookViewers = "—";
+        }
+        finally
+        {
+            _pollingViewers = false;
+        }
+    }
+
     private void UpdateClock()
     {
         var now = DateTime.Now;
@@ -682,6 +829,23 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         }
 
         _serviceKey = occurrence.Key;
+
+        var sinceStart = now - occurrence.Start;
+        if (sinceStart >= TimeSpan.Zero)
+        {
+            ServiceTimerLabel = "INTO THE SERVICE";
+            ServiceTimer = sinceStart.TotalHours >= 1
+                ? $"{(int)sinceStart.TotalHours}:{sinceStart.Minutes:00}:{sinceStart.Seconds:00}"
+                : $"{sinceStart.Minutes:00}:{sinceStart.Seconds:00}";
+        }
+        else
+        {
+            var untilStart = occurrence.Start - now;
+            ServiceTimerLabel = "SERVICE STARTS IN";
+            ServiceTimer = untilStart.TotalHours >= 1
+                ? $"{(int)untilStart.TotalHours}:{untilStart.Minutes:00}:{untilStart.Seconds:00}"
+                : $"{untilStart.Minutes:00}:{untilStart.Seconds:00}";
+        }
 
         var remaining = occurrence.Start - now;
         if (remaining <= TimeSpan.Zero)
@@ -710,11 +874,23 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         _state.SignedOffAt = null;
         _state.Partial = false;
         _state.ServiceKey = occurrence.Key;
+
+        // Back to setup: the previous service being over does not carry into the next one, and
+        // leaving the station "after the service" while it prepares for the next is nonsense.
+        _state.Phase = StationPhases.Setup;
+        Phase = StationPhases.Setup;
+        ChecklistPinned = false;
+
         _stateStore.Save(_state);
 
         foreach (var item in AllItems)
         {
             item.ClearForNewService();
+        }
+
+        if (SelectedTab is { CountsTowardReady: false } && Tabs.FirstOrDefault(t => t.CountsTowardReady) is { } first)
+        {
+            SelectTab(first);
         }
 
         _logger.Log(new LogEntry(
@@ -761,6 +937,9 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         OnPropertyChanged(nameof(GateExplanation));
         OnPropertyChanged(nameof(ShowFailureAdvisory));
         OnPropertyChanged(nameof(HasNoChecklists));
+        OnPropertyChanged(nameof(AnythingFailing));
+        OnPropertyChanged(nameof(WatchLine));
+        OnPropertyChanged(nameof(FailingNow));
     }
 
     private void RefreshRing()
@@ -862,6 +1041,8 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         _disposed = true;
         _clockTimer.Stop();
         _pollTimer.Stop();
+        _viewerTimer.Stop();
+        _viewers?.Dispose();
         _reloadDebounce.Stop();
         _heartbeatTimer.Stop();
 

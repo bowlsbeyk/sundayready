@@ -3,6 +3,19 @@ using System.Text.Json;
 
 namespace SundayReady.Services;
 
+/// <summary>Where the station is in its Sunday.</summary>
+public static class StationPhases
+{
+    /// <summary>Working through the checklist. The default.</summary>
+    public const string Setup = "setup";
+
+    /// <summary>Signed off. The checklist recedes and the screen watches instead.</summary>
+    public const string Service = "service";
+
+    /// <summary>The operator has said the service is over; the post-show list is the work.</summary>
+    public const string PostService = "postService";
+}
+
 /// <summary>How an item came to be checked.</summary>
 public static class CompletionSources
 {
@@ -59,6 +72,12 @@ public sealed class DailyState
     public string? OperatorInitials { get; set; }
 
     public DateTimeOffset? SignedOffAt { get; set; }
+
+    /// <summary>
+    /// Which part of the day the station is in — see <see cref="StationPhases"/>. Persisted so
+    /// an app restart mid-service does not drop the operator back into setup.
+    /// </summary>
+    public string? Phase { get; set; }
 
     /// <summary>True when the service was signed off with overridden or open items.</summary>
     public bool Partial { get; set; }

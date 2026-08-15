@@ -125,6 +125,15 @@ public static class Guides
             + "before the station counts as ready\" unticked stays out of it, which is how a post-show or "
             + "shutdown list can exist without holding the gate shut."),
 
+        new Topic("Ready to go, and what happens after it",
+            "Pressing it is the operator saying setup is finished. It is written to the completion log, and "
+            + "the checklist then gets out of the way: the screen becomes a count-up into the service with the "
+            + "clock under it, the live viewer counts, and a panel that names anything which has stopped "
+            + "passing since you went ready. The verifiers keep running the whole time — during a service what "
+            + "matters is not the list but whether something that was true has stopped being true. "
+            + "\"Show the checklist\" brings it back at any point. When the service is over, \"Service finished\" "
+            + "moves you on and opens the post-service list."),
+
         new Topic("Overriding a failing item",
             "When a verifier is red and you are out of time, Override & note ticks the item anyway. It asks "
             + "for initials and a typed reason, both required, and writes them to the completion log. The "

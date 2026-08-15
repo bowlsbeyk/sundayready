@@ -171,6 +171,25 @@ that stopped being true.
 
 An unrecognised `kind` degrades that one item and logs a warning; the file still loads.
 
+## A Sunday, end to end
+
+**Setup.** The checklist is the screen. Work down it; verified items tick themselves.
+
+**Ready to go** unlocks once every gating item is ticked or overridden. Pressing it is the
+operator saying setup is done — it goes in the completion log, and the checklist recedes.
+
+**During the service** the screen becomes a count-up into the service with the clock beneath
+it, the live YouTube and Facebook counts, and a panel naming anything that has *stopped*
+passing since you went ready. The verifiers never stop running — while you are live, what
+matters is not the list but whether something that was true has quietly stopped being true.
+*Show the checklist* brings the list back whenever you want it.
+
+**Service finished** is a button, not a guess: services run long and short, and only the person
+in the room knows. Pressing it opens the post-service list.
+
+If you have a second service that day, the changeover (see service times) puts the station back
+into setup with a fresh list on its own.
+
 ## The techdesk
 
 One screen showing every station. Same binary — a PC becomes the techdesk by data, not by a
