@@ -54,6 +54,14 @@ public static class Guides
             "This proves the device is powered and on the network. It says nothing about where a camera is pointed or whether its picture reaches the switcher — for that, ask the switcher with httpContains."),
 
         new VerifierGuide(
+            "ndiSourcePresent",
+            "Is an NDI source on the network?",
+            "Asks the network which NDI senders are announcing themselves — the same list your switcher shows under Add Input → NDI. Passes when one of them has this text in its name.",
+            "Cameras and encoders that reach the switcher over NDI, and the ProPresenter or playback feeds that do the same.",
+            "nameContains: BALCONY-CAM",
+            "Proves the sender is powered, on the network and advertising. It does not prove the switcher has actually taken it as an input, and it will not see sources on another subnet unless you run an NDI Discovery Server. If it fails it lists what it did find, which is usually enough to spot a name that has changed."),
+
+        new VerifierGuide(
             "internetReachable",
             "Is the internet up?",
             "Pings a well-known address, and falls back to an ordinary HTTPS connection if the network blocks ping.",

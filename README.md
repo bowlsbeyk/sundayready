@@ -141,6 +141,7 @@ verifier agrees.
 | `fileExists` | `path` | Path exists (environment variables are expanded) |
 | `internetReachable` | `host` (optional) | Host answers ICMP, or TCP/443 if ping is blocked |
 | `hostReachable` | `host`, `port` (optional) | A device answers — ping with no port, TCP connect with one |
+| `ndiSourcePresent` | `nameContains` | An NDI source with that text in its name is on the network |
 | `audioDevicePresent` | `nameContains` | **Not implemented yet** — always fails |
 
 **Checking cameras and other devices.** `hostReachable` is the one for gear on the network.
@@ -151,6 +152,13 @@ lens cap is off, or whether the feed reaches the switcher. For *that*, ask the s
 `httpContains` against the vMix API looking for the input's name is what proves a camera is
 actually usable. Many stations want both: `hostReachable` tells you *which* thing broke,
 `httpContains` tells you the shot is not there.
+
+**NDI sources.** `ndiSourcePresent` asks the network which NDI senders are announcing
+themselves over mDNS — the same list your switcher shows under *Add Input → NDI* — and passes
+when one of them contains your text. No NDI runtime to install. It proves the sender is
+powered, on the network and advertising; it does not prove the switcher has taken it as an
+input. When it fails it lists the sources it *did* find, which usually reveals a name that has
+changed. It cannot see across subnets unless you run an NDI Discovery Server.
 
 > Devices addressed by IP are a hostage to DHCP. If a camera's lease moves, the check fails
 > and the camera is fine. Use a DNS or mDNS name (`cam3.local`) where you can, or give the

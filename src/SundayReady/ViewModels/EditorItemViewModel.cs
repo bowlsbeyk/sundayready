@@ -149,7 +149,7 @@ public sealed partial class EditorItemViewModel : ObservableObject
 
     public bool HasGuideGotcha => !string.IsNullOrEmpty(Guide?.Gotcha);
 
-    public bool ShowNameContains => Is("audioDevicePresent");
+    public bool ShowNameContains => Is("audioDevicePresent") || Is("ndiSourcePresent");
 
     public bool ShowPath => Is("fileExists");
 
@@ -191,7 +191,7 @@ public sealed partial class EditorItemViewModel : ObservableObject
             if (ShowHost && Is("hostReachable") && string.IsNullOrWhiteSpace(Host)) return "hostReachable needs an address to reach.";
             if (ShowPort && !string.IsNullOrWhiteSpace(Port) && !int.TryParse(Port, out var parsed)) return "Port must be a number, or empty to just ping.";
             if (ShowPort && int.TryParse(Port, out var range) && (range < 1 || range > 65535)) return "Port must be between 1 and 65535.";
-            if (ShowNameContains && string.IsNullOrWhiteSpace(NameContains)) return "audioDevicePresent needs a device name to match.";
+            if (ShowNameContains && string.IsNullOrWhiteSpace(NameContains)) return $"{VerifyKind} needs a name to match.";
             if (ShowPath && string.IsNullOrWhiteSpace(Path)) return "fileExists needs a path.";
 
             return null;

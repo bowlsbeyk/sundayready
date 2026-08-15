@@ -24,6 +24,7 @@ public sealed class VerifierRegistry : IDisposable
         new FileExistsVerifier(),
         new InternetReachableVerifier(),
         new HostReachableVerifier(),
+        new NdiSourceVerifier(),
         new AudioDevicePresentVerifier(),
     });
 

@@ -261,7 +261,7 @@
                         </Grid>
 
                         <StackPanel IsVisible="{Binding ShowNameContains}">
-                            <TextBlock Classes="fieldLabel" Text="DEVICE NAME CONTAINS" />
+                            <TextBlock Classes="fieldLabel" Text="NAME CONTAINS" />
                             <TextBox Classes="field" Text="{Binding NameContains, Mode=TwoWay}" FontSize="14" />
                         </StackPanel>
 
