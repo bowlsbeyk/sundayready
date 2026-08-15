@@ -37,7 +37,9 @@ public sealed partial class EditorItemViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(HasVerifier), nameof(ShowProcessName), nameof(ShowUrl), nameof(ShowContains),
-        nameof(ShowHost), nameof(ShowPort), nameof(ShowNameContains), nameof(ShowPath), nameof(TypeSummary))]
+        nameof(ShowHost), nameof(ShowPort), nameof(ShowNameContains), nameof(ShowPath), nameof(TypeSummary),
+        nameof(HasGuide), nameof(GuideHeadline), nameof(GuideWhat), nameof(GuideExample),
+        nameof(GuideGotcha), nameof(HasGuideGotcha))]
     private string _verifyKind = NoVerifier;
 
     [ObservableProperty]
@@ -131,6 +133,21 @@ public sealed partial class EditorItemViewModel : ObservableObject
     public bool ShowHost => Is("internetReachable") || Is("hostReachable");
 
     public bool ShowPort => Is("hostReachable");
+
+    // Explaining the verifier where it is being chosen, rather than only in the help window.
+    private Services.VerifierGuide? Guide => Services.Guides.For(VerifyKind);
+
+    public bool HasGuide => Guide is not null;
+
+    public string GuideHeadline => Guide?.Headline ?? string.Empty;
+
+    public string GuideWhat => Guide?.What ?? string.Empty;
+
+    public string GuideExample => Guide?.Example ?? string.Empty;
+
+    public string GuideGotcha => Guide?.Gotcha ?? string.Empty;
+
+    public bool HasGuideGotcha => !string.IsNullOrEmpty(Guide?.Gotcha);
 
     public bool ShowNameContains => Is("audioDevicePresent");
 

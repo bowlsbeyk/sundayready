@@ -52,6 +52,8 @@
                 <TextBlock Grid.Column="1" Classes="mono" Text="{Binding Directory}" FontSize="11"
                            Margin="16,0,0,0" VerticalAlignment="Center"
                            Foreground="{StaticResource TextFainterBrush}" />
+                <Button Grid.Column="2" Classes="chip" Content="HELP" Click="OnHelpClick"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
         </Border>
 
@@ -210,6 +212,23 @@
                         <TextBlock Classes="fieldLabel" Text="VERIFIER" />
                         <ComboBox ItemsSource="{Binding $parent[Window].((vm:ChecklistEditorViewModel)DataContext).VerifierKinds}"
                                   SelectedItem="{Binding VerifyKind, Mode=TwoWay}" />
+
+                        <!-- What this verifier actually does, where you are choosing it. -->
+                        <Border IsVisible="{Binding HasGuide}" Background="{StaticResource PanelRaisedBrush}"
+                                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                                CornerRadius="7" Padding="14,12" Margin="0,0,0,16">
+                            <StackPanel Spacing="7">
+                                <TextBlock Text="{Binding GuideHeadline}" FontSize="14" FontWeight="SemiBold"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding GuideWhat}" FontSize="13" LineHeight="19"
+                                           TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" />
+                                <TextBlock Classes="mono" Text="{Binding GuideExample}" FontSize="12"
+                                           TextWrapping="Wrap" Foreground="{StaticResource TextFaintBrush}" />
+                                <TextBlock Text="{Binding GuideGotcha}" FontSize="13" LineHeight="19"
+                                           TextWrapping="Wrap" IsVisible="{Binding HasGuideGotcha}"
+                                           Foreground="{StaticResource WaitTextBrush}" />
+                            </StackPanel>
+                        </Border>
 
                         <StackPanel IsVisible="{Binding ShowProcessName}">
                             <TextBlock Classes="fieldLabel" Text="PROCESS NAME" />

@@ -122,6 +122,11 @@ tab and works like any other list, but it is left out of the **Ready to go** gat
 station could never be ready before the service it is getting ready for, because the packing-up
 items would still be open. There is a tick-box for it in the editor.
 
+**In-app help.** Press **HELP** in the top bar (or in the checklist editor). It explains the
+three kinds of item, what every verifier does with an example and its gotcha, and the handful
+of ideas worth knowing — the gate, overrides, retry budgets, when the list starts again. The
+editor also shows a short version of the same text next to the verifier you are choosing.
+
 **Item types.** `manual` is a checkbox. `action` is a button that launches something — add
 `"label"` to rename it, and `"also"` to launch several things at once. `verified` is checked
 by the app alone. An `action` with a `verify` block launches, then ticks itself when the
