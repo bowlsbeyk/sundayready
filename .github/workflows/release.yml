@@ -21,11 +21,10 @@ jobs:
     strategy:
       fail-fast: false
 
-      # One at a time, deliberately. Three jobs starting together each fetch the same
-      # actions/setup-dotnet tarball from codeload, and the loser gets a 429 that kills the job
-      # during "Set up job" — before any step runs, so there is nothing to retry. That cost two
-      # release runs before it was worth serialising. A release is not a hot path; correctness
-      # here is worth the extra few minutes.
+      # One at a time. This was added believing three concurrent jobs were rate-limiting each
+      # other on codeload; serialising did not fix that, so the real fix is below — the SDK no
+      # longer comes from an action at all. It is kept because it still halves the number of
+      # action tarballs being fetched at once, and a release is not a hot path.
       max-parallel: 1
 
       matrix:
@@ -42,9 +41,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
+      # Not actions/setup-dotnet. That action is not pre-cached on the runner images, so every
+      # job fetches its tarball from codeload — and codeload has been handing out 429s, which
+      # kills the job in "Set up job" before any step exists to retry. Three release runs died
+      # that way, on whichever platform lost the race. dotnet-install comes from Microsoft's CDN
+      # instead, so it does not share that failure, and it is skipped entirely when the runner
+      # image already has the SDK.
+      - name: Ensure the .NET 9 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v dotnet >/dev/null 2>&1 && dotnet --list-sdks | grep -q '^9\.'; then
+            echo "SDK 9 already on the image:"
+            dotnet --list-sdks
+            exit 0
+          fi
+
+          echo "No SDK 9 on the image; installing."
+          for attempt in 1 2 3; do
+            if curl -fsSL --retry 3 --retry-delay 5 \
+                 https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh; then
+              break
+            fi
+            echo "attempt $attempt to fetch dotnet-install.sh failed"
+            [ "$attempt" = 3 ] && exit 1
+            sleep 10
+          done
+
+          bash dotnet-install.sh --channel 9.0 --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+          "$HOME/.dotnet/dotnet" --list-sdks
 
       - name: Derive version and channel from the tag
         id: version
