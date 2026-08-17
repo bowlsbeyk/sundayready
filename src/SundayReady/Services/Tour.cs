@@ -150,9 +150,15 @@ public static class Tour
         new TourStep(
             TourSurface.Station,
             "TourHelp",
-            "That is the whole app",
-            "Your item is in the list behind this. HELP has the rest: every kind of automatic "
-            + "check with its gotcha, what overriding does, and when the list starts again.",
-            TourPlacement.Below),
+            "And when you get stuck: HELP",
+            "Your item is in the list behind this. Everything else lives behind HELP, in the top "
+            + "bar, on every screen — including the editor. It has a search box, so on a Sunday "
+            + "morning you can type “red” or “override” and get the answer rather than reading.\n\n"
+            + "Open it now, so you know where it is. That is the end of the tour.",
+            TourPlacement.Below,
+            TourAdvance.Click)
+        {
+            Prompt = "Press HELP. You can reopen it any time — it is always there.",
+        },
     };
 }

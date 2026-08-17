@@ -165,10 +165,15 @@ tab and works like any other list, but it is left out of the **Ready to go** gat
 station could never be ready before the service it is getting ready for, because the packing-up
 items would still be open. There is a tick-box for it in the editor.
 
-**In-app help.** Press **HELP** in the top bar (or in the checklist editor). It explains the
-three kinds of item, what every verifier does with an example and its gotcha, and the handful
-of ideas worth knowing — the gate, overrides, retry budgets, when the list starts again. The
-editor also shows a short version of the same text next to the verifier you are choosing.
+**In-app help.** Press **HELP** in the top bar — it is on the checklist and in the editor, and it
+is the same window from both. It covers the three kinds of item, every verifier with an example and
+its gotcha, and twenty topics grouped by when you need them: *on a Sunday*, *when something will
+not pass*, *setting a station up*, *keeping it up to date*.
+
+It has a **search box**, which matters more than the contents. Somebody opens this window because
+something is wrong with ninety seconds to go, not to read a manual — so typing `red`, `override`,
+`vmix` or `start again` goes straight to the answer, and entries whose title matches come first.
+The editor also shows a short version of the same text next to the verifier you are choosing.
 
 **Item types.** `manual` is a checkbox. `action` is a button that launches something — add
 `"label"` to rename it, and `"also"` to launch several things at once. `verified` is checked

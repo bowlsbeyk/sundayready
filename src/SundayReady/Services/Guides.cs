@@ -13,6 +13,9 @@ public sealed record VerifierGuide(
 /// <summary>A concept worth explaining, for the help window.</summary>
 public sealed record Topic(string Title, string Body);
 
+/// <summary>A named group of topics, so the help window is skimmable rather than a wall.</summary>
+public sealed record TopicSection(string Title, IReadOnlyList<Topic> Topics);
+
 /// <summary>
 /// The one place this is written down. The editor shows a line of it beside the field you are
 /// filling in, and the help window shows all of it — so the two can never drift apart.
@@ -99,110 +102,179 @@ public static class Guides
             + "a green tick on something that has stopped being true."),
     };
 
-    public static IReadOnlyList<Topic> Concepts { get; } = new[]
+    /// <summary>
+    /// The topics, grouped and ordered by when somebody needs them.
+    /// <para>
+    /// Grouping is not decoration. This started as one flat list that grew a topic every time a
+    /// feature landed, which put release channels next to what to do about a red item — and the
+    /// person opening this window at 10:25 on a Sunday has a problem, not a curiosity. So the
+    /// order is: using it, then when it goes wrong, then setting one up, then admin.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<TopicSection> Sections { get; } = new[]
     {
-        new Topic("Verified items start checking straight away",
-            "This surprises people. A verified item does not wait to be told — it starts polling the moment "
-            + "SundayReady opens. So if vMix is already running when you open the app, the item that checks "
-            + "for vMix goes green immediately. That is correct: the item asks \"is this true?\", not \"did I "
-            + "make this true?\". An action item with a verifier behaves the same way, which is how a station "
-            + "that was already set up comes up mostly green."),
+        new TopicSection("ON A SUNDAY", new[]
+        {
+            new Topic("This window, and finding it again",
+                "HELP is in the top bar of every screen — the checklist, and the editor too. It is the "
+                + "same window from both. Use the search box above rather than reading: type what is going "
+                + "wrong or the name of a button, in whatever words come to mind. “red”, “override”, "
+                + "“vmix”, “start again” all land somewhere useful. “Show me around”, next to the title, "
+                + "walks you round the app itself if the reading is not landing."),
 
-        new Topic("Failed polls before it goes red",
-            "Software takes time to start. This is how many failed checks to treat as \"still starting\" before "
-            + "the row turns red. The default is 10, which at one check every five seconds is about a minute. "
-            + "Lower it for something that should already be true — a camera that is either on the network or "
-            + "is not. Raise it for something slow to load."),
+            new Topic("The ring, and what is left",
+                "The circle on the right is every item on every tab, not just the one you are looking at. "
+                + "Under it is the count, and under that the line that tells you what is still holding the "
+                + "gate shut \u2014 \u201c3 items left\u201d. If it says a number you do not expect, another tab has "
+                + "something open on it."),
 
-        new Topic("Sections",
-            "A heading above a run of items. Type the same section name on consecutive items and they group "
-            + "under one divider — BOOT · 30 MIN BEFORE, CAMERAS & CAPTURE, whatever suits. Purely for reading; "
-            + "it changes nothing about how items behave."),
+            new Topic("Verified items start checking straight away",
+                "This surprises people. A verified item does not wait to be told \u2014 it starts polling the "
+                + "moment SundayReady opens. So if vMix is already running when you open the app, the item "
+                + "that checks for vMix goes green immediately. That is correct: the item asks \"is this "
+                + "true?\", not \"did I make this true?\". An action item with a verifier behaves the same way, "
+                + "which is how a station that was already set up comes up mostly green."),
 
-        new Topic("Ready to go",
-            "The gate at the bottom of the right-hand rail. It stays inert until every item on every tab is "
-            + "ticked or overridden — not per tab, the whole station. A checklist with \"must be finished "
-            + "before the station counts as ready\" unticked stays out of it, which is how a post-show or "
-            + "shutdown list can exist without holding the gate shut."),
+            new Topic("Instructions, and steps to tick off",
+                "An item can carry either or both, reached from a chip on its row. \"How to do it\" is "
+                + "read-only: numbered instructions for the job someone does four times a year and cannot be "
+                + "expected to remember \u2014 setting up the stream in Subsplash, say. \"Steps to tick off\" are "
+                + "ticked individually, remembered with the rest of the day, and finishing the last one ticks "
+                + "the item itself; the item can still be ticked directly by anyone who knows the routine. "
+                + "Neither is the same as \"check these, in order\", which only appears when a verifier has "
+                + "failed \u2014 that is diagnosis, these are the work."),
 
-        new Topic("Instructions, and steps to tick off",
-            "An item can carry either or both, reached from a chip on its row. \"How to do it\" is "
-            + "read-only: numbered instructions for the job someone does four times a year and cannot be "
-            + "expected to remember — setting up the stream in Subsplash, say. \"Steps to tick off\" are "
-            + "ticked individually, remembered with the rest of the day, and finishing the last one ticks the "
-            + "item itself; the item can still be ticked directly by anyone who knows the routine. "
-            + "Neither is the same as \"check these, in order\", which only appears when a verifier has "
-            + "failed — that is diagnosis, these are the work."),
+            new Topic("Quick launch",
+                "The buttons at the bottom of the right-hand rail open the software this station uses, "
+                + "without hunting for it on the desktop. They are not checklist items and nothing depends "
+                + "on them \u2014 they are there because the alternative is minimising the app. Set them up in "
+                + "Settings \u2192 Quick launch."),
 
-        new Topic("Ready to go, and what happens after it",
-            "Pressing it is the operator saying setup is finished. It is written to the completion log, and "
-            + "the checklist then gets out of the way: the screen becomes a count-up into the service with the "
-            + "clock under it, the live viewer counts, and a panel that names anything which has stopped "
-            + "passing since you went ready. The verifiers keep running the whole time — during a service what "
-            + "matters is not the list but whether something that was true has stopped being true. "
-            + "\"Show the checklist\" brings it back at any point. When the service is over, \"Service finished\" "
-            + "moves you on and opens whichever checklist you ticked \"open this checklist after the service\" "
-            + "on in the editor. Without one, nothing has been nominated and the button says so rather than "
-            + "appearing to do nothing."),
+            new Topic("Ready to go, and what happens after it",
+                "The gate at the bottom of the rail. It stays inert until every item on every tab is ticked "
+                + "or overridden \u2014 not per tab, the whole station. A checklist with \"must be finished before "
+                + "the station counts as ready\" unticked stays out of it, which is how a post-show or "
+                + "shutdown list can exist without holding the gate shut.\n\n"
+                + "Pressing it is the operator saying setup is finished. It goes in the completion log, and "
+                + "the checklist then gets out of the way: the screen becomes a count-up into the service "
+                + "with the clock under it, the live viewer counts, and a panel naming anything that has "
+                + "stopped passing since you went ready. The verifiers keep running the whole time \u2014 during "
+                + "a service what matters is not the list but whether something that was true has stopped "
+                + "being true. \u201cShow the checklist\u201d brings it back at any point. When the service is over, "
+                + "\u201cService finished\u201d opens whichever checklist you ticked \u201copen this checklist after the "
+                + "service\u201d on in the editor; without one, nothing has been nominated and the button says so "
+                + "rather than appearing to do nothing."),
 
-        new Topic("Overriding a failing item",
-            "When a verifier is red and you are out of time, Override & note ticks the item anyway. It asks "
-            + "for initials and a typed reason, both required, and writes them to the completion log. The "
-            + "service is then recorded as partial. It is an honest escape hatch, not a way to silence a check."),
+            new Topic("Signing off, and the log",
+                "Going ready asks who you are and records it. Every station writes one file per day to its "
+                + "logs folder, append-only: what was ticked, what ticked itself, anything overridden and "
+                + "why, and when the operator signed off. LOG in the top bar opens it. It exists so that "
+                + "\u201cwhat happened last week\u201d is a question with an answer, not a memory test."),
 
-        new Topic("Check these, in order",
-            "Troubleshooting steps you write yourself, shown when an item fails. This is the most valuable "
-            + "thing in a checklist and the app cannot write it for you: it is what you would tell a volunteer "
-            + "over the phone. \"Is the PoE injector lit? It's the grey box behind the booth.\""),
+            new Topic("Sections",
+                "A heading above a run of items. Type the same section name on consecutive items and they "
+                + "group under one divider \u2014 BOOT \u00b7 30 MIN BEFORE, CAMERAS & CAPTURE, whatever suits. Purely "
+                + "for reading; it changes nothing about how items behave."),
+        }),
 
-        new Topic("The guided tour",
-            "\u201cShow me around\u201d, at the top of this window, dims the app and walks you round "
-            + "the real controls one at a time \u2014 the tabs, the list, the Ready to go gate \u2014 and "
-            + "then has you actually open the editor, add an item and save it. Ten stops, and a Skip "
-            + "tour button sits at the top throughout. It is a different thing from the setup "
-            + "walkthrough a new machine gets: that one configures a station without ever showing "
-            + "you the app, and this one shows you the app without changing anything you have not "
-            + "chosen to change."),
+        new TopicSection("WHEN SOMETHING WILL NOT PASS", new[]
+        {
+            new Topic("A red item, and what to do first",
+                "Red means a check the app can make has failed enough times to stop being hopeful. Open the "
+                + "row: it names what it looked for and what it got, and shows whatever troubleshooting steps "
+                + "your church wrote for that item. Work down them. \u201cRetry now\u201d re-checks immediately rather "
+                + "than waiting for the next poll, so you get an answer as soon as you have changed "
+                + "something. Most red items on a Sunday are something not switched on yet."),
 
-        new Topic("The setup walkthrough",
-            "A machine that has never run SundayReady opens a short walkthrough instead of an empty "
-            + "list: name the station, say when the services are, and pick or create a first "
-            + "checklist. It writes an ordinary station.json and ordinary checklist files \u2014 there "
-            + "is no special mode, and everything it sets is in Settings and the editor afterwards. "
-            + "It can be skipped from any screen, and run again from Settings \u2192 Identity, which is "
-            + "the quickest way to set up a station being repurposed. Re-running it never overwrites "
-            + "an existing checklist; a name that collides gets a numbered suffix."),
+            new Topic("Check these, in order",
+                "Troubleshooting steps you write yourself, shown when an item fails. This is the most "
+                + "valuable thing in a checklist and the app cannot write it for you: it is what you would "
+                + "tell a volunteer over the phone. \"Is the PoE injector lit? It's the grey box behind the "
+                + "booth.\""),
 
-        new Topic("Why a new checklist is all tick-boxes",
-            "The templates the walkthrough offers contain nothing but manual items, deliberately. An "
-            + "item that launches vMix needs a path that is right for this building, and one that "
-            + "checks a camera needs its address \u2014 shipped as guesses, they would go red within "
-            + "seconds on a machine where none of it is set up, and a new user cannot tell that apart "
-            + "from a broken app. So you start with a list that is honestly correct, then upgrade the "
-            + "items worth automating in the editor."),
+            new Topic("Failed polls before it goes red",
+                "Software takes time to start. This is how many failed checks to treat as \"still starting\" "
+                + "before the row turns red. The default is 10, which at one check every five seconds is "
+                + "about a minute. Lower it for something that should already be true \u2014 a camera that is "
+                + "either on the network or is not. Raise it for something slow to load."),
 
-        new Topic("Update channels",
-            "A channel is how far ahead of finished this station is willing to run, not a separate "
-            + "version of the app. Production takes only finished releases and is where anything "
-            + "that runs a service belongs. Beta, alpha and dev each take everything above them as "
-            + "well, so a station on beta still gets production releases \u2014 it just gets the "
-            + "betas first. Put the spare machine on beta and let it find the problems. Updates "
-            + "never go backwards, so coming back from dev to production means installing the "
-            + "production build by hand from the releases page. One catch worth knowing: following "
-            + "a channel needs 0.15.0 or later. A station on an older build can only see finished "
-            + "releases, whatever its setting says, until it has picked one up."),
+            new Topic("Overriding a failing item",
+                "When a verifier is red and you are out of time, Override & note ticks the item anyway. It "
+                + "asks for initials and a typed reason, both required, and writes them to the completion "
+                + "log. The service is then recorded as partial. It is an honest escape hatch, not a way to "
+                + "silence a check."),
 
-        new Topic("Installing an update now",
-            "An automatic update downloads in the background and waits: it is swapped in the next "
-            + "time this station starts SundayReady, so nothing ever changes under an operator "
-            + "mid-service. When one is waiting, Settings \u2192 Updates offers to install it and "
-            + "restart straight away \u2014 which is safe precisely because somebody asked for it. "
-            + "The app closes, comes back a couple of seconds later on the new build, and the "
-            + "checklist is where it was."),
+            new Topic("When you genuinely cannot fix it",
+                "Override it with a real reason, say what you tried, and go on with the service \u2014 the "
+                + "checklist is there to make sure nothing is forgotten, not to stop the service starting. "
+                + "The note you type is what somebody reads on Monday, so \u201ccamera 3 dead, no picture, tried "
+                + "reseating the PoE\u201d is worth far more than \u201cbroken\u201d. If the room has a techdesk it can "
+                + "already see your station is not ready, and its Page button is how it reaches you."),
+        }),
 
-        new Topic("When the checklist starts again",
-            "By default, every time SundayReady opens. If you also set service times, it starts again at each "
-            + "changeover — with services at 09:00 and 11:00 and a 90 minute lead, the list goes fresh at "
-            + "09:30 for the second one. A new calendar day always clears it."),
+        new TopicSection("SETTING A STATION UP", new[]
+        {
+            new Topic("The setup walkthrough",
+                "A machine that has never run SundayReady opens a short walkthrough instead of an empty "
+                + "list: name the station, say when the services are, and pick or create a first checklist. "
+                + "It writes an ordinary station.json and ordinary checklist files \u2014 there is no special "
+                + "mode, and everything it sets is in Settings and the editor afterwards. It can be skipped "
+                + "from any screen, and run again from Settings \u2192 Identity, which is the quickest way to set "
+                + "up a station being repurposed. Re-running it never overwrites an existing checklist; a "
+                + "name that collides gets a numbered suffix."),
+
+            new Topic("The guided tour",
+                "\u201cShow me around\u201d, at the top of this window, dims the app and walks you round the real "
+                + "controls one at a time \u2014 the tabs, the list, the Ready to go gate \u2014 and then has you "
+                + "actually open the editor, add an item and save it. Ten stops, with Skip tour pinned at the "
+                + "top throughout. It is a different thing from the setup walkthrough: that one configures a "
+                + "station without ever showing you the app, and this one shows you the app without changing "
+                + "anything you have not chosen to change."),
+
+            new Topic("Why a new checklist is all tick-boxes",
+                "The templates the walkthrough offers contain nothing but manual items, deliberately. An "
+                + "item that launches vMix needs a path that is right for this building, and one that checks "
+                + "a camera needs its address \u2014 shipped as guesses, they would go red within seconds on a "
+                + "machine where none of it is set up, and a new user cannot tell that apart from a broken "
+                + "app. So you start with a list that is honestly correct, then upgrade the items worth "
+                + "automating in the editor."),
+
+            new Topic("When the checklist starts again",
+                "By default, every time SundayReady opens. If you also set service times, it starts again at "
+                + "each changeover \u2014 with services at 09:00 and 11:00 and a 90 minute lead, the list goes "
+                + "fresh at 09:30 for the second one. A new calendar day always clears it."),
+
+            new Topic("The techdesk",
+                "The same program in a different mode, for a screen that watches every station at once "
+                + "instead of running one. Stations publish a snapshot to a shared folder every few seconds "
+                + "and the techdesk reads all of them, so it needs no connection to the machines themselves. "
+                + "Turn it on in Settings \u2192 Techdesk mode; it takes effect at the next restart."),
+        }),
+
+        new TopicSection("KEEPING IT UP TO DATE", new[]
+        {
+            new Topic("Installing an update now",
+                "An automatic update downloads in the background and waits: it is swapped in the next time "
+                + "this station starts SundayReady, so nothing ever changes under an operator mid-service. "
+                + "When one is waiting, Settings \u2192 Updates offers to install it and restart straight away "
+                + "\u2014 which is safe precisely because somebody asked for it. The app closes, comes back a "
+                + "couple of seconds later on the new build, and the checklist is where it was."),
+
+            new Topic("Update channels",
+                "A channel is how far ahead of finished this station is willing to run, not a separate "
+                + "version of the app. Production takes only finished releases and is where anything that "
+                + "runs a service belongs. Beta, alpha and dev each take everything above them as well, so a "
+                + "station on beta still gets production releases \u2014 it just gets the betas first. Put the "
+                + "spare machine on beta and let it find the problems. Updates never go backwards, so coming "
+                + "back from dev to production means installing the production build by hand from the "
+                + "releases page. One catch: following a channel needs 0.15.0 or later. A station on an "
+                + "older build can only see finished releases, whatever its setting says, until it has "
+                + "picked one up."),
+        }),
     };
+
+    /// <summary>Every topic, flattened. What the search box filters over.</summary>
+    public static IReadOnlyList<Topic> Concepts { get; } =
+        Sections.SelectMany(section => section.Topics).ToList();
+
 }

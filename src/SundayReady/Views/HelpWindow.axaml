@@ -40,7 +40,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="64,*">
+    <Grid RowDefinitions="64,Auto,*">
 
         <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
@@ -58,12 +58,36 @@
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" AllowAutoHide="False">
+        <Border Grid.Row="1" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1"
+                Padding="28,14">
+            <Grid ColumnDefinitions="*,14,Auto,10,Auto">
+                <TextBox Grid.Column="0" Classes="field" FontSize="15" Margin="0"
+                         Text="{Binding Query, Mode=TwoWay}"
+                         Watermark="Search — try “red”, “override”, “vmix”, “ready”" />
+                <TextBlock Grid.Column="2" Classes="mono" Text="{Binding ResultLabel}" FontSize="12"
+                           VerticalAlignment="Center" IsVisible="{Binding HasQuery}"
+                           Foreground="{StaticResource TextFaintBrush}" />
+                <Button Grid.Column="4" Classes="quiet" Content="Clear" Padding="12,7"
+                        VerticalAlignment="Center" IsVisible="{Binding HasQuery}"
+                        Command="{Binding ClearQueryCommand}" />
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="2" AllowAutoHide="False">
             <StackPanel Margin="28,24,28,48" Spacing="26">
 
-                <TextBlock Classes="body" Text="{Binding Intro}" />
+                <TextBlock Classes="body" Text="{Binding Intro}" IsVisible="{Binding ShowIntro}" />
 
-                <StackPanel Spacing="12">
+                <Border Classes="entry" IsVisible="{Binding HasNoResults}">
+                    <StackPanel Spacing="7">
+                        <TextBlock Classes="h" Text="Nothing matches that" />
+                        <TextBlock Classes="body"
+                                   Text="Try a single word — the name of a button, or what is going wrong. Clear the search to read the whole thing." />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Spacing="12" IsVisible="{Binding HasItemTypes}">
                     <TextBlock Classes="microLabel" Text="THE THREE KINDS OF ITEM" />
                     <ItemsControl ItemsSource="{Binding ItemTypes}">
                         <ItemsControl.ItemsPanel>
@@ -84,7 +108,37 @@
                     </ItemsControl>
                 </StackPanel>
 
-                <StackPanel Spacing="12">
+                <!-- Grouped, and in the order somebody needs them: using it, then when it goes
+                     wrong, then setting one up, then admin. -->
+                <ItemsControl ItemsSource="{Binding Sections}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><StackPanel Spacing="26" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:HelpSectionViewModel">
+                            <StackPanel Spacing="12">
+                                <TextBlock Classes="microLabel" Text="{Binding Title}" />
+                                <ItemsControl ItemsSource="{Binding Topics}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="svc:Topic">
+                                            <Border Classes="entry">
+                                                <StackPanel Spacing="7">
+                                                    <TextBlock Classes="h" Text="{Binding Title}" />
+                                                    <TextBlock Classes="body" Text="{Binding Body}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <StackPanel Spacing="12" IsVisible="{Binding HasVerifiers}">
                     <TextBlock Classes="microLabel" Text="WHAT THE APP CAN CHECK FOR ITSELF" />
                     <ItemsControl ItemsSource="{Binding Verifiers}">
                         <ItemsControl.ItemsPanel>
@@ -116,25 +170,6 @@
                                         <TextBlock Classes="body" FontSize="14" Text="{Binding Gotcha}"
                                                    IsVisible="{Binding Gotcha, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                                    Foreground="{StaticResource WaitTextBrush}" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-
-                <StackPanel Spacing="12">
-                    <TextBlock Classes="microLabel" Text="WORTH KNOWING" />
-                    <ItemsControl ItemsSource="{Binding Concepts}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="svc:Topic">
-                                <Border Classes="entry">
-                                    <StackPanel Spacing="7">
-                                        <TextBlock Classes="h" Text="{Binding Title}" />
-                                        <TextBlock Classes="body" Text="{Binding Body}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
