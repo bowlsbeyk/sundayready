@@ -168,7 +168,7 @@ jobs:
           <dict>
             <key>CFBundleName</key><string>SundayReady</string>
             <key>CFBundleDisplayName</key><string>SundayReady</string>
-            <key>CFBundleIdentifier</key><string>org.trinitybaptist.sundayready</string>
+            <key>CFBundleIdentifier</key><string>io.github.bowlsbeyk.sundayready</string>
             <key>CFBundleExecutable</key><string>SundayReady</string>
             <key>CFBundleIconFile</key><string>SundayReady</string>
             <key>CFBundlePackageType</key><string>APPL</string>

@@ -1,21 +1,49 @@
 # SundayReady
 
-A boot-time preflight checklist for the A/V stations at Trinity Baptist Church.
+**A preflight checklist for church A/V booths.** It opens itself before the service and makes sure
+the same things get done every week, whoever is sitting there.
 
-Every Sunday an operator sits down and has to get a set of things right before the service starts.
-SundayReady turns that tribal knowledge into a checklist that opens itself at logon — some items the
-operator ticks, some launch software, and some the app verifies for itself by checking whether a
-process is running, a device answers, or an API returns what it should.
+Every Sunday somebody sits down at a sound desk, a streaming PC or a presentation machine and has to
+get a set of things right before the service starts. Most of that knowledge lives in one or two
+people's heads, and it walks out of the building when they go on holiday. SundayReady turns it into a
+checklist that runs at logon — some items a person ticks, some launch software, and some the app
+verifies for itself by checking whether a process is running, a device answers, or an API returns
+what it should.
 
-**One binary runs on every station.** What differs between stations is JSON, not code. Adding a
-station is a config file, never a fork. The same binary is also the techdesk.
+**One binary runs on every station.** What differs between stations — and between churches — is
+JSON, not code. Adding a station is a config file, never a fork. The same binary is also the
+techdesk screen that watches every station at once.
 
-Windows and macOS, self-contained — nothing needs the .NET runtime installed.
+Windows and macOS, self-contained. Nothing to install alongside it, no server, no account, no
+network service. A church with one laptop can use it as sensibly as one with six booths.
+
+## Is this for you?
+
+Probably, if any of these are familiar:
+
+- More than one person runs the booth, and they each do it slightly differently.
+- Something gets forgotten a few times a year — the recording, the stream title, a camera left on
+  the wrong preset — and nobody notices until afterwards.
+- Training a new volunteer means standing behind them for a month.
+- You would like to know, from across the room, whether the sound desk is actually ready.
+
+**It assumes nothing about your gear.** The checks are deliberately generic — is this program
+running, does this URL say what it should, is this device answering on the network, is this NDI
+source being advertised. That covers most booths without SundayReady needing to know what any of your
+equipment is. Nothing here is affiliated with or endorsed by any of the software it can be pointed at.
+
+> **Where it came from, honestly.** It was written for the A/V team at one church, Trinity Baptist,
+> and the sample checklists still smell of it — vMix, ProPresenter, a balcony camera, a Subsplash
+> stream. **None of that is baked in.** The samples are examples to delete or rewrite; see
+> [making it yours](#making-it-yours). It is early software, used every week at the church it was
+> built for and not yet by many others, so expect to find rough edges and please say so when you do.
 
 ## Contents
 
+- [Is this for you?](#is-this-for-you)
 - [Install](#install) · [Windows](#windows) · [macOS](#macos)
 - [The first five minutes](#the-first-five-minutes) — walkthrough, guided tour, help
+- [Making it yours](#making-it-yours) — starting from a blank booth
 - [A Sunday, end to end](#a-sunday-end-to-end)
 - [Writing checklists](#writing-checklists) — [item types](#item-types),
   [instructions and steps](#instructions-and-steps-to-tick-off), [verifiers](#verifiers),
@@ -25,7 +53,8 @@ Windows and macOS, self-contained — nothing needs the .NET runtime installed.
 - [The techdesk](#the-techdesk)
 - [Live viewer counts](#live-viewer-counts) — [YouTube](#youtube), [Facebook](#facebook)
 - [Updating](#updating) · [release channels](#release-channels) · [cutting a release](#cutting-a-release)
-- [Building](#building)
+- [Building, and contributing](#building-and-contributing)
+- [Licence](#licence)
 
 ---
 
@@ -131,6 +160,38 @@ It has a **search box**, which matters more than the contents. Somebody opens th
 something is wrong with ninety seconds to go, not to read a manual — so `red`, `override`, `vmix`
 or `start again` go straight to the answer, and entries whose title matches rank first. The editor
 shows a short version of the same text beside the verifier you are choosing.
+
+---
+
+## Making it yours
+
+A fresh install ships with sample checklists from the church this was written for. They are there so
+the app is not an empty box on first launch — **they are examples, not a starting configuration.**
+Nothing in the app depends on them.
+
+The honest way to start is to throw them away and write down what your booth actually does:
+
+1. **Watch someone do it.** Sit behind your most experienced volunteer one Sunday and write down
+   every single thing they touch before the service, in order. That list is your first checklist,
+   and it will be better than anything you could design at a desk.
+2. **Delete the samples.** **Edit → Delete** on each, or just untick them so they stop being tabs.
+3. **Type your list in as `manual` items** — plain tick-boxes, no automation. Get the words right
+   first. Write them the way you would say them out loud: *"Lens caps off"*, not *"Verify optical
+   apertures unobstructed"*.
+4. **Then automate the ones worth automating.** An item is worth a verifier when it is something the
+   computer can see and a tired person can miss — a program not running, a camera off the network, a
+   recording drive that is full. Leave the rest as tick-boxes. A checklist of twelve honest
+   tick-boxes beats one of four clever checks and eight forgotten steps.
+5. **Write the `checkSteps`.** When a check fails at 10:25, the difference between a useful app and
+   an irritating one is whether it tells the volunteer what to go and look at. This is the part only
+   you can write.
+
+One station per machine, one tab per checklist. A church with a sound desk, a streaming PC and a
+presentation machine has three stations and can point them all at [a techdesk](#the-techdesk).
+
+> The sample files are `livestream-video`, `livestream-audio`, `go-live`, `post-show` and `shutdown`
+> — a reasonable shape for a streaming church even if every line in them is wrong for you. Copy the
+> shape, replace the contents.
 
 ---
 
@@ -517,13 +578,41 @@ in this repository's history.
 
 ---
 
-## Building
+## Building, and contributing
 
 ```bash
 dotnet run --project src/SundayReady
 ```
 
 Avalonia · C# · .NET 9 · MVVM (CommunityToolkit.Mvvm). Published self-contained for `win-x64`,
-`osx-arm64` and `osx-x64`.
+`osx-arm64` and `osx-x64`. Requires the .NET 9 SDK to build; nothing to install to *run* a release.
+
+**Contributions are welcome**, and the most valuable ones are not code:
+
+- **Tell me it broke.** Open an issue. "It wouldn't start on my Mac" is a genuinely useful bug
+  report — especially right now, because the macOS builds are newer and less exercised than the
+  Windows ones.
+- **Tell me what your booth does** that this cannot express. The verifier list is short on purpose,
+  and the gaps are best found by people whose gear I have never seen.
+- **Share a checklist.** If you have written a good one for a kind of station this does not ship a
+  sample for, that is worth more than a feature.
+- **Code**, if you like. Match the surrounding style: comments explain *why*, not *what*, and this
+  codebase leans on them heavily to record the traps it has already fallen into.
+
+Requirements: Windows 10 or 11, or macOS 12 and later.
+
+## Licence
+
+[PolyForm Noncommercial 1.0.0](LICENSE.md).
+
+In plain terms, and this is a summary rather than the licence itself — **the file is what counts**:
+
+- **Churches, charities, schools and personal use: yes, freely.** Use it, run it on as many
+  machines as you like, change it, share your changes. That covers essentially everyone this was
+  written for.
+- **Selling it, or using it commercially: no.** Not without a separate licence.
+- **Contributions are welcome** and are covered by the same terms.
+
+If you want to use it commercially, ask — the answer may well be yes, it just needs a conversation.
 
 [releases]: https://github.com/bowlsbeyk/sundayready/releases/latest

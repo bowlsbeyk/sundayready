@@ -19,8 +19,13 @@ public static class LogonTask
 {
     public const string TaskName = "SundayReady";
 
-    /// <summary>Reverse-DNS label, which is what launchd wants and what shows up in its logs.</summary>
-    public const string LaunchAgentLabel = "org.trinitybaptist.sundayready";
+    /// <summary>
+    /// Reverse-DNS label, which is what launchd wants and what shows up in its logs. Must stay in
+    /// step with CFBundleIdentifier in the release workflow: launchd and Gatekeeper both treat the
+    /// identifier as the app's identity, so changing it after people have installed makes macOS
+    /// think a different app has arrived.
+    /// </summary>
+    public const string LaunchAgentLabel = "io.github.bowlsbeyk.sundayready";
 
     private static readonly TimeSpan Delay = TimeSpan.FromSeconds(30);
 
