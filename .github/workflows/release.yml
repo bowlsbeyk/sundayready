@@ -231,9 +231,58 @@ jobs:
             *)                       echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
           esac
 
+      # Straight at the REST API rather than through a release action. Same reason the SDK no
+      # longer comes from setup-dotnet: codeload has been answering 429 when the runner fetches
+      # an action tarball, and that took out a release run here too. curl and the token that is
+      # already in the job cannot fail that way.
+      #
+      # Written to be safe to re-run: it reuses an existing release for the tag and replaces
+      # assets rather than erroring on a duplicate, so a half-finished run can simply be run
+      # again.
       - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          prerelease: ${{ steps.kind.outputs.prerelease == 'true' }}
-          generate_release_notes: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ steps.kind.outputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}"
+                -H "Accept: application/vnd.github+json"
+                -H "X-GitHub-Api-Version: 2022-11-28")
+
+          id=$(curl -sS "${auth[@]}" "$api/releases/tags/$TAG" | jq -r '.id // empty')
+
+          if [ -z "$id" ]; then
+            id=$(curl -fsS -X POST "${auth[@]}" "$api/releases" \
+                   -d "$(jq -nc --arg t "$TAG" --argjson p "$PRERELEASE" \
+                         '{tag_name:$t, name:$t, prerelease:$p, generate_release_notes:true}')" \
+                 | jq -r '.id')
+            echo "created release $id for $TAG (prerelease=$PRERELEASE)"
+          else
+            echo "release $id already exists for $TAG; reusing it"
+            curl -fsS -X PATCH "${auth[@]}" "$api/releases/$id" \
+              -d "$(jq -nc --argjson p "$PRERELEASE" '{prerelease:$p}')" >/dev/null
+          fi
+
+          for file in dist/*; do
+            name=$(basename "$file")
+
+            old=$(curl -sS "${auth[@]}" "$api/releases/$id/assets?per_page=100" \
+                  | jq -r --arg n "$name" '.[] | select(.name==$n) | .id')
+            if [ -n "$old" ]; then
+              echo "replacing existing $name"
+              curl -fsS -X DELETE "${auth[@]}" "$api/releases/assets/$old"
+            fi
+
+            echo "uploading $name ($(wc -c <"$file") bytes)"
+            curl -fsS -X POST "${auth[@]}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$id/assets?name=$name" \
+              >/dev/null
+          done
+
+          echo "published $TAG:"
+          curl -sS "${auth[@]}" "$api/releases/$id/assets?per_page=100" | jq -r '.[] | "  \(.name)  \(.size)"'
