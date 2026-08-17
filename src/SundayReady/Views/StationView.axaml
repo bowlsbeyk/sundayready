@@ -16,6 +16,9 @@
         <DataTemplate DataType="vm:OverrideViewModel">
             <views:OverrideView />
         </DataTemplate>
+        <DataTemplate DataType="vm:ItemDetailViewModel">
+            <views:ItemDetailView />
+        </DataTemplate>
     </UserControl.DataTemplates>
 
     <UserControl.Styles>
@@ -402,6 +405,12 @@
                                                                                Classes.failing="{Binding IsRowFailed}"
                                                                                IsVisible="{Binding ShowTypeTag}"
                                                                                Text="{Binding TypeTag}" />
+
+                                                                    <!-- The way into instructions or sub-steps. -->
+                                                                    <Button Classes="chip" Margin="0,6,0,0"
+                                                                            IsVisible="{Binding HasDetail}"
+                                                                            Content="{Binding DetailChip}"
+                                                                            Command="{Binding OpenDetailCommand}" />
                                                                 </StackPanel>
                                                             </Grid>
                                                         </Grid>

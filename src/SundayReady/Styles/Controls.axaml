@@ -229,6 +229,19 @@
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
 
+    <!-- Sub-step row: a whole-row hit target, drawn flat rather than as a button. -->
+    <Style Selector="Button.subStep">
+        <Setter Property="Background" Value="{StaticResource PanelRaisedBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource RowBorderBrush}" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="Padding" Value="16,12" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Button.subStep:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource Overlay06Brush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource HairlineStrongBrush}" />
+    </Style>
+
     <!-- ==== Checklist rows ==== -->
 
     <Style Selector="Border.row">

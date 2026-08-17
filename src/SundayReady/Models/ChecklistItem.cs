@@ -35,6 +35,23 @@ public sealed class ChecklistItem
     public List<string> CheckSteps { get; set; } = new();
 
     /// <summary>
+    /// How to do the thing, on demand — not what to check when it breaks, which is
+    /// <see cref="CheckSteps"/>. Read-only: nothing to tick, no effect on readiness. For the
+    /// task a volunteer does four times a year and cannot be expected to remember.
+    /// </summary>
+    public List<string> Instructions { get; set; } = new();
+
+    /// <summary>
+    /// Steps that are ticked off individually. The item goes green on its own once they are
+    /// all done, and is still tickable directly for an operator who knows the routine.
+    /// <para>
+    /// Labels only, deliberately: a sub-step with its own verifier and launch button would be
+    /// a second checklist, and this is meant to keep the main list short.
+    /// </para>
+    /// </summary>
+    public List<string> SubSteps { get; set; } = new();
+
+    /// <summary>
     /// Optional item-specific remediation offered next to "Retry now" on the failed-verify
     /// screen — e.g. "Reload preset". Without one, only Retry and Override are offered.
     /// </summary>

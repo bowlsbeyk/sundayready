@@ -995,6 +995,43 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
         Refresh();
     }
 
+    void IChecklistHost.OpenItemDetail(ChecklistItemViewModel item) =>
+        ActiveDialog = new ItemDetailViewModel(item, () => ActiveDialog = null);
+
+    bool IChecklistHost.IsSubStepDone(string key) =>
+        _state.Items.TryGetValue(key, out var state) && state.Checked;
+
+    /// <summary>
+    /// Sub-steps live in the same per-day store as items, so they clear with everything else
+    /// and an operator interrupted halfway through comes back to where they were.
+    /// </summary>
+    void IChecklistHost.SetSubStepDone(string key, string itemLabel, string subStep, bool done)
+    {
+        if (done)
+        {
+            _state.Items[key] = new ItemState
+            {
+                Checked = true,
+                CheckedAt = DateTimeOffset.Now,
+                Source = CompletionSources.Manual,
+            };
+        }
+        else
+        {
+            _state.Items.Remove(key);
+        }
+
+        _stateStore.Save(_state);
+
+        // One line per sub-step, indented under its item, so the log reads as the work did.
+        _logger.Log(new LogEntry(
+            StationName,
+            SelectedTab?.Label ?? StationName,
+            $"{itemLabel} › {subStep}",
+            done ? LogHow.Manual : LogHow.Cleared,
+            done ? null : "unchecked"));
+    }
+
     void IChecklistHost.OpenFailedDetail(ChecklistItemViewModel item)
     {
         var number = item.Source.Items.IndexOf(item.Item) + 1;

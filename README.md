@@ -132,6 +132,23 @@ editor also shows a short version of the same text next to the verifier you are 
 by the app alone. An `action` with a `verify` block launches, then ticks itself when the
 verifier agrees.
 
+**Instructions and sub-steps.** An item can carry either, reached from a chip on its row:
+
+```jsonc
+{ "label": "Set up the stream in Subsplash", "type": "manual",
+  "instructions": [                       // read-only, opens on a HOW? chip
+    "Open the Subsplash dashboard and sign in.",
+    "Media → Live → New broadcast." ],
+  "subSteps": [                           // ticked individually, shown as 2/4 on the row
+    "Broadcast created in Subsplash",
+    "Stream key pasted into vMix" ] }
+```
+
+`instructions` are guidance and affect nothing. `subSteps` are remembered with the rest of the
+day, and ticking the last one ticks the item — though the item can still be ticked directly by
+someone who knows the routine. Neither is `checkSteps`, which appears only when a verifier has
+*failed*: that is diagnosis, these are the work.
+
 **Verifiers.**
 
 | `kind` | Fields | Passes when |

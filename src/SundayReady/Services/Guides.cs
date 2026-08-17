@@ -125,6 +125,15 @@ public static class Guides
             + "before the station counts as ready\" unticked stays out of it, which is how a post-show or "
             + "shutdown list can exist without holding the gate shut."),
 
+        new Topic("Instructions, and steps to tick off",
+            "An item can carry either or both, reached from a chip on its row. \"How to do it\" is "
+            + "read-only: numbered instructions for the job someone does four times a year and cannot be "
+            + "expected to remember — setting up the stream in Subsplash, say. \"Steps to tick off\" are "
+            + "ticked individually, remembered with the rest of the day, and finishing the last one ticks the "
+            + "item itself; the item can still be ticked directly by anyone who knows the routine. "
+            + "Neither is the same as \"check these, in order\", which only appears when a verifier has "
+            + "failed — that is diagnosis, these are the work."),
+
         new Topic("Ready to go, and what happens after it",
             "Pressing it is the operator saying setup is finished. It is written to the completion log, and "
             + "the checklist then gets out of the way: the screen becomes a count-up into the service with the "

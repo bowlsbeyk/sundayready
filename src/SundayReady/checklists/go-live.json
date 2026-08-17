@@ -4,6 +4,27 @@
   "name": "Go Live",
   "items": [
     {
+      "label": "Set up the stream in Subsplash",
+      "type": "manual",
+      "section": "Final",
+      // "instructions" are read-only: the HOW? chip on the row opens them. For the job
+      // someone does four times a year and cannot be expected to remember.
+      "instructions": [
+        "Open the Subsplash dashboard and sign in.",
+        "Media → Live → New broadcast.",
+        "Name it for this Sunday, e.g. \"Sunday 16 August — 10:30\".",
+        "Copy the RTMP server and stream key from the Encoder panel."
+      ],
+      // "subSteps" are ticked off individually. Finishing them all ticks this item, and the
+      // item can still be ticked directly by someone who knows the routine.
+      "subSteps": [
+        "Broadcast created in Subsplash",
+        "Stream key pasted into vMix",
+        "Title and thumbnail set",
+        "Test frame visible in the Subsplash preview"
+      ]
+    },
+    {
       "label": "Countdown loop running on the stream output",
       "type": "manual",
       "section": "Final"

@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:SundayReady.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="760" d:DesignHeight="620"
+             x:Class="SundayReady.Views.ItemDetailView"
+             x:DataType="vm:ItemDetailViewModel">
+
+    <Border Width="760" MaxHeight="820" Background="{StaticResource PanelBrush}" CornerRadius="10"
+            Padding="32,30">
+        <DockPanel>
+
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,16,*,Auto" Margin="0,0,0,22">
+                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8"
+                        Background="{StaticResource ActionBrush}" VerticalAlignment="Top">
+                    <TextBlock Text="?" FontSize="21" FontWeight="Bold"
+                               Foreground="{StaticResource OnActionBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"
+                               LineHeight="30" TextWrapping="Wrap" />
+                    <TextBlock Classes="mono" Text="{Binding Provenance}" FontSize="12"
+                               Foreground="{StaticResource TextFaintBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Button Grid.Column="3" Command="{Binding CloseCommand}" Background="Transparent"
+                        BorderThickness="0" Padding="8,2" VerticalAlignment="Top">
+                    <TextBlock Text="&#x2715;" FontSize="22" Foreground="{StaticResource TextFainterBrush}" />
+                </Button>
+            </Grid>
+
+            <Button DockPanel.Dock="Bottom" Classes="primary" Content="Done" Padding="22,12" FontSize="15"
+                    CornerRadius="6" HorizontalAlignment="Left" Margin="0,20,0,0"
+                    Command="{Binding CloseCommand}" />
+
+            <ScrollViewer AllowAutoHide="False">
+                <StackPanel Spacing="22" Margin="0,0,14,0">
+
+                    <!-- Read-only: how to do the thing. -->
+                    <StackPanel Spacing="12" IsVisible="{Binding HasInstructions}">
+                        <TextBlock Classes="microLabel" Text="HOW TO DO THIS" />
+                        <ItemsControl ItemsSource="{Binding Instructions}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="12" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:CheckStepViewModel">
+                                    <Grid ColumnDefinitions="24,13,*">
+                                        <Border Grid.Column="0" Width="24" Height="24" CornerRadius="12"
+                                                Background="{StaticResource Overlay06Brush}" VerticalAlignment="Top">
+                                            <TextBlock Classes="mono" Text="{Binding Number}" FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="16"
+                                                   LineHeight="24" TextWrapping="Wrap"
+                                                   Foreground="{StaticResource TextDimBrush}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- Tickable, and remembered with the rest of the day. -->
+                    <StackPanel Spacing="12" IsVisible="{Binding HasSubSteps}">
+                        <TextBlock Classes="microLabel" Text="STEPS" />
+                        <ItemsControl ItemsSource="{Binding Item.SubSteps}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:SubStepViewModel">
+                                    <Button Classes="subStep" Command="{Binding ToggleCommand}"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
+                                        <Grid ColumnDefinitions="Auto,14,*">
+                                            <Panel Grid.Column="0" Width="24" Height="24" VerticalAlignment="Center">
+                                                <Border IsVisible="{Binding IsDone}" CornerRadius="6"
+                                                        Background="{StaticResource OkBrush}">
+                                                    <TextBlock Text="&#x2713;" FontSize="14" FontWeight="Bold"
+                                                               Foreground="{StaticResource OnStatusBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <Border IsVisible="{Binding !IsDone}" CornerRadius="6"
+                                                        BorderThickness="1.5"
+                                                        BorderBrush="{StaticResource Overlay22Brush}" />
+                                            </Panel>
+                                            <TextBlock Grid.Column="2" Text="{Binding Label}" FontSize="16"
+                                                       LineHeight="23" TextWrapping="Wrap"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Classes="railBody" FontSize="13" Text="{Binding SubStepNote}" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

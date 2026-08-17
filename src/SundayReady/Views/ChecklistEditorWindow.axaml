@@ -209,6 +209,24 @@
                                      AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" />
                         </StackPanel>
 
+                        <!-- Applies to any item type: guidance, and steps to tick through. -->
+                        <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" Margin="0,4,0,16" />
+                        <TextBlock Classes="microLabel" Text="HELPING THE OPERATOR" Margin="0,0,0,14" />
+
+                        <TextBlock Classes="fieldLabel" Text="HOW TO DO IT (ONE STEP PER LINE)" />
+                        <TextBox Classes="field" Text="{Binding Instructions, Mode=TwoWay}" FontSize="14"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="86"
+                                 Watermark="Open the Subsplash dashboard&#x0a;Media &#x2192; Live &#x2192; New broadcast" />
+                        <TextBlock Classes="railBody" FontSize="13" Margin="0,0,0,16"
+                                   Text="Read-only instructions, on a HOW? chip on the row. Nothing to tick. For the job someone does four times a year." />
+
+                        <TextBlock Classes="fieldLabel" Text="STEPS TO TICK OFF (ONE PER LINE)" />
+                        <TextBox Classes="field" Text="{Binding SubSteps, Mode=TwoWay}" FontSize="14"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="86"
+                                 Watermark="Create the broadcast&#x0a;Paste the stream key&#x0a;Set the title" />
+                        <TextBlock Classes="railBody" FontSize="13" Margin="0,0,0,16"
+                                   Text="Ticked individually behind a count on the row. Finishing them all ticks the item, and the item can still be ticked directly." />
+
                         <!-- Verifier -->
                         <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" Margin="0,4,0,16" />
                         <TextBlock Classes="microLabel" Text="HOW THE APP CHECKS IT" Margin="0,0,0,14" />

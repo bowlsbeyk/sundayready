@@ -70,6 +70,14 @@ public sealed partial class EditorItemViewModel : ObservableObject
     [ObservableProperty]
     private string _checkSteps = string.Empty;
 
+    /// <summary>How to do the task, one per line. Read-only for the operator.</summary>
+    [ObservableProperty]
+    private string _instructions = string.Empty;
+
+    /// <summary>Steps the operator ticks off, one per line.</summary>
+    [ObservableProperty]
+    private string _subSteps = string.Empty;
+
     [ObservableProperty]
     private string _remediationLabel = string.Empty;
 
@@ -108,6 +116,8 @@ public sealed partial class EditorItemViewModel : ObservableObject
         }
 
         _checkSteps = string.Join(Environment.NewLine, item.CheckSteps);
+        _instructions = string.Join(Environment.NewLine, item.Instructions);
+        _subSteps = string.Join(Environment.NewLine, item.SubSteps);
         _remediationLabel = item.RemediationLabel ?? string.Empty;
         _remediationRun = item.Remediation?.Run ?? string.Empty;
     }
@@ -208,6 +218,8 @@ public sealed partial class EditorItemViewModel : ObservableObject
             Type = Type,
             Section = Blank(Section),
             CheckSteps = SplitLines(CheckSteps),
+            Instructions = SplitLines(Instructions),
+            SubSteps = SplitLines(SubSteps),
         };
 
         if (ShowAction && !string.IsNullOrWhiteSpace(ActionRun))

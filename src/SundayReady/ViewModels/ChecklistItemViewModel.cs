@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SundayReady.Models;
@@ -32,10 +33,40 @@ public enum ItemRowState
     Failed,
 }
 
+/// <summary>One tickable step inside an item.</summary>
+public sealed partial class SubStepViewModel : ObservableObject
+{
+    private readonly Action<SubStepViewModel, bool> _changed;
+
+    [ObservableProperty]
+    private bool _isDone;
+
+    public SubStepViewModel(string label, bool done, Action<SubStepViewModel, bool> changed)
+    {
+        Label = label;
+        _isDone = done;
+        _changed = changed;
+    }
+
+    public string Label { get; }
+
+    [RelayCommand]
+    private void Toggle() => IsDone = !IsDone;
+
+    partial void OnIsDoneChanged(bool value) => _changed(this, value);
+}
+
 /// <summary>What the station needs to know when an item moves.</summary>
 public interface IChecklistHost
 {
     void ItemChanged(ChecklistItemViewModel item, string how, string? detail, TimeSpan? duration);
+
+    /// <summary>Opens the instructions or sub-steps for an item.</summary>
+    void OpenItemDetail(ChecklistItemViewModel item);
+
+    bool IsSubStepDone(string key);
+
+    void SetSubStepDone(string key, string itemLabel, string subStep, bool done);
 
     void OpenFailedDetail(ChecklistItemViewModel item);
 
@@ -102,6 +133,12 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
             // already-running vMix ticks itself — but stay Unknown until launched, so an
             // unlaunched item reads as "press this", not as a failure.
             _status = IsActionType ? VerifyStatus.Unknown : VerifyStatus.Polling;
+        }
+
+        foreach (var label in item.SubSteps)
+        {
+            var key = SubStepKey(label);
+            SubSteps.Add(new SubStepViewModel(label, host.IsSubStepDone(key), OnSubStepChanged));
         }
 
         if (restored is not null)
@@ -211,6 +248,23 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
     public bool ShowTypeTag => !ShowLaunchButton && !ShowRelaunchChip;
 
     public bool ShowSubLine => !string.IsNullOrEmpty(SubLine);
+
+    public ObservableCollection<SubStepViewModel> SubSteps { get; } = new();
+
+    public bool HasInstructions => Item.Instructions.Count > 0;
+
+    public bool HasSubSteps => SubSteps.Count > 0;
+
+    /// <summary>Whether the row offers a way into a detail panel at all.</summary>
+    public bool HasDetail => HasInstructions || HasSubSteps;
+
+    public int SubStepsDone => SubSteps.Count(s => s.IsDone);
+
+    /// <summary>"HOW?" for instructions, "2/5" once there are steps to count.</summary>
+    public string DetailChip => HasSubSteps ? $"{SubStepsDone}/{SubSteps.Count}" : "HOW?";
+
+    [RelayCommand]
+    private void OpenDetail() => _host.OpenItemDetail(this);
 
     /// <summary>The right-hand mono tag: MANUAL, AUTO, or WAITING while a poll is in flight.</summary>
     public string TypeTag => Status switch
@@ -357,6 +411,25 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
         SetChecked(true, CompletionSources.Override, initials, note);
     }
 
+    public string SubStepKey(string subStep) => $"{StateKey} › {subStep}";
+
+    /// <summary>
+    /// A sub-step moving persists it, and completing the last one carries the parent with it —
+    /// which is the point of grouping them under one row.
+    /// </summary>
+    private void OnSubStepChanged(SubStepViewModel step, bool done)
+    {
+        _host.SetSubStepDone(SubStepKey(step.Label), Label, step.Label, done);
+
+        OnPropertyChanged(nameof(SubStepsDone));
+        OnPropertyChanged(nameof(DetailChip));
+
+        if (done && SubSteps.All(s => s.IsDone) && !IsChecked)
+        {
+            SetChecked(true, CompletionSources.Manual, null, null);
+        }
+    }
+
     /// <summary>
     /// Identifies this item's verifier configuration. Two items with the same fingerprint are
     /// asking reality the same question, so their poll state is interchangeable.
@@ -418,6 +491,11 @@ public sealed partial class ChecklistItemViewModel : ObservableObject
     /// </summary>
     public void ClearForNewService()
     {
+        foreach (var step in SubSteps)
+        {
+            step.IsDone = false;
+        }
+
         CheckedBy = null;
         CheckedAt = null;
         OverrideNote = null;
