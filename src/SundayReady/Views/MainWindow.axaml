@@ -15,5 +15,10 @@
         Background="{StaticResource BgBrush}"
         WindowStartupLocation="CenterScreen">
 
-    <views:StationView />
+    <Grid>
+        <views:StationView />
+
+        <!-- Last child, so the spotlight sits over everything. Hidden until a tour runs. -->
+        <views:TourOverlay x:Name="TourLayer" IsVisible="False" />
+    </Grid>
 </Window>

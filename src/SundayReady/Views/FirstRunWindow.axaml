@@ -310,9 +310,13 @@
                 <Button Grid.Column="2" Classes="primary" Padding="26,12" FontSize="15" CornerRadius="6"
                         Content="{Binding NextLabel}" Command="{Binding NextCommand}"
                         IsVisible="{Binding !IsDone}" />
-                <Button Grid.Column="2" Classes="primary" Padding="26,12" FontSize="15" CornerRadius="6"
-                        Content="Open my checklist" Command="{Binding CloseCommand}"
-                        IsVisible="{Binding IsDone}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="11"
+                            IsVisible="{Binding IsDone}">
+                    <Button Classes="secondary" Content="Open my checklist" Padding="20,12"
+                            Command="{Binding CloseCommand}" />
+                    <Button Classes="primary" Content="Show me around" Padding="26,12" FontSize="15"
+                            CornerRadius="6" Command="{Binding StartTourCommand}" />
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>

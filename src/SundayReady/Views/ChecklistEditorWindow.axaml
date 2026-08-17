@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:SundayReady.ViewModels"
         mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="900"
+        xmlns:views="using:SundayReady.Views"
         x:Class="SundayReady.Views.ChecklistEditorWindow"
         x:DataType="vm:ChecklistEditorViewModel"
         Title="Checklists"
@@ -63,7 +64,7 @@
             <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Margin="18,18,10,18">
                 <TextBlock Grid.Row="0" Classes="microLabel" Text="CHECKLIST FILES" Margin="4,0,0,12" />
 
-                <ListBox Grid.Row="1" ItemsSource="{Binding Files}"
+                <ListBox x:Name="TourFiles" Grid.Row="1" ItemsSource="{Binding Files}"
                          SelectedItem="{Binding SelectedFile, Mode=TwoWay}">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="vm:EditorFileViewModel">
@@ -149,7 +150,7 @@
                 </ListBox>
 
                 <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
-                    <Button Classes="primary" Content="Add item" Padding="16,9"
+                    <Button x:Name="TourAddItem" Classes="primary" Content="Add item" Padding="16,9"
                             Command="{Binding SelectedFile.AddItemCommand}" />
                     <Button Classes="secondary" Content="Delete"
                             Command="{Binding SelectedFile.DeleteItemCommand}" />
@@ -171,13 +172,15 @@
                         <TextBlock Classes="microLabel" Text="ITEM" Margin="0,0,0,16" />
 
                         <TextBlock Classes="fieldLabel" Text="LABEL" />
-                        <TextBox Classes="field" Text="{Binding Label, Mode=TwoWay}" FontSize="15"
+                        <TextBox x:Name="TourItemLabel" Classes="field"
+                                 Text="{Binding Label, Mode=TwoWay}" FontSize="15"
                                  TextWrapping="Wrap" AcceptsReturn="False" />
 
                         <Grid ColumnDefinitions="*,14,*">
                             <StackPanel Grid.Column="0">
                                 <TextBlock Classes="fieldLabel" Text="TYPE" />
-                                <ComboBox ItemsSource="{Binding $parent[Window].((vm:ChecklistEditorViewModel)DataContext).ItemTypes}"
+                                <ComboBox x:Name="TourItemType"
+                                          ItemsSource="{Binding $parent[Window].((vm:ChecklistEditorViewModel)DataContext).ItemTypes}"
                                           SelectedItem="{Binding Type, Mode=TwoWay}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
@@ -330,7 +333,7 @@
         <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="28,16">
             <Grid ColumnDefinitions="Auto,11,Auto,*,Auto">
-                <Button Grid.Column="0" Classes="primary" Content="Save" Padding="24,11" FontSize="15"
+                <Button x:Name="TourSave" Grid.Column="0" Classes="primary" Content="Save" Padding="24,11" FontSize="15"
                         CornerRadius="6" Command="{Binding SaveCommand}" />
                 <Button Grid.Column="2" Classes="secondary" Content="Revert to disk" Padding="20,11"
                         FontSize="15" CornerRadius="6" Command="{Binding RevertCommand}" />
@@ -341,5 +344,8 @@
                            Text="TICKED FILES SHOW AS TABS ON THIS PC" />
             </Grid>
         </Border>
+
+        <!-- Spans every row so the spotlight covers the whole window. -->
+        <views:TourOverlay x:Name="TourLayer" Grid.Row="0" Grid.RowSpan="3" IsVisible="False" />
     </Grid>
 </Window>

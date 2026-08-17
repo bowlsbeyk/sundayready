@@ -35,6 +35,10 @@
     <SolidColorBrush x:Key="Overlay20Brush" Color="#33FFFFFF" />
     <SolidColorBrush x:Key="Overlay22Brush" Color="#38FFFFFF" />
 
+    <!-- Dim behind the guided tour's spotlight. Dark rather than a lightening overlay, because
+         it has to read as "not this bit" over panels that are already near-black. -->
+    <SolidColorBrush x:Key="ScrimBrush" Color="#B4000000" />
+
     <!-- Text ramp -->
     <SolidColorBrush x:Key="TextBrush" Color="#e9ebee" />
     <SolidColorBrush x:Key="TextDimBrush" Color="#c7ccd2" />

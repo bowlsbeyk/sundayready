@@ -155,6 +155,15 @@ public static class Guides
             + "thing in a checklist and the app cannot write it for you: it is what you would tell a volunteer "
             + "over the phone. \"Is the PoE injector lit? It's the grey box behind the booth.\""),
 
+        new Topic("The guided tour",
+            "\u201cShow me around\u201d, at the top of this window, dims the app and walks you round "
+            + "the real controls one at a time \u2014 the tabs, the list, the Ready to go gate \u2014 and "
+            + "then has you actually open the editor, add an item and save it. Ten stops, and a Skip "
+            + "tour button sits at the top throughout. It is a different thing from the setup "
+            + "walkthrough a new machine gets: that one configures a station without ever showing "
+            + "you the app, and this one shows you the app without changing anything you have not "
+            + "chosen to change."),
+
         new Topic("The setup walkthrough",
             "A machine that has never run SundayReady opens a short walkthrough instead of an empty "
             + "list: name the station, say when the services are, and pick or create a first "

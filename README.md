@@ -34,6 +34,15 @@ you already have: a name that collides gets a numbered suffix.
 
 Nothing needs the .NET runtime installed; releases are self-contained.
 
+**Then there is the guided tour.** The walkthrough gets a station configured without ever showing
+you the app; the tour is the other half. It dims the window and spotlights one real control at a
+time — the tabs, the list, the **Ready to go** gate — and then has you open the editor, add an
+item and save it for yourself, because being shown where a button is and pressing it are different
+amounts of learning. Ten stops, with **Skip tour** pinned at the top throughout.
+
+It offers itself at the end of the setup walkthrough ("Show me around"), and is always available
+from the same button at the top of **HELP**.
+
 **Every item in a new checklist is a plain tick-box, on purpose.** An item that launches vMix
 needs a path that is right for your building, and one that checks a camera needs its address.
 Shipped as guesses they would go red within seconds on a machine where none of that is configured

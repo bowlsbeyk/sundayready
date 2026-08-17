@@ -18,6 +18,9 @@ public partial class FirstRunWindow : Window
     {
         if (DataContext is FirstRunViewModel model)
         {
+            // Started before the close, so the station's overlay is already armed when this
+            // window goes and the first step is on screen immediately rather than after a blink.
+            model.TourRequested += (_, _) => TourHost.Start();
             model.Finished += (_, _) => Close();
         }
     }

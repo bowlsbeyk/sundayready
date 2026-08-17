@@ -268,6 +268,25 @@ public sealed partial class FirstRunViewModel : ObservableObject
     /// <summary>Raised when the walkthrough is over, so the window can close and the app reload.</summary>
     public event EventHandler? Finished;
 
+    /// <summary>
+    /// Raised when the person wants the guided tour after setting up. Separate from
+    /// <see cref="Finished"/> because the window has to close either way, and only the view knows
+    /// how to start a tour over the real windows.
+    /// </summary>
+    public event EventHandler? TourRequested;
+
+    /// <summary>
+    /// Finishes setup and then walks them round the real interface. The two are complementary:
+    /// this screen got the station configured without ever showing them the app.
+    /// </summary>
+    [RelayCommand]
+    private void StartTour()
+    {
+        SetupState.MarkDone(skipped: false);
+        TourRequested?.Invoke(this, EventArgs.Empty);
+        Finished?.Invoke(this, EventArgs.Empty);
+    }
+
     [RelayCommand]
     private void Next()
     {

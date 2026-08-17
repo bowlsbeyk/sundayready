@@ -102,9 +102,9 @@
                          still gets an operator there. -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,20,0"
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Classes="chip" Content="HELP" Click="OnHelpClick" />
+                        <Button x:Name="TourHelp" Classes="chip" Content="HELP" Click="OnHelpClick" />
                         <Button Classes="chip" Content="TECHDESK" Click="OnTechdeskClick" />
-                        <Button Classes="chip" Content="EDIT" Click="OnEditClick" />
+                        <Button x:Name="TourEdit" Classes="chip" Content="EDIT" Click="OnEditClick" />
                         <Button Classes="chip" Content="RELOAD" Command="{Binding ReloadCommand}" />
                         <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick" />
                         <Button Classes="chip" Content="LOG" Click="OnLogClick" />
@@ -159,7 +159,7 @@
                             IsVisible="{Binding ChecklistPinned}"
                             Command="{Binding ToggleChecklistCommand}" />
 
-                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tabs}" Margin="0,0,0,22"
+                    <ItemsControl x:Name="TourTabs" Grid.Row="1" ItemsSource="{Binding Tabs}" Margin="0,0,0,22"
                                   IsVisible="{Binding ShowChecklistArea}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -293,7 +293,7 @@
                       </StackPanel>
                     </ScrollViewer>
 
-                    <ScrollViewer x:Name="ChecklistScroll" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
+                    <ScrollViewer x:Name="TourList" Grid.Row="2" HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto" AllowAutoHide="False"
                                   IsVisible="{Binding ShowChecklistArea}">
                         <!-- The trailing space is a margin on the content, not Padding on the
@@ -481,7 +481,7 @@
                             <StackPanel Margin="18" Spacing="10">
                                 <TextBlock Classes="microLabel" Text="{Binding GateLabel}" />
                                 <TextBlock Classes="railBody" Text="{Binding GateExplanation}" />
-                                <Button Classes="gate" Classes.open="{Binding IsGateOpen}"
+                                <Button x:Name="TourReady" Classes="gate" Classes.open="{Binding IsGateOpen}"
                                         IsEnabled="{Binding IsGateOpen}" Content="Ready to go" IsVisible="{Binding IsSetup}"
                                         Command="{Binding ReadyToGoCommand}" Margin="0,4,0,0" />
                                 <TextBlock Classes="mono" Text="{Binding SignedOffLine}" FontSize="12"
