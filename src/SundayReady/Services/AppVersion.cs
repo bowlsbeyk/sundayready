@@ -3,30 +3,49 @@ using System.Reflection;
 namespace SundayReady.Services;
 
 /// <summary>
-/// The running build's version. Stamped by the csproj (and overridden by the release
-/// workflow from the pushed tag), never hand-typed into the UI.
+/// The running build's version. Stamped by the csproj (and overridden by the release workflow
+/// from the pushed tag), never hand-typed into the UI.
 /// </summary>
 public static class AppVersion
 {
-    public static Version Current { get; } =
-        Assembly.GetEntryAssembly()?.GetName().Version is { } version
-            ? new Version(version.Major, version.Minor, version.Build < 0 ? 0 : version.Build)
-            : new Version(0, 0, 0);
+    /// <summary>
+    /// Version and channel together, so a prerelease build knows it is one.
+    /// <para>
+    /// Read from <c>AssemblyInformationalVersion</c>, which is the only assembly attribute that
+    /// can carry <c>-beta.2</c> — the numeric assembly version cannot. It falls back to the
+    /// numeric version, which means a build with no informational version reads as production;
+    /// that is the safe way round, since a station then only accepts finished releases.
+    /// </para>
+    /// </summary>
+    public static ReleaseVersion Current { get; } = ResolveCurrent();
 
-    /// <summary>Top-bar form: <c>v0.4.0</c>.</summary>
-    public static string Display => $"v{Current.ToString(3)}";
+    /// <summary>Top-bar form: <c>v0.14.0</c>, or <c>v0.15.0-beta.2</c> on a prerelease.</summary>
+    public static string Display => Current.Tag;
 
-    /// <summary>Parses a release tag such as <c>v0.5.1</c>. Returns null if it is not a version.</summary>
-    public static Version? ParseTag(string? tag)
+    /// <summary>The channel this build was cut on — the floor for what it will update to.</summary>
+    public static ReleaseChannel Channel => Current.Channel;
+
+    /// <summary>Parses a release tag such as <c>v0.5.1</c> or <c>v0.6.0-beta.1</c>.</summary>
+    public static ReleaseVersion? ParseTag(string? tag) => ReleaseVersion.Parse(tag);
+
+    private static ReleaseVersion ResolveCurrent()
     {
-        if (string.IsNullOrWhiteSpace(tag))
+        var assembly = Assembly.GetEntryAssembly();
+
+        var informational = assembly
+            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (ReleaseVersion.Parse(informational) is { } parsed)
         {
-            return null;
+            return parsed;
         }
 
-        var trimmed = tag.TrimStart('v', 'V');
-        return Version.TryParse(trimmed, out var parsed)
-            ? new Version(parsed.Major, parsed.Minor, parsed.Build < 0 ? 0 : parsed.Build)
-            : null;
+        var numeric = assembly?.GetName().Version;
+        var version = numeric is null
+            ? new Version(0, 0, 0)
+            : new Version(numeric.Major, numeric.Minor, numeric.Build < 0 ? 0 : numeric.Build);
+
+        return new ReleaseVersion(version, ReleaseChannel.Production, 0);
     }
 }

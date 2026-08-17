@@ -149,6 +149,70 @@ day, and ticking the last one ticks the item — though the item can still be ti
 someone who knows the routine. Neither is `checkSteps`, which appears only when a verifier has
 *failed*: that is diagnosis, these are the work.
 
+## Installing on a Mac
+
+Grab the zip for the machine from [Releases](https://github.com/bowlsbeyk/sundayready/releases) —
+`SundayReady-osx-arm64.zip` for Apple Silicon, `SundayReady-osx-x64.zip` for Intel — unzip it and
+drag `SundayReady.app` into Applications.
+
+The first launch needs one extra step. These builds are ad-hoc signed but **not notarized**, which
+takes a paid Apple Developer account, so macOS blocks the first open:
+
+> "SundayReady" cannot be opened because Apple cannot check it for malicious software.
+
+Clear it once, either way:
+
+- **System Settings → Privacy & Security**, scroll to the bottom, and press **Open Anyway** next to
+  the message about SundayReady. (On macOS 15 and later this is the only route — right-click → Open
+  no longer works.)
+- or in Terminal:
+
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/SundayReady.app
+  ```
+
+That is once per machine, not once per update: updates the app downloads itself are never
+quarantined, so in-app updating never hits this again.
+
+**Where a Mac keeps its checklists.** Not inside the bundle. An update on macOS replaces the whole
+`.app`, so anything in there would be destroyed by it — the checklists and `station.json` live in
+`~/Library/Application Support/SundayReady/` instead, seeded from the samples on first run. On
+Windows they stay next to the exe, because there an update replaces only the exe.
+
+**What does not work on a Mac.** Nothing platform-specific is silently broken, but two verifier
+kinds are aimed at Windows software: `processRunning` looks for a process by name, which works but
+wants a Mac process name, and vMix does not exist on macOS at all. Quick-launch tiles take `.app`
+paths and URLs. Start-at-login uses a LaunchAgent, and API tokens go into the login Keychain
+instead of DPAPI.
+
+## Release channels
+
+A tag is a release, and the tag's suffix is the channel:
+
+| Tag | Channel | Who takes it |
+|---|---|---|
+| `v1.2.3` | production | every station |
+| `v1.2.3-beta.1` | beta | stations set to beta, alpha or dev |
+| `v1.2.3-alpha.1` | alpha | alpha and dev |
+| `v1.2.3-dev.4` | dev | dev only |
+
+A channel is a risk tolerance, not a branch — there is one history of releases and a station's
+channel says how early in it that station is happy to pick them up. Lower channels take everything
+above them too, so a station on beta still gets production releases; it just sees the betas first.
+
+Set it per station in **Settings → Updates**, or as `updates.channel` in `station.json`. It defaults
+to production, so a station only ever leaves it deliberately.
+
+Cutting one:
+
+```bash
+git tag v0.15.0-beta.1 && git push origin v0.15.0-beta.1
+```
+
+The workflow builds `win-x64`, `osx-arm64` and `osx-x64`, marks anything with a suffix as a GitHub
+prerelease, and publishes the assets with a `SHA256SUMS.txt`. Nothing else changes — the suffix is
+the whole mechanism, and the app reads it back out of its own `InformationalVersion`.
+
 **Verifiers.**
 
 | `kind` | Fields | Passes when |

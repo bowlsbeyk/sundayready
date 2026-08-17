@@ -440,11 +440,54 @@
                             <CheckBox IsChecked="{Binding UpdatesEnabled, Mode=TwoWay}"
                                       Content="Check for updates on startup and stage them for the next launch" />
                             <TextBlock Classes="railBody" FontSize="14"
-                                       Text="Updates never install while the app is open — a staged build is swapped in the next time this PC starts SundayReady, so nothing changes under an operator mid-service." />
+                                       Text="An automatic update never installs itself while the app is open — it is swapped in the next time this station starts SundayReady, so nothing changes under an operator mid-service. Use the button below to install one now." />
+
+                            <TextBlock Classes="microLabel" Text="UPDATE CHANNEL" Margin="0,6,0,0" />
+                            <ItemsControl ItemsSource="{Binding Channels}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:UpdateChannelViewModel">
+                                        <Button Classes="subStep" Command="{Binding SelectCommand}"
+                                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
+                                            <Grid ColumnDefinitions="Auto,14,Auto,12,*">
+                                                <Panel Grid.Column="0" Width="20" Height="20"
+                                                       VerticalAlignment="Center">
+                                                    <Ellipse IsVisible="{Binding !IsSelected}" StrokeThickness="1.5"
+                                                             Stroke="{StaticResource Overlay22Brush}" />
+                                                    <Ellipse IsVisible="{Binding IsSelected}"
+                                                             Fill="{StaticResource ActionBrush}" />
+                                                    <Ellipse IsVisible="{Binding IsSelected}" Width="7" Height="7"
+                                                             Fill="{StaticResource OnActionBrush}" />
+                                                </Panel>
+                                                <TextBlock Grid.Column="2" Classes="mono" Text="{Binding Label}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="4" Text="{Binding Detail}" FontSize="14"
+                                                           TextWrapping="Wrap" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextMutedBrush}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Classes="railBody" FontSize="14" Text="{Binding ChannelNote}" />
+
                             <StackPanel Orientation="Horizontal" Spacing="11">
                                 <Button Classes="primary" Content="Check now" Padding="18,10"
                                         IsEnabled="{Binding !IsCheckingUpdate}"
                                         Command="{Binding CheckForUpdatesCommand}" />
+                                <Button Classes="primary" Padding="18,10"
+                                        IsVisible="{Binding HasStagedUpdate}"
+                                        IsEnabled="{Binding !IsRestarting}"
+                                        Command="{Binding RestartIntoUpdateCommand}">
+                                    <TextBlock>
+                                        <Run Text="Install" />
+                                        <Run Text="{Binding StagedVersion}" />
+                                        <Run Text="and restart" />
+                                    </TextBlock>
+                                </Button>
                                 <Button Classes="secondary" Content="Open releases page"
                                         Command="{Binding OpenReleasesCommand}" />
                             </StackPanel>

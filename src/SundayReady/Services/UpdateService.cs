@@ -6,7 +6,12 @@ using System.Text.Json.Serialization;
 namespace SundayReady.Services;
 
 /// <summary>A release newer than the running build, and the asset to fetch.</summary>
-public sealed record AvailableUpdate(Version Version, string Tag, string DownloadUrl, long Size, string? Sha256);
+public sealed record AvailableUpdate(
+    ReleaseVersion Version,
+    string Tag,
+    string DownloadUrl,
+    long Size,
+    string? Sha256);
 
 /// <summary>An update already downloaded and waiting for the next launch.</summary>
 public sealed class PendingUpdate
@@ -25,8 +30,8 @@ public sealed class PendingUpdate
 
 /// <summary>
 /// Checks GitHub Releases for a newer build and stages it on disk. Applying it is
-/// <see cref="UpdateInstaller"/>'s job, at the next launch — nothing is ever swapped under an
-/// operator mid-service.
+/// <see cref="UpdateInstaller"/>'s job — either at the next launch, or immediately when an
+/// operator asks for it from the settings screen. Nothing is ever swapped unasked mid-service.
 /// <para>
 /// The repository is public, so no token is involved and none of this touches credentials.
 /// </para>
@@ -35,8 +40,11 @@ public sealed class UpdateService : IDisposable
 {
     public const string DefaultRepository = "bowlsbeyk/sundayready";
 
-    /// <summary>Matches the asset the release workflow uploads.</summary>
-    private const string AssetName = "SundayReady-win-x64.exe";
+    /// <summary>
+    /// How many releases back to look. A station left off for a season can be several releases
+    /// behind, and on a narrow channel most of the recent tags will not be ones it accepts.
+    /// </summary>
+    private const int ReleasesToScan = 40;
 
     private readonly HttpClient _client;
     private readonly string _repository;
@@ -56,35 +64,73 @@ public sealed class UpdateService : IDisposable
     public string ReleasesUrl => $"https://github.com/{_repository}/releases";
 
     /// <summary>
-    /// Returns the latest release if it is newer than the running build, otherwise null.
-    /// Network failure is not an error worth surfacing loudly — it throws, and the caller
-    /// records it as a status line rather than bothering the operator.
+    /// Returns the newest release this station is willing to run, if it is newer than the
+    /// running build. Network failure is not an error worth surfacing loudly — it throws, and
+    /// the caller records it as a status line rather than bothering the operator.
+    /// <para>
+    /// This walks the release list rather than asking for <c>/releases/latest</c>, because that
+    /// endpoint never returns a prerelease: a station on beta would sit on production forever.
+    /// </para>
     /// </summary>
-    public async Task<AvailableUpdate?> CheckAsync(CancellationToken cancellationToken)
+    public async Task<AvailableUpdate?> CheckAsync(ReleaseChannel channel, CancellationToken cancellationToken)
     {
-        var url = $"https://api.github.com/repos/{_repository}/releases/latest";
-        var release = await _client.GetFromJsonAsync<GitHubRelease>(url, cancellationToken).ConfigureAwait(true);
+        var url = $"https://api.github.com/repos/{_repository}/releases?per_page={ReleasesToScan}";
+        var releases = await _client
+            .GetFromJsonAsync<List<GitHubRelease>>(url, cancellationToken)
+            .ConfigureAwait(true);
 
-        var version = AppVersion.ParseTag(release?.TagName);
-        if (release is null || version is null || version <= AppVersion.Current)
+        if (releases is null)
         {
             return null;
         }
 
-        var asset = release.Assets.FirstOrDefault(a =>
-            string.Equals(a.Name, AssetName, StringComparison.OrdinalIgnoreCase));
+        AvailableUpdate? best = null;
 
-        if (asset?.BrowserDownloadUrl is null)
+        foreach (var release in releases)
         {
-            return null;
+            if (release.Draft)
+            {
+                continue;
+            }
+
+            // The tag is the authority on which channel a release belongs to, not GitHub's
+            // prerelease flag — the tag is what gets stamped into the build itself.
+            if (ReleaseVersion.Parse(release.TagName) is not { } version
+                || !version.IsOffered(channel)
+                || version <= AppVersion.Current
+                || (best is not null && version <= best.Version))
+            {
+                continue;
+            }
+
+            if (FindAsset(release) is not { } asset || asset.BrowserDownloadUrl is null)
+            {
+                // A release with no build for this machine — an osx-only hotfix seen from a
+                // booth PC, say. Skip it rather than treating it as the newest thing available.
+                continue;
+            }
+
+            // GitHub reports asset digests as "sha256:<hex>" when it has one.
+            var sha = asset.Digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true
+                ? asset.Digest["sha256:".Length..]
+                : null;
+
+            best = new AvailableUpdate(
+                version,
+                release.TagName ?? version.Tag,
+                asset.BrowserDownloadUrl,
+                asset.Size,
+                sha);
         }
 
-        // GitHub reports asset digests as "sha256:<hex>" when it has one.
-        var sha = asset.Digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true
-            ? asset.Digest["sha256:".Length..]
-            : null;
+        return best;
+    }
 
-        return new AvailableUpdate(version, release.TagName ?? string.Empty, asset.BrowserDownloadUrl, asset.Size, sha);
+    private static GitHubAsset? FindAsset(GitHubRelease release)
+    {
+        var wanted = AppPlatform.UpdateAssetName;
+        return release.Assets.FirstOrDefault(a =>
+            string.Equals(a.Name, wanted, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Downloads the asset and records it as pending. Returns the staged file path.</summary>
@@ -92,7 +138,10 @@ public sealed class UpdateService : IDisposable
     {
         Directory.CreateDirectory(AppPaths.UpdatesDirectory);
 
-        var target = Path.Combine(AppPaths.UpdatesDirectory, $"SundayReady-{update.Version.ToString(3)}.exe");
+        // Same extension as the asset: a macOS bundle arrives as a .zip and the installer has
+        // to be able to tell that from a Windows single-file .exe.
+        var extension = Path.GetExtension(AppPlatform.UpdateAssetName);
+        var target = Path.Combine(AppPaths.UpdatesDirectory, $"SundayReady-{update.Version.Text}{extension}");
         var partial = target + ".part";
 
         await using (var response = await _client.GetStreamAsync(update.DownloadUrl, cancellationToken).ConfigureAwait(true))
@@ -119,7 +168,7 @@ public sealed class UpdateService : IDisposable
 
         WritePending(new PendingUpdate
         {
-            Version = update.Version.ToString(3),
+            Version = update.Version.Text,
             File = target,
             Sha256 = actual,
         });
@@ -175,6 +224,9 @@ public sealed class UpdateService : IDisposable
     {
         [JsonPropertyName("tag_name")]
         public string? TagName { get; set; }
+
+        [JsonPropertyName("draft")]
+        public bool Draft { get; set; }
 
         [JsonPropertyName("assets")]
         public List<GitHubAsset> Assets { get; set; } = new();

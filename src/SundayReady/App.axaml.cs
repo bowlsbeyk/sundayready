@@ -21,6 +21,10 @@ public partial class App : Application
         {
             AppPaths.EnsureDataDirectories();
 
+            // On macOS the checklists live outside the .app, because an update replaces the
+            // whole bundle. First run copies the shipped samples out to where they will survive.
+            AppPaths.SeedContent();
+
             var checklists = new ChecklistLoader();
             var stationLoader = new StationConfigLoader(checklists);
             var config = stationLoader.Load();
@@ -42,6 +46,7 @@ public partial class App : Application
                 desktop.ShutdownRequested += (_, _) => viewModel.Dispose();
                 viewModel.Start();
             }
+
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -99,7 +104,8 @@ public partial class App : Application
         try
         {
             using var updates = new UpdateService(config.Updates.Repository);
-            if (await updates.CheckAsync(CancellationToken.None) is { } available)
+            var channel = config.Updates.EffectiveChannel;
+            if (await updates.CheckAsync(channel, CancellationToken.None) is { } available)
             {
                 await updates.StageAsync(available, CancellationToken.None);
             }

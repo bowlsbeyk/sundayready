@@ -131,6 +131,20 @@ public sealed class UpdateSettings
 
     /// <summary>Checks on startup and stages what it finds; the swap happens at next launch.</summary>
     public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// How far ahead of stable this station is willing to run: <c>production</c>, <c>beta</c>,
+    /// <c>alpha</c> or <c>dev</c>. Defaults to production, so a station only ever moves off it
+    /// deliberately. See <see cref="Services.ReleaseChannel"/>.
+    /// </summary>
+    public string? Channel { get; set; }
+
+    /// <summary>The parsed <see cref="Channel"/>, falling back to production on anything unknown.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Services.ReleaseChannel EffectiveChannel =>
+        Services.ReleaseVersion.TryParseChannel(Channel, out var parsed)
+            ? parsed
+            : Services.ReleaseChannel.Production;
 }
 
 public sealed class ServiceTimes

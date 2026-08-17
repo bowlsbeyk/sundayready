@@ -1,7 +1,15 @@
 name: Release
 
-# Cutting a release is pushing a tag. The tag is the version — it is stamped into the exe,
-# and the in-app updater compares against it.
+# Cutting a release is pushing a tag. The tag is the version — it is stamped into the build, and
+# the in-app updater compares against it.
+#
+#   v1.2.3          production. Every station takes it.
+#   v1.2.3-beta.1   beta. Only stations set to beta or below.
+#   v1.2.3-alpha.1  alpha.
+#   v1.2.3-dev.4    dev. A machine nobody depends on.
+#
+# The suffix is the whole mechanism: it goes into the build's InformationalVersion, and the
+# updater reads it back to decide who is offered what. See Services/ReleaseChannel.cs.
 on:
   push:
     tags:
@@ -9,10 +17,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
-    runs-on: windows-latest
-    permissions:
-      contents: write
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: osx-arm64
+            os: macos-latest
+          - rid: osx-x64
+            os: macos-latest
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -21,51 +38,168 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Derive version from tag
+      - name: Derive version and channel from the tag
         id: version
         shell: bash
         run: |
           RAW="${GITHUB_REF_NAME}"
-          VERSION="${RAW#v}"
-          if [ -z "$VERSION" ] || ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "Tag '$RAW' is not vMAJOR.MINOR.PATCH — the updater cannot compare it." >&2
+          FULL="${RAW#v}"
+
+          # AssemblyVersion cannot hold a prerelease suffix, so the two are tracked separately:
+          # NUMERIC goes in Version, FULL goes in InformationalVersion, and the app reads the
+          # latter. Keeping them in step is what makes "v0.15.0-beta.1" show up as that in the UI.
+          NUMERIC="${FULL%%-*}"
+
+          if ! echo "$NUMERIC" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Tag '$RAW' does not start with MAJOR.MINOR.PATCH — the updater cannot compare it." >&2
             exit 1
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Publish self-contained single file
-        shell: pwsh
-        run: >
-          dotnet publish src/SundayReady/SundayReady.csproj
-          -c Release
-          -p:PublishSingleFile=true
-          -p:Version=${{ steps.version.outputs.version }}
-          -o publish
+          SUFFIX=""
+          if [ "$FULL" != "$NUMERIC" ]; then
+            SUFFIX="${FULL#*-}"
+            if ! echo "$SUFFIX" | grep -Eq '^(beta|alpha|dev)(\.[0-9]+)?$'; then
+              echo "Tag '$RAW' has suffix '-$SUFFIX'. Only -beta.N, -alpha.N and -dev.N are channels." >&2
+              exit 1
+            fi
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
 
-      # Two assets on purpose. The bare exe is what the in-app updater downloads, so an
-      # update never touches a station's own checklists or station.json. The zip is for
-      # setting up a booth PC the first time.
-      - name: Stage assets
+          echo "full=$FULL"             >> "$GITHUB_OUTPUT"
+          echo "numeric=$NUMERIC"       >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Building $FULL (prerelease=$PRERELEASE) for ${{ matrix.rid }}"
+
+      - name: Publish self-contained
+        shell: bash
+        run: |
+          dotnet publish src/SundayReady/SundayReady.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:Version=${{ steps.version.outputs.numeric }} \
+            -p:InformationalVersion=${{ steps.version.outputs.full }} \
+            -o publish
+
+      # Two Windows assets on purpose. The bare exe is what the in-app updater downloads, so an
+      # update never touches a station's own checklists or station.json — they sit beside it. The
+      # zip is for setting up a booth PC the first time.
+      - name: Stage Windows assets
+        if: startsWith(matrix.rid, 'win-')
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path dist | Out-Null
-          Copy-Item publish/SundayReady.exe dist/SundayReady-win-x64.exe
+          Copy-Item publish/SundayReady.exe "dist/SundayReady-${{ matrix.rid }}.exe"
 
           New-Item -ItemType Directory -Path bundle | Out-Null
           Copy-Item publish/SundayReady.exe bundle/SundayReady.exe
           Copy-Item -Recurse publish/checklists bundle/checklists
           Copy-Item publish/station.json bundle/station.json
-          Compress-Archive -Path bundle/* -DestinationPath dist/SundayReady-win-x64.zip
+          Compress-Archive -Path bundle/* -DestinationPath "dist/SundayReady-${{ matrix.rid }}.zip"
 
-          Get-FileHash dist/SundayReady-win-x64.exe -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLower())  SundayReady-win-x64.exe" } |
-            Out-File -Encoding utf8 dist/SHA256SUMS.txt
+      # macOS gets one asset, used for both first install and updates. A single-file publish for
+      # osx still leaves the Skia, HarfBuzz and Avalonia dylibs beside the binary, so there is no
+      # "just the executable" to hand out — the bundle is the unit, and the updater replaces all
+      # of it. Which is also why Mac stations keep their checklists outside the bundle.
+      - name: Build the .app bundle
+        if: startsWith(matrix.rid, 'osx-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="dist/SundayReady.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+          cp -R publish/. "$APP/Contents/MacOS/"
+          rm -f "$APP/Contents/MacOS/"*.pdb
+          chmod +x "$APP/Contents/MacOS/SundayReady"
+
+          # png -> icns. sips and iconutil are both part of macOS, so no extra tooling.
+          ICONSET="$(mktemp -d)/SundayReady.iconset"
+          mkdir -p "$ICONSET"
+          for size in 16 32 128 256 512; do
+            sips -z $size $size src/SundayReady/Assets/logo.png \
+              --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+            sips -z $((size * 2)) $((size * 2)) src/SundayReady/Assets/logo.png \
+              --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/SundayReady.icns"
+
+          cat > "$APP/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>SundayReady</string>
+            <key>CFBundleDisplayName</key><string>SundayReady</string>
+            <key>CFBundleIdentifier</key><string>org.trinitybaptist.sundayready</string>
+            <key>CFBundleExecutable</key><string>SundayReady</string>
+            <key>CFBundleIconFile</key><string>SundayReady</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>${{ steps.version.outputs.full }}</string>
+            <key>CFBundleVersion</key><string>${{ steps.version.outputs.numeric }}</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+            <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Ad-hoc signature. Not notarized — that needs a paid Apple Developer account — but a
+          # bundle with no signature at all is refused outright on Apple Silicon, whereas an
+          # ad-hoc one runs once the operator clears quarantine. The README says how.
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --verbose "$APP"
+
+          # ditto, not zip: it is the one tool that preserves the symlinks and metadata inside a
+          # bundle, and the updater uses ditto to expand it again for the same reason.
+          ( cd dist && ditto -c -k --sequesterRsrc --keepParent \
+              SundayReady.app "SundayReady-${{ matrix.rid }}.zip" )
+          rm -rf "$APP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect assets and checksum them
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find artifacts -type f -exec cp {} dist/ \;
+
+          # Written outside dist and moved in, so the sums file cannot end up hashing itself.
+          ( cd dist && sha256sum * ) > SHA256SUMS.txt
+          mv SHA256SUMS.txt dist/
+          cat dist/SHA256SUMS.txt
+
+      - name: Work out whether this is a prerelease
+        id: kind
+        shell: bash
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            *-beta*|*-alpha*|*-dev*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)                       echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/SundayReady-win-x64.exe
-            dist/SundayReady-win-x64.zip
-            dist/SHA256SUMS.txt
+          files: dist/*
+          prerelease: ${{ steps.kind.outputs.prerelease == 'true' }}
           generate_release_notes: true

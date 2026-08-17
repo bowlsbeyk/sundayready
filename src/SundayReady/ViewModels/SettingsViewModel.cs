@@ -27,6 +27,38 @@ public sealed partial class SettingsPageViewModel : ObservableObject
     private void Select() => Selecting?.Invoke(this);
 }
 
+/// <summary>
+/// One choice in the UPDATE CHANNEL list. A channel is a risk tolerance, so the rows read as a
+/// ladder from "only finished releases" down to "everything, including throwaway builds".
+/// </summary>
+public sealed partial class UpdateChannelViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public UpdateChannelViewModel(ReleaseChannel channel)
+    {
+        Channel = channel;
+        Label = ReleaseVersion.Suffix(channel).ToUpperInvariant();
+
+        // "Production — only finished releases…" without repeating the name already in Label.
+        var described = ReleaseVersion.Describe(channel);
+        var dash = described.IndexOf('\u2014');
+        Detail = dash >= 0 ? described[(dash + 1)..].Trim() : described;
+    }
+
+    public ReleaseChannel Channel { get; }
+
+    public string Label { get; }
+
+    public string Detail { get; }
+
+    public Action<UpdateChannelViewModel>? Selecting { get; set; }
+
+    [RelayCommand]
+    private void Select() => Selecting?.Invoke(this);
+}
+
 /// <summary>One row of CHECKLISTS LOADED.</summary>
 public sealed class ChecklistFileViewModel
 {
@@ -189,6 +221,19 @@ public sealed partial class SettingsViewModel : ObservableObject
     private bool _isCheckingUpdate;
 
     [ObservableProperty]
+    private bool _isRestarting;
+
+    [ObservableProperty]
+    private ReleaseChannel _selectedChannel = ReleaseChannel.Production;
+
+    /// <summary>Set once a download is on disk, which is what enables the restart button.</summary>
+    [ObservableProperty]
+    private bool _hasStagedUpdate;
+
+    [ObservableProperty]
+    private string _stagedVersion = string.Empty;
+
+    [ObservableProperty]
     private string _saveStatus = string.Empty;
 
     [ObservableProperty]
@@ -262,7 +307,17 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         LoadFromConfig();
         RefreshInspection();
+        foreach (var channel in ReleaseVersion.All)
+        {
+            Channels.Add(new UpdateChannelViewModel(channel) { Selecting = SelectChannel });
+        }
+
+        // The rows are built after LoadFromConfig, and a station on production never changes
+        // SelectedChannel off its default — so nothing has told the rows which one is picked yet.
+        SyncChannelSelection();
+
         UpdateStatus = DescribePending();
+        RefreshStaged();
 
         StartsAtLogon = LogonTask.IsRegistered();
         StartupStatus = StartsAtLogon
@@ -275,6 +330,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     public StationConfig Config { get; }
 
     public ObservableCollection<SettingsPageViewModel> Pages { get; } = new();
+
+    public ObservableCollection<UpdateChannelViewModel> Channels { get; } = new();
 
     public ObservableCollection<ChecklistFileViewModel> Files { get; } = new();
 
@@ -344,6 +401,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ResetPowerCycle = mode == ResetModes.PowerCycle;
         ResetDaily = mode == ResetModes.Daily;
         UpdatesEnabled = Config.Updates.Enabled;
+        SelectedChannel = Config.Updates.EffectiveChannel;
 
         ViewerCountsEnabled = Config.ViewerCounts.Enabled;
         YouTubeApiKey = Config.ViewerCounts.YouTubeApiKey ?? string.Empty;
@@ -477,12 +535,28 @@ public sealed partial class SettingsViewModel : ObservableObject
         var pending = UpdateService.ReadPending();
         if (pending is null)
         {
-            return $"Running {AppVersion.Display}. No update staged.";
+            return $"Running {AppVersion.Display} on {AppPlatform.Description}. No update staged.";
         }
 
-        return pending.FailedAttempts > 0
-            ? $"{pending.Version} is staged but could not be applied: {pending.LastError}"
-            : $"{pending.Version} is staged. It installs the next time this PC starts SundayReady.";
+        if (pending.FailedAttempts > 0 && pending.LastError is { Length: > 0 } error)
+        {
+            return $"v{pending.Version} is staged but the last attempt did not finish: {error}";
+        }
+
+        return $"v{pending.Version} is downloaded and ready. Install it now, or leave it for the next launch.";
+    }
+
+    /// <summary>Re-reads what is on disk, so the restart button appears the moment one is staged.</summary>
+    private void RefreshStaged()
+    {
+        var pending = UpdateService.ReadPending();
+        var usable = pending is not null
+            && ReleaseVersion.Parse(pending.Version) is { } version
+            && version > AppVersion.Current
+            && File.Exists(pending.File);
+
+        HasStagedUpdate = usable && AppPlatform.CanSelfUpdate;
+        StagedVersion = usable ? $"v{pending!.Version}" : string.Empty;
     }
 
     [RelayCommand]
@@ -497,6 +571,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Config.TechdeskShare = Blank(TechdeskShare);
         Config.TechdeskLayout = LayoutIsColumns ? TechdeskLayouts.Columns : TechdeskLayouts.Board;
         Config.Updates.Enabled = UpdatesEnabled;
+        Config.Updates.Channel = ReleaseVersion.Suffix(SelectedChannel);
         Config.QuickLaunch = Tiles.Where(t => t.IsUsable).Select(t => t.ToModel()).ToList();
         Config.ViewerCounts = new ViewerCountSettings
         {
@@ -548,16 +623,19 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var available = await _updates.CheckAsync(CancellationToken.None);
+            // The picker, not the saved config: an operator who just switched to beta expects
+            // this button to look on beta without having to save the page first.
+            var available = await _updates.CheckAsync(SelectedChannel, CancellationToken.None);
             if (available is null)
             {
-                UpdateStatus = $"{AppVersion.Display} is the latest release.";
+                UpdateStatus = $"{AppVersion.Display} is the newest build on {ReleaseVersion.Suffix(SelectedChannel)} "
+                    + $"for {AppPlatform.Description}.";
                 return;
             }
 
             UpdateStatus = $"Downloading {available.Tag}…";
             await _updates.StageAsync(available, CancellationToken.None);
-            UpdateStatus = $"{available.Tag} downloaded. It installs the next time this PC starts SundayReady.";
+            UpdateStatus = $"{available.Tag} downloaded and verified. Install it now, or leave it for the next launch.";
         }
         catch (Exception ex)
         {
@@ -566,7 +644,43 @@ public sealed partial class SettingsViewModel : ObservableObject
         finally
         {
             IsCheckingUpdate = false;
+            RefreshStaged();
         }
+    }
+
+    /// <summary>
+    /// Installs the staged build and restarts into it, now.
+    /// <para>
+    /// The automatic path deliberately waits for the next launch so nothing changes under an
+    /// operator mid-service. This is the other case: somebody is sitting in front of the machine
+    /// asking for it, which is the one moment when restarting is not a surprise.
+    /// </para>
+    /// </summary>
+    [RelayCommand]
+    private void RestartIntoUpdate()
+    {
+        var pending = UpdateService.ReadPending();
+        if (pending is null)
+        {
+            UpdateStatus = "Nothing is staged to install.";
+            RefreshStaged();
+            return;
+        }
+
+        IsRestarting = true;
+        UpdateStatus = $"Installing v{pending.Version} and restarting…";
+
+        if (!UpdateInstaller.TryRestartInto(pending, out var error))
+        {
+            IsRestarting = false;
+            UpdateStatus = error ?? "Could not install the update.";
+            RefreshStaged();
+            return;
+        }
+
+        // The helper is already waiting for this process to go. Shutting the app down is the
+        // handoff; it comes back on its own a couple of seconds later on the new build.
+        RestartRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -643,4 +757,38 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     private static string? Blank(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private void SelectChannel(UpdateChannelViewModel choice)
+    {
+        SelectedChannel = choice.Channel;
+    }
+
+    partial void OnSelectedChannelChanged(ReleaseChannel value) => SyncChannelSelection();
+
+    private void SyncChannelSelection()
+    {
+        foreach (var channel in Channels)
+        {
+            channel.IsSelected = channel.Channel == SelectedChannel;
+        }
+
+        OnPropertyChanged(nameof(ChannelNote));
+    }
+
+    /// <summary>
+    /// What choosing this channel actually means, in the one place an operator is looking when
+    /// they choose it. A station cannot move backwards on its own — nothing downgrades — so
+    /// going to dev and back is a manual reinstall, and that is worth saying before they do it.
+    /// </summary>
+    public string ChannelNote => SelectedChannel == ReleaseChannel.Production
+        ? "This station only takes finished releases. Right for anything that runs a service."
+        : $"This station will take {ReleaseVersion.Suffix(SelectedChannel)} builds as soon as they are tagged. "
+            + "Updates never go backwards, so returning to production later means installing it by hand "
+            + "from the releases page.";
+
+    /// <summary>
+    /// Raised when the operator has asked to install a staged update now. The window handles it
+    /// by shutting the app down — the update helper is already waiting for the process to exit.
+    /// </summary>
+    public event EventHandler? RestartRequested;
 }

@@ -155,6 +155,23 @@ public static class Guides
             + "thing in a checklist and the app cannot write it for you: it is what you would tell a volunteer "
             + "over the phone. \"Is the PoE injector lit? It's the grey box behind the booth.\""),
 
+        new Topic("Update channels",
+            "A channel is how far ahead of finished this station is willing to run, not a separate "
+            + "version of the app. Production takes only finished releases and is where anything "
+            + "that runs a service belongs. Beta, alpha and dev each take everything above them as "
+            + "well, so a station on beta still gets production releases \u2014 it just gets the "
+            + "betas first. Put the spare machine on beta and let it find the problems. Updates "
+            + "never go backwards, so coming back from dev to production means installing the "
+            + "production build by hand from the releases page."),
+
+        new Topic("Installing an update now",
+            "An automatic update downloads in the background and waits: it is swapped in the next "
+            + "time this station starts SundayReady, so nothing ever changes under an operator "
+            + "mid-service. When one is waiting, Settings \u2192 Updates offers to install it and "
+            + "restart straight away \u2014 which is safe precisely because somebody asked for it. "
+            + "The app closes, comes back a couple of seconds later on the new build, and the "
+            + "checklist is where it was."),
+
         new Topic("When the checklist starts again",
             "By default, every time SundayReady opens. If you also set service times, it starts again at each "
             + "changeover — with services at 09:00 and 11:00 and a 90 minute lead, the list goes fresh at "

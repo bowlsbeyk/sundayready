@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 using SundayReady.ViewModels;
@@ -21,6 +23,24 @@ public partial class SettingsWindow : Window
         if (DataContext is SettingsViewModel settings)
         {
             settings.PropertyChanged += OnSettingsPropertyChanged;
+            settings.RestartRequested += OnRestartRequested;
+        }
+    }
+
+    /// <summary>
+    /// Closing the app <em>is</em> the update: the helper process is already waiting for this one
+    /// to exit before it swaps the build in and starts it again. A plain Shutdown, so the station
+    /// view still gets its ShutdownRequested handler and writes the day's state out first.
+    /// </summary>
+    private void OnRestartRequested(object? sender, EventArgs e)
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.Shutdown();
+        }
+        else
+        {
+            Close();
         }
     }
 

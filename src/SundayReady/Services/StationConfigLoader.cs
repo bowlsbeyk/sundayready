@@ -4,8 +4,9 @@ using SundayReady.Models;
 namespace SundayReady.Services;
 
 /// <summary>
-/// Works out which station this PC is. <c>station.json</c> next to the exe wins; without one,
-/// the hostname decides. Zero-config by default, explicit escape hatch when the default is wrong.
+/// Works out which station this PC is. <c>station.json</c> in the content directory wins; without
+/// one, the hostname decides. Zero-config by default, explicit escape hatch when the default is
+/// wrong. See <see cref="AppPaths.ContentDirectory"/> for where that file lives on each platform.
 /// </summary>
 public sealed class StationConfigLoader
 {
@@ -17,7 +18,7 @@ public sealed class StationConfigLoader
     public StationConfigLoader(ChecklistLoader checklists, string? path = null)
     {
         _checklists = checklists;
-        _path = path ?? System.IO.Path.Combine(AppContext.BaseDirectory, FileName);
+        _path = path ?? AppPaths.StationConfigFile;
     }
 
     public string FilePath => _path;
