@@ -68,62 +68,87 @@ public sealed class UpdateService : IDisposable
     /// running build. Network failure is not an error worth surfacing loudly — it throws, and
     /// the caller records it as a status line rather than bothering the operator.
     /// <para>
-    /// This walks the release list rather than asking for <c>/releases/latest</c>, because that
-    /// endpoint never returns a prerelease: a station on beta would sit on production forever.
+    /// Two endpoints, because neither one is enough on its own. <c>/releases/latest</c> is exact,
+    /// cheap and always current, but it never returns a prerelease — a station on beta asking only
+    /// that question would sit on production forever. The release list does return prereleases,
+    /// but it is a cached collection endpoint that has been observed answering <c>200 []</c> for a
+    /// repository whose releases are plainly there. So: ask the list when the channel needs it,
+    /// and always fall back to <c>latest</c>, which means the worst case for a booth PC is that it
+    /// finds the finished release rather than nothing at all.
     /// </para>
     /// </summary>
     public async Task<AvailableUpdate?> CheckAsync(ReleaseChannel channel, CancellationToken cancellationToken)
     {
-        var url = $"https://api.github.com/repos/{_repository}/releases?per_page={ReleasesToScan}";
-        var releases = await _client
-            .GetFromJsonAsync<List<GitHubRelease>>(url, cancellationToken)
-            .ConfigureAwait(true);
-
-        if (releases is null)
-        {
-            return null;
-        }
-
         AvailableUpdate? best = null;
 
-        foreach (var release in releases)
+        if (channel != ReleaseChannel.Production)
         {
-            if (release.Draft)
+            var url = $"https://api.github.com/repos/{_repository}/releases?per_page={ReleasesToScan}";
+            var releases = await _client
+                .GetFromJsonAsync<List<GitHubRelease>>(url, cancellationToken)
+                .ConfigureAwait(true);
+
+            foreach (var release in releases ?? new List<GitHubRelease>())
             {
-                continue;
+                best = Better(best, release, channel);
             }
+        }
 
-            // The tag is the authority on which channel a release belongs to, not GitHub's
-            // prerelease flag — the tag is what gets stamped into the build itself.
-            if (ReleaseVersion.Parse(release.TagName) is not { } version
-                || !version.IsOffered(channel)
-                || version <= AppVersion.Current
-                || (best is not null && version <= best.Version))
-            {
-                continue;
-            }
+        // Always: a production release supersedes its own prereleases, so this can only ever
+        // improve on what the list found — and it is the whole answer for a production station.
+        var latest = await _client
+            .GetFromJsonAsync<GitHubRelease>(
+                $"https://api.github.com/repos/{_repository}/releases/latest",
+                cancellationToken)
+            .ConfigureAwait(true);
 
-            if (FindAsset(release) is not { } asset || asset.BrowserDownloadUrl is null)
-            {
-                // A release with no build for this machine — an osx-only hotfix seen from a
-                // booth PC, say. Skip it rather than treating it as the newest thing available.
-                continue;
-            }
-
-            // GitHub reports asset digests as "sha256:<hex>" when it has one.
-            var sha = asset.Digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true
-                ? asset.Digest["sha256:".Length..]
-                : null;
-
-            best = new AvailableUpdate(
-                version,
-                release.TagName ?? version.Tag,
-                asset.BrowserDownloadUrl,
-                asset.Size,
-                sha);
+        if (latest is not null)
+        {
+            best = Better(best, latest, channel);
         }
 
         return best;
+    }
+
+    /// <summary>
+    /// Returns <paramref name="release"/> as the new best candidate if this station may run it and
+    /// it beats what we have, otherwise the incumbent.
+    /// </summary>
+    private static AvailableUpdate? Better(AvailableUpdate? best, GitHubRelease release, ReleaseChannel channel)
+    {
+        if (release.Draft)
+        {
+            return best;
+        }
+
+        // The tag is the authority on which channel a release belongs to, not GitHub's prerelease
+        // flag — the tag is what gets stamped into the build itself.
+        if (ReleaseVersion.Parse(release.TagName) is not { } version
+            || !version.IsOffered(channel)
+            || version <= AppVersion.Current
+            || (best is not null && version <= best.Version))
+        {
+            return best;
+        }
+
+        if (FindAsset(release) is not { } asset || asset.BrowserDownloadUrl is null)
+        {
+            // A release with no build for this machine — an osx-only hotfix seen from a booth PC,
+            // say. Skip it rather than treating it as the newest thing available.
+            return best;
+        }
+
+        // GitHub reports asset digests as "sha256:<hex>" when it has one.
+        var sha = asset.Digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true
+            ? asset.Digest["sha256:".Length..]
+            : null;
+
+        return new AvailableUpdate(
+            version,
+            release.TagName ?? version.Tag,
+            asset.BrowserDownloadUrl,
+            asset.Size,
+            sha);
     }
 
     private static GitHubAsset? FindAsset(GitHubRelease release)
