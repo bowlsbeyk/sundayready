@@ -34,7 +34,11 @@ public sealed class StationConfigLoader
             try
             {
                 var config = JsonSerializer.Deserialize<StationConfig>(File.ReadAllText(_path), ChecklistLoader.JsonOptions);
-                if (config is not null && config.Checklists.Count > 0)
+
+                // A file the app wrote is authoritative even with no checklists in it — see
+                // StationConfig.Configured. A stub with neither still falls through to guessing,
+                // which is what makes dropping a bare station.json on a PC work.
+                if (config is not null && (config.Checklists.Count > 0 || config.Configured))
                 {
                     return config;
                 }
@@ -86,6 +90,9 @@ public sealed class StationConfigLoader
 
     public void Save(StationConfig config)
     {
+        // Anything this app writes has been configured by a person, by definition.
+        config.Configured = true;
+
         // Written with the tidy options, not the tolerant read ones: this file gets opened by
         // people, and "operator": null, "service": null, "quickLaunch": [] is just noise.
         File.WriteAllText(_path, JsonSerializer.Serialize(config, ChecklistWriter.WriteOptions));

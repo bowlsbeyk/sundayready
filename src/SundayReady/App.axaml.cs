@@ -45,11 +45,45 @@ public partial class App : Application
                 desktop.MainWindow = new MainWindow { DataContext = viewModel };
                 desktop.ShutdownRequested += (_, _) => viewModel.Dispose();
                 viewModel.Start();
+
+                // Nobody has set this machine up yet, so walk them through it rather than
+                // showing an empty list and a note telling them to go and find two other
+                // screens. Opened after the main window so it lands in front of it, and the
+                // station reloads afterwards because the walkthrough writes real files.
+                if (SetupState.NeedsWalkthrough)
+                {
+                    ShowWalkthrough(desktop, viewModel);
+                }
             }
 
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Shows the first-run walkthrough over the station, then reloads what it wrote. Deferred to
+    /// the dispatcher so the main window is up first — a modal-looking dialog appearing before
+    /// there is anything behind it reads as an installer, which this is not.
+    /// </summary>
+    private static void ShowWalkthrough(
+        IClassicDesktopStyleApplicationLifetime desktop,
+        StationViewModel station)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var walkthrough = station.CreateWalkthrough();
+            var window = new FirstRunWindow { DataContext = walkthrough };
+
+            window.Closed += (_, _) =>
+            {
+                // Picks up the station name, service times and checklists it just wrote. Reload
+                // re-reads station.json as well as the files, so no restart is needed.
+                station.ReloadCommand.Execute(null);
+            };
+
+            window.Show(desktop.MainWindow!);
+        });
     }
 
     private static StationViewModel BuildStation(

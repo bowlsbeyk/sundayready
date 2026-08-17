@@ -127,6 +127,19 @@
                                          Watermark="Shown in the rail footer" />
                             </StackPanel>
 
+                            <Border Classes="card" Padding="16,14">
+                                <Grid ColumnDefinitions="*,16,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="5">
+                                        <TextBlock Text="Set up this station from scratch" FontSize="15" />
+                                        <TextBlock Classes="railBody" FontSize="13"
+                                                   Text="The walkthrough a new machine gets on its first launch: name, service times, and a first checklist from a template. Safe to re-run — it never overwrites a checklist you already have." />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="secondary" Content="Run walkthrough"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding RunWalkthroughCommand}" />
+                                </Grid>
+                            </Border>
+
                             <!-- This toggle is how techdesk mode is selected. Same binary. -->
                             <Grid x:Name="Section_techdesk">
                                 <Rectangle RadiusX="7" RadiusY="7" Fill="{StaticResource Overlay02Brush}"

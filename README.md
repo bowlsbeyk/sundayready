@@ -22,13 +22,23 @@ Adding a station is a config file, never a fork.
 1. Download `SundayReady-win-x64.zip` from the [latest release][releases] and unzip it
    somewhere **writable** — `%LOCALAPPDATA%\Programs\SundayReady` is a good choice.
    Do not use `C:\Program Files`: the app updates itself in place and cannot write there.
-2. Run it. With no `station.json` it names itself after the PC's hostname and opens empty.
-3. **Settings** → set the station name, operator, service times and quick-launch tiles.
-4. **Edit** → build this station's checklists. Tick the ones this PC should show as tabs.
-5. **Settings → Start at logon** → registers the Task Scheduler task.
+2. Run it. **A machine that has never run SundayReady opens a setup walkthrough** — six short
+   screens that name the station, take your service times, and pick or create its first
+   checklist, ending with a station that works.
 
-That's the whole setup — no JSON editing required, though the files stay plain JSON if you
-prefer them (see below). Nothing needs the .NET runtime installed; releases are self-contained.
+That's the whole setup. The walkthrough writes an ordinary `station.json` and ordinary checklist
+files; there is no special mode, and everything it sets is in **Settings** and **Edit**
+afterwards. It can be skipped from any screen, and run again from **Settings → Identity → Run
+walkthrough** — useful for a station being repurposed. Re-running it never overwrites a checklist
+you already have: a name that collides gets a numbered suffix.
+
+Nothing needs the .NET runtime installed; releases are self-contained.
+
+**Every item in a new checklist is a plain tick-box, on purpose.** An item that launches vMix
+needs a path that is right for your building, and one that checks a camera needs its address.
+Shipped as guesses they would go red within seconds on a machine where none of that is configured
+— and someone opening the app for the first time cannot tell that apart from a broken app. So you
+start with a list that is honestly correct, then upgrade the items worth automating in the editor.
 
 The logon task waits 30 seconds and restarts on failure. The delay matters: `shell:startup`
 races the software the verifiers check for, so checks would fail before vMix was listening.
@@ -99,11 +109,19 @@ once you save that file in the app.
     "resetLeadMinutes": 90          // preparation for a service opens this long before it
   },
   "quickLaunch": [{ "label": "vMix", "action": { "run": "C:\\Program Files (x86)\\vMix\\vMix64.exe" } }],
-  "updates": { "enabled": true }
+  "updates": { "enabled": true, "channel": "production" },
+  "configured": true              // written by the app; see below
 }
 ```
 
 Absent, the app uses this PC's hostname and loads every checklist whose `station` matches it.
+The same fallback applies to a file that will not parse, so a booth PC guesses rather than
+opening into an error.
+
+`configured` is written by the app whenever it saves this file, and is not something to set by
+hand. It marks the difference between "somebody set this station up" and "this file is a stub" —
+without it, a station whose operator deliberately chose *no* checklists had its whole config
+thrown away and hostname auto-detect used instead.
 
 ### A checklist file
 

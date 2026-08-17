@@ -206,6 +206,8 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     /// </summary>
     public SettingsViewModel CreateSettings() => new(_config, _checklists, _stationLoader, _registry);
 
+    public FirstRunViewModel CreateWalkthrough() => new(_config, _stationLoader, _checklists);
+
     public CompletionLogViewModel CreateLog() => new(this);
 
     /// <summary>

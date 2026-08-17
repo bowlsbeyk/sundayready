@@ -791,4 +791,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// by shutting the app down — the update helper is already waiting for the process to exit.
     /// </summary>
     public event EventHandler? RestartRequested;
+
+    /// <summary>Raised when someone wants the setup walkthrough again. The window opens it.</summary>
+    public event EventHandler? WalkthroughRequested;
+
+    /// <summary>
+    /// Runs first-time setup again. Useful for a station being repurposed, and for anyone who
+    /// skipped it and then wished they had not.
+    /// </summary>
+    [RelayCommand]
+    private void RunWalkthrough() => WalkthroughRequested?.Invoke(this, EventArgs.Empty);
+
+    public FirstRunViewModel CreateWalkthrough() => new(Config, _stationLoader, _checklists);
 }

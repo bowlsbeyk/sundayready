@@ -155,6 +155,23 @@ public static class Guides
             + "thing in a checklist and the app cannot write it for you: it is what you would tell a volunteer "
             + "over the phone. \"Is the PoE injector lit? It's the grey box behind the booth.\""),
 
+        new Topic("The setup walkthrough",
+            "A machine that has never run SundayReady opens a short walkthrough instead of an empty "
+            + "list: name the station, say when the services are, and pick or create a first "
+            + "checklist. It writes an ordinary station.json and ordinary checklist files \u2014 there "
+            + "is no special mode, and everything it sets is in Settings and the editor afterwards. "
+            + "It can be skipped from any screen, and run again from Settings \u2192 Identity, which is "
+            + "the quickest way to set up a station being repurposed. Re-running it never overwrites "
+            + "an existing checklist; a name that collides gets a numbered suffix."),
+
+        new Topic("Why a new checklist is all tick-boxes",
+            "The templates the walkthrough offers contain nothing but manual items, deliberately. An "
+            + "item that launches vMix needs a path that is right for this building, and one that "
+            + "checks a camera needs its address \u2014 shipped as guesses, they would go red within "
+            + "seconds on a machine where none of it is set up, and a new user cannot tell that apart "
+            + "from a broken app. So you start with a list that is honestly correct, then upgrade the "
+            + "items worth automating in the editor."),
+
         new Topic("Update channels",
             "A channel is how far ahead of finished this station is willing to run, not a separate "
             + "version of the app. Production takes only finished releases and is where anything "

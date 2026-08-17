@@ -10,6 +10,21 @@ public sealed class StationConfig
 
     public List<string> Checklists { get; set; } = new();
 
+    /// <summary>
+    /// Set by the app whenever it writes this file, and never by hand.
+    /// <para>
+    /// It exists to tell "somebody configured this station" apart from "this file is a stub".
+    /// Hostname auto-detect is the right answer for the second and the wrong answer for the
+    /// first: without this flag, a station whose operator deliberately chose no checklists had
+    /// its whole config — name, service times, reset mode — thrown away and guessed at instead.
+    /// </para>
+    /// <para>
+    /// Absent means false, so a hand-written <c>station.json</c> from before this existed keeps
+    /// behaving exactly as it did.
+    /// </para>
+    /// </summary>
+    public bool Configured { get; set; }
+
     /// <summary>Shown in the rail footer, and used as the default sign-off attribution.</summary>
     public string? Operator { get; set; }
 

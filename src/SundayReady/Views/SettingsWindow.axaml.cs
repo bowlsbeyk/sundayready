@@ -24,7 +24,23 @@ public partial class SettingsWindow : Window
         {
             settings.PropertyChanged += OnSettingsPropertyChanged;
             settings.RestartRequested += OnRestartRequested;
+            settings.WalkthroughRequested += OnWalkthroughRequested;
         }
+    }
+
+    private void OnWalkthroughRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is not SettingsViewModel settings)
+        {
+            return;
+        }
+
+        var window = new FirstRunWindow { DataContext = settings.CreateWalkthrough() };
+
+        // Re-read this screen afterwards, so a station name the walkthrough changed does not sit
+        // here as a stale value waiting to be saved back over itself.
+        window.Closed += (_, _) => settings.ReloadCommand.Execute(null);
+        window.Show(this);
     }
 
     /// <summary>

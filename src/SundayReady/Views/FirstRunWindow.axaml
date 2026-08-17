@@ -1,0 +1,319 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SundayReady.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="740"
+        x:Class="SundayReady.Views.FirstRunWindow"
+        x:DataType="vm:FirstRunViewModel"
+        Title="Set up this station"
+        Icon="/Assets/logo.png"
+        Width="900" Height="740"
+        Background="{StaticResource BgBrush}"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <!-- Set here rather than inline: the walkthrough reuses .railBody at a larger size than
+             the rail does, and a local value on each block would be a dozen places to change. -->
+        <Style Selector="TextBlock.lede">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="LineHeight" Value="27" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource TextDimBrush}" />
+        </Style>
+        <Style Selector="TextBlock.aside">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="LineHeight" Value="21" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+        </Style>
+        <Style Selector="Border.step">
+            <Setter Property="Background" Value="{StaticResource PanelRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="18,16" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: where you are, and the way out. -->
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1" Padding="34,20">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="5">
+                    <TextBlock Classes="mono" Text="{Binding StepNumberLabel}" FontSize="11"
+                               FontWeight="SemiBold" LetterSpacing="1.3"
+                               Foreground="{StaticResource TextFainterBrush}" />
+                    <TextBlock Text="{Binding StepTitle}" FontSize="25" FontWeight="SemiBold" />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="quiet" Content="Skip setup"
+                        VerticalAlignment="Center" IsVisible="{Binding !IsDone}"
+                        Command="{Binding SkipCommand}" />
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" AllowAutoHide="False">
+            <Panel Margin="34,26,34,34">
+
+                <!-- 1. Welcome -->
+                <StackPanel Spacing="18" IsVisible="{Binding IsWelcome}">
+                    <TextBlock Classes="lede"
+                               Text="SundayReady is a checklist that opens itself before a service, so whoever is in the booth this week gets the same set of things right as whoever was in it last week." />
+                    <TextBlock Classes="lede"
+                               Text="Some items are plain tick-boxes. Some launch software for you. Some the app checks by itself — whether the switcher is running, whether a camera is answering — and ticks without being asked." />
+                    <Border Classes="step">
+                        <StackPanel Spacing="10">
+                            <TextBlock Classes="microLabel" Text="WHAT THIS WALKTHROUGH DOES" />
+                            <TextBlock Classes="aside" FontSize="15"
+                                       Text="Five short screens: name this station, say when your services are, and pick or create its first checklist. It writes ordinary files you can edit afterwards, and nothing here is permanent — everything is in SETTINGS and EDIT later." />
+                            <TextBlock Classes="aside"
+                                       Text="Two or three minutes. You can leave at any point with Skip setup." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 2. This station -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsStation}">
+                    <TextBlock Classes="lede"
+                               Text="One copy of SundayReady runs on every machine in the building. What makes this one the video booth and that one the sound desk is its name — not a different app, and not a different install." />
+                    <StackPanel Spacing="9">
+                        <TextBlock Classes="fieldLabel" Text="WHAT IS THIS STATION CALLED?" />
+                        <TextBox Classes="field" FontSize="17" Text="{Binding StationName, Mode=TwoWay}"
+                                 Watermark="Livestream Video" />
+                        <TextBlock Classes="aside"
+                                   Text="Something a volunteer would recognise: “Livestream Video”, “Sound Desk”, “Sanctuary Presentation”. It shows in the top bar and on the techdesk." />
+                    </StackPanel>
+                    <StackPanel Spacing="9">
+                        <TextBlock Classes="fieldLabel" Text="WHO USUALLY RUNS IT? (OPTIONAL)" />
+                        <TextBox Classes="field" FontSize="16" Text="{Binding OperatorName, Mode=TwoWay}"
+                                 Watermark="Leave blank if it changes every week" />
+                        <TextBlock Classes="aside"
+                                   Text="Only used to fill in who signed the checklist off. Whoever is actually there can always type their own initials instead." />
+                    </StackPanel>
+                    <Border Classes="step">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="microLabel" Text="THIS PC" />
+                            <TextBlock Classes="mono" Text="{Binding Hostname}" FontSize="15"
+                                       Foreground="{StaticResource TextMutedBrush}" />
+                            <TextBlock Classes="aside"
+                                       Text="Its hostname. With no name set, SundayReady falls back to this — which is why the app still works on a machine nobody has configured." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 3. Service times -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsServices}">
+                    <TextBlock Classes="lede"
+                               Text="Service times do two things: they give you a countdown to the next one, and they decide when the checklist wipes itself and starts again." />
+                    <StackPanel Spacing="9">
+                        <TextBlock Classes="fieldLabel" Text="WHEN DO YOUR SERVICES START? ONE PER LINE, 24-HOUR" />
+                        <TextBox Classes="field" FontSize="17" FontFamily="{StaticResource MonoFont}"
+                                 AcceptsReturn="True" MinHeight="96"
+                                 Text="{Binding ServiceTimes, Mode=TwoWay}" />
+                        <TextBlock Classes="aside"
+                                   Text="Two services at 09:00 and 11:00 means two lines. The second service gets a fresh checklist automatically, which is the point — a machine that never gets switched off would otherwise still be showing the first service's ticks." />
+                    </StackPanel>
+                    <StackPanel Spacing="9">
+                        <TextBlock Classes="fieldLabel" Text="HOW LONG BEFORE A SERVICE DOES SETUP START?" />
+                        <Grid ColumnDefinitions="120,14,*">
+                            <TextBox Grid.Column="0" Classes="field" FontSize="16"
+                                     Text="{Binding ResetLeadMinutes, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="2" Classes="aside" VerticalAlignment="Center"
+                                       Text="Minutes. The moment preparation opens for a service is also the moment the previous one's checklist is cleared." />
+                        </Grid>
+                    </StackPanel>
+                    <Border Classes="step">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="microLabel" Text="AND WHEN ELSE SHOULD IT START FRESH?" />
+                            <RadioButton GroupName="reset" IsChecked="{Binding ResetEveryLaunch, Mode=TwoWay}"
+                                         Content="Every time SundayReady opens — recommended" />
+                            <TextBlock Classes="aside" Margin="26,0,0,0"
+                                       Text="The one that never gets it wrong. If the app is opening, the list is fresh." />
+                            <RadioButton GroupName="reset" IsChecked="{Binding ResetPowerCycle, Mode=TwoWay}"
+                                         Content="Only when this machine has been off and on" />
+                            <TextBlock Classes="aside" Margin="26,0,0,0"
+                                       Text="Careful with this one: sleep is not a power cycle, and on many Windows PCs neither is Shut down, because Fast Startup restores the old session instead of booting. If your machines sleep rather than shut down, this can look like it is doing nothing." />
+                            <RadioButton GroupName="reset" IsChecked="{Binding ResetDaily, Mode=TwoWay}"
+                                         Content="Only at midnight" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 4. The checklist -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsChecklists}">
+                    <TextBlock Classes="lede"
+                               Text="Each checklist file is one tab. Tick the ones this station should show, and create a new one if none of them fit." />
+
+                    <StackPanel Spacing="11" IsVisible="{Binding Existing.Count}">
+                        <TextBlock Classes="microLabel" Text="ALREADY ON THIS MACHINE" />
+                        <ItemsControl ItemsSource="{Binding Existing}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:SetupChecklistViewModel">
+                                    <Button Classes="subStep" Command="{Binding ToggleCommand}"
+                                            IsEnabled="{Binding IsReadable}"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
+                                        <Grid ColumnDefinitions="Auto,14,*">
+                                            <Panel Grid.Column="0" Width="22" Height="22"
+                                                   VerticalAlignment="Center">
+                                                <Border IsVisible="{Binding IsSelected}" CornerRadius="5"
+                                                        Background="{StaticResource OkBrush}">
+                                                    <TextBlock Text="&#x2713;" FontSize="13" FontWeight="Bold"
+                                                               Foreground="{StaticResource OnStatusBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <Border IsVisible="{Binding !IsSelected}" CornerRadius="5"
+                                                        BorderThickness="1.5"
+                                                        BorderBrush="{StaticResource Overlay22Brush}" />
+                                            </Panel>
+                                            <StackPanel Grid.Column="2" Spacing="3">
+                                                <TextBlock Text="{Binding TabLabel}" FontSize="16" />
+                                                <TextBlock Classes="aside" FontSize="13"
+                                                           Text="{Binding Detail}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <StackPanel Spacing="11">
+                        <TextBlock Classes="microLabel" Text="OR START A NEW ONE" />
+                        <ItemsControl ItemsSource="{Binding Templates}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:SetupTemplateViewModel">
+                                    <Button Classes="subStep" Command="{Binding SelectCommand}"
+                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
+                                        <Grid ColumnDefinitions="Auto,14,*">
+                                            <Panel Grid.Column="0" Width="20" Height="20"
+                                                   VerticalAlignment="Center">
+                                                <Ellipse IsVisible="{Binding !IsSelected}" StrokeThickness="1.5"
+                                                         Stroke="{StaticResource Overlay22Brush}" />
+                                                <Ellipse IsVisible="{Binding IsSelected}"
+                                                         Fill="{StaticResource ActionBrush}" />
+                                                <Ellipse IsVisible="{Binding IsSelected}" Width="7" Height="7"
+                                                         Fill="{StaticResource OnActionBrush}" />
+                                            </Panel>
+                                            <StackPanel Grid.Column="2" Spacing="3">
+                                                <TextBlock Text="{Binding Title}" FontSize="16" />
+                                                <TextBlock Classes="aside" FontSize="13"
+                                                           Text="{Binding Detail}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Grid ColumnDefinitions="*,14,Auto" Margin="0,4,0,0">
+                            <StackPanel Grid.Column="0" Spacing="7">
+                                <TextBlock Classes="fieldLabel" Text="TAB NAME FOR IT" />
+                                <TextBox Classes="field" FontSize="16"
+                                         Text="{Binding NewChecklistName, Mode=TwoWay}"
+                                         Watermark="Leave blank to create nothing" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="7" VerticalAlignment="Bottom"
+                                        IsVisible="{Binding NewChecklistFileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Classes="fieldLabel" Text="WRITES" />
+                                <TextBlock Classes="mono" FontSize="14" Margin="0,0,0,11"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="{Binding NewChecklistFileName}" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Classes="step">
+                        <StackPanel Spacing="9">
+                            <TextBlock Classes="microLabel" Text="EVERY ITEM STARTS AS A TICK-BOX" />
+                            <TextBlock Classes="aside"
+                                       Text="On purpose. An item that launches vMix, or checks that a camera is answering, needs a path or an address that is right for this building — and one pointing at software that is not installed yet would go red in seconds and look like a broken app." />
+                            <TextBlock Classes="aside"
+                                       Text="So start with tick-boxes you know are true, then use EDIT to turn the ones worth automating into launch buttons and automatic checks. HELP in the top bar explains each kind with an example." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="step" IsVisible="{Binding HasNothingSelected}"
+                            Background="{StaticResource Overlay02Brush}">
+                        <TextBlock Classes="aside" FontSize="15"
+                                   Text="Nothing is selected, so this station will open with an empty list. That is a fine place to stop — you can build its checklist from EDIT whenever you like." />
+                    </Border>
+                </StackPanel>
+
+                <!-- 5. Finishing touches -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsTouches}">
+                    <TextBlock Classes="lede"
+                               Text="One last thing, and it is the one that makes the difference between a checklist people use and a checklist people forget." />
+                    <Border Classes="step" IsVisible="{Binding SupportsStartAtLogon}">
+                        <StackPanel Spacing="11">
+                            <CheckBox IsChecked="{Binding StartAtLogon, Mode=TwoWay}"
+                                      Content="Open SundayReady automatically when someone logs in" />
+                            <TextBlock Classes="aside" Margin="26,0,0,0"
+                                       Text="Strongly recommended. Nobody has to remember to start it, which means nobody skips it. It waits 30 seconds after login before opening, so the software its checks look for has time to come up first." />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="step">
+                        <StackPanel Spacing="9">
+                            <TextBlock Classes="microLabel" Text="WHERE YOUR FILES WILL BE" />
+                            <TextBlock Classes="mono" FontSize="13" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="{Binding ConfigPath}" />
+                            <TextBlock Classes="mono" FontSize="13" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="{Binding ChecklistsFolder}" />
+                            <TextBlock Classes="aside"
+                                       Text="Plain JSON. Edit them in the app, or by hand, or copy them to the next station — the app notices a changed file and reloads without a restart." />
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="step" IsVisible="{Binding HasFinishError}">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="microLabel" Text="COULD NOT SAVE"
+                                       Foreground="{StaticResource FailBrush}" />
+                            <TextBlock Classes="aside" FontSize="15" Text="{Binding FinishError}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- 6. Done -->
+                <StackPanel Spacing="20" IsVisible="{Binding IsDone}">
+                    <TextBlock Classes="lede" Text="{Binding Summary}" />
+                    <Border Classes="step">
+                        <StackPanel Spacing="12">
+                            <TextBlock Classes="microLabel" Text="THREE THINGS AND YOU KNOW THE APP" />
+                            <TextBlock Classes="aside" FontSize="15"
+                                       Text="Work down the list. Items you tick yourself go green; items the app checks tick themselves, and one that fails turns red and offers you the reason and a retry." />
+                            <TextBlock Classes="aside" FontSize="15"
+                                       Text="Ready to go stays locked until every item on every tab is done. That button is the whole point — it is how the booth says out loud that this station is ready." />
+                            <TextBlock Classes="aside" FontSize="15"
+                                       Text="HELP in the top bar covers the rest: each kind of item, every automatic check with its gotcha, and how to override something that will not pass." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Panel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,1,0,0" Padding="34,18">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0" Classes="secondary" Content="Back" Padding="20,11"
+                        IsVisible="{Binding CanGoBack}" Command="{Binding BackCommand}" />
+                <Button Grid.Column="2" Classes="primary" Padding="26,12" FontSize="15" CornerRadius="6"
+                        Content="{Binding NextLabel}" Command="{Binding NextCommand}"
+                        IsVisible="{Binding !IsDone}" />
+                <Button Grid.Column="2" Classes="primary" Padding="26,12" FontSize="15" CornerRadius="6"
+                        Content="Open my checklist" Command="{Binding CloseCommand}"
+                        IsVisible="{Binding IsDone}" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
