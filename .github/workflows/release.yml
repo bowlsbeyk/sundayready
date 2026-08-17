@@ -270,16 +270,24 @@ jobs:
                 404) printf '%s' "$body"; return 4 ;;
                 # Retry what is worth retrying; fail fast on a real rejection.
                 000|429|5*) echo "  $method $url -> $status (attempt $attempt), retrying" >&2 ;;
-                *) echo "  $method $url -> $status" >&2
-                   echo "$body" | head -c 2000 >&2
-                   return 1 ;;
+                *) report "$method $url -> $status" "$body"; return 1 ;;
               esac
               sleep $((attempt * 5))
             done
 
-            echo "  $method $url -> giving up after 3 attempts (last status $status)" >&2
-            echo "$body" | head -c 2000 >&2
+            report "$method $url -> gave up after 3 attempts, last status $status" "$body"
             return 1
+          }
+
+          # As a ::error:: annotation, not just a log line. Annotations are readable from the
+          # public API without a token; job logs are not — which mattered when this step failed
+          # and the only thing visible from outside was "exit code 22".
+          report() {
+            local summary="$1" body="$2" flat
+            flat=$(printf '%s' "$body" | tr '\n\r' '  ' | head -c 900)
+            echo "::error title=Publish failed::${summary} :: ${flat}"
+            echo "$summary" >&2
+            printf '%s\n' "$body" | head -c 2000 >&2
           }
 
           id=$(call GET "$api/releases/tags/$TAG" | jq -r '.id // empty') || id=""
