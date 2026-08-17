@@ -213,6 +213,21 @@ The workflow builds `win-x64`, `osx-arm64` and `osx-x64`, marks anything with a 
 prerelease, and publishes the assets with a `SHA256SUMS.txt`. Nothing else changes — the suffix is
 the whole mechanism, and the app reads it back out of its own `InformationalVersion`.
 
+**Getting a station onto a channel.** Channels need code that only exists from **0.15.0** onward.
+A station on 0.14.0 or earlier ships an updater that asks GitHub only for the latest *finished*
+release, so it cannot see a prerelease no matter what its config says. Those stations will pick up
+the next production release automatically, and can follow a channel from then on. To put a station
+on beta sooner, install the build by hand from the releases page once.
+
+**How the app finds an update**, since it is not the obvious way. A production station asks
+`/releases/latest`: one request, exact, assets included. Prerelease channels cannot use that
+endpoint — it excludes prereleases by design — and the `/releases` collection endpoint turned out
+to be unusable, returning `200 []` for this repository for long stretches while the releases were
+plainly there. So prereleases are discovered from the tag list and resolved through
+`/releases/tags/…`, newest first, stepping over tags that have no release behind them. That last
+part is not defensive programming for its own sake: a tag whose build failed is an ordinary event,
+and there are several in this repository's history.
+
 **Verifiers.**
 
 | `kind` | Fields | Passes when |

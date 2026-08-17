@@ -162,7 +162,9 @@ public static class Guides
             + "well, so a station on beta still gets production releases \u2014 it just gets the "
             + "betas first. Put the spare machine on beta and let it find the problems. Updates "
             + "never go backwards, so coming back from dev to production means installing the "
-            + "production build by hand from the releases page."),
+            + "production build by hand from the releases page. One catch worth knowing: following "
+            + "a channel needs 0.15.0 or later. A station on an older build can only see finished "
+            + "releases, whatever its setting says, until it has picked one up."),
 
         new Topic("Installing an update now",
             "An automatic update downloads in the background and waits: it is swapped in the next "
