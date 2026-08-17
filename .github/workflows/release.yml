@@ -20,6 +20,14 @@ jobs:
   build:
     strategy:
       fail-fast: false
+
+      # One at a time, deliberately. Three jobs starting together each fetch the same
+      # actions/setup-dotnet tarball from codeload, and the loser gets a 429 that kills the job
+      # during "Set up job" — before any step runs, so there is nothing to retry. That cost two
+      # release runs before it was worth serialising. A release is not a hot path; correctness
+      # here is worth the extra few minutes.
+      max-parallel: 1
+
       matrix:
         include:
           - rid: win-x64
