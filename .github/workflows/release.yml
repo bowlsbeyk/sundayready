@@ -252,37 +252,70 @@ jobs:
                 -H "Accept: application/vnd.github+json"
                 -H "X-GitHub-Api-Version: 2022-11-28")
 
-          id=$(curl -sS "${auth[@]}" "$api/releases/tags/$TAG" | jq -r '.id // empty')
+          # curl -f collapses every HTTP error into exit 22 and throws the body away, which is
+          # exactly what you need to see when a publish fails. So: capture body and status,
+          # print both on failure, and retry — the API has been flaky enough today to earn it.
+          #
+          # call METHOD URL [curl args...] -> body on stdout, non-zero and a report on failure.
+          call() {
+            local method="$1" url="$2"; shift 2
+            local body status attempt
+            for attempt in 1 2 3; do
+              body=$(curl -sS -w $'\n%{http_code}' -X "$method" "${auth[@]}" "$@" "$url") || body=$'\n000'
+              status="${body##*$'\n'}"
+              body="${body%$'\n'*}"
+
+              case "$status" in
+                2*) printf '%s' "$body"; return 0 ;;
+                404) printf '%s' "$body"; return 4 ;;
+                # Retry what is worth retrying; fail fast on a real rejection.
+                000|429|5*) echo "  $method $url -> $status (attempt $attempt), retrying" >&2 ;;
+                *) echo "  $method $url -> $status" >&2
+                   echo "$body" | head -c 2000 >&2
+                   return 1 ;;
+              esac
+              sleep $((attempt * 5))
+            done
+
+            echo "  $method $url -> giving up after 3 attempts (last status $status)" >&2
+            echo "$body" | head -c 2000 >&2
+            return 1
+          }
+
+          id=$(call GET "$api/releases/tags/$TAG" | jq -r '.id // empty') || id=""
 
           if [ -z "$id" ]; then
-            id=$(curl -fsS -X POST "${auth[@]}" "$api/releases" \
+            id=$(call POST "$api/releases" \
                    -d "$(jq -nc --arg t "$TAG" --argjson p "$PRERELEASE" \
                          '{tag_name:$t, name:$t, prerelease:$p, generate_release_notes:true}')" \
                  | jq -r '.id')
             echo "created release $id for $TAG (prerelease=$PRERELEASE)"
           else
             echo "release $id already exists for $TAG; reusing it"
-            curl -fsS -X PATCH "${auth[@]}" "$api/releases/$id" \
+            call PATCH "$api/releases/$id" \
               -d "$(jq -nc --argjson p "$PRERELEASE" '{prerelease:$p}')" >/dev/null
+          fi
+
+          if [ -z "$id" ] || [ "$id" = "null" ]; then
+            echo "could not obtain a release id for $TAG" >&2
+            exit 1
           fi
 
           for file in dist/*; do
             name=$(basename "$file")
 
-            old=$(curl -sS "${auth[@]}" "$api/releases/$id/assets?per_page=100" \
+            old=$(call GET "$api/releases/$id/assets?per_page=100" \
                   | jq -r --arg n "$name" '.[] | select(.name==$n) | .id')
             if [ -n "$old" ]; then
               echo "replacing existing $name"
-              curl -fsS -X DELETE "${auth[@]}" "$api/releases/assets/$old"
+              call DELETE "$api/releases/assets/$old" >/dev/null
             fi
 
             echo "uploading $name ($(wc -c <"$file") bytes)"
-            curl -fsS -X POST "${auth[@]}" \
+            call POST "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$id/assets?name=$name" \
               -H "Content-Type: application/octet-stream" \
-              --data-binary @"$file" \
-              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$id/assets?name=$name" \
-              >/dev/null
+              --data-binary @"$file" >/dev/null
           done
 
           echo "published $TAG:"
-          curl -sS "${auth[@]}" "$api/releases/$id/assets?per_page=100" | jq -r '.[] | "  \(.name)  \(.size)"'
+          call GET "$api/releases/$id/assets?per_page=100" | jq -r '.[] | "  \(.name)  \(.size)"'
