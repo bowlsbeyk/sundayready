@@ -415,7 +415,7 @@
                                     <TextBlock Classes="mono" Text="{Binding LogsDirectory}" FontSize="13"
                                                Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" />
                                     <TextBlock Classes="railBody" FontSize="14"
-                                               Text="One file per day per station, append-only. State and logs live under LOCALAPPDATA because a booth PC cannot write next to its own exe." />
+                                               Text="One file per day per station, append-only. State and logs live here rather than beside the program, because a locked-down booth machine often cannot write to its own folder." />
                                 </StackPanel>
                             </Border>
                             <Button Classes="secondary" Content="Open logs folder" HorizontalAlignment="Left"

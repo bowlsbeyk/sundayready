@@ -35,15 +35,31 @@ races the software the verifiers check for, so checks would fail before vMix was
 
 ## Where things live
 
+On Windows, where `DATA` is `%LOCALAPPDATA%\SundayReady`:
+
 | What | Where |
 |---|---|
 | Checklists, `station.json` | Next to the exe. Edit freely; no rebuild needed. |
-| Today's checked state | `%LOCALAPPDATA%\SundayReady\state.json` |
-| Completion logs | `%LOCALAPPDATA%\SundayReady\logs\<date>_<station>.log` |
-| Staged updates | `%LOCALAPPDATA%\SundayReady\updates\` |
+| Today's checked state | `DATA\state.json` |
+| Completion logs | `DATA\logs\<date>_<station>.log` |
+| Staged updates | `DATA\updates\` |
 
-State and logs are not next to the exe because a locked-down booth PC often cannot write
-there. Logs persist, one file per day per station.
+On macOS, where `DATA` is `~/Library/Application Support/SundayReady`:
+
+| What | Where |
+|---|---|
+| Checklists, `station.json` | `DATA/checklists/`, `DATA/station.json` — **not** in the app bundle |
+| Today's checked state | `DATA/state.json` |
+| Completion logs | `DATA/logs/<date>_<station>.log` |
+| Staged updates | `DATA/updates/` |
+
+State and logs are never next to the executable, because a locked-down booth PC often cannot
+write there. Logs persist, one file per day per station.
+
+The one real difference is the checklists. On Windows an update replaces only the exe, so
+content beside it is safe. On macOS the unit an update replaces is the whole `.app`, so content
+inside the bundle would not survive one — it lives in `DATA` instead, seeded from the shipped
+samples the first time the app runs.
 
 **When the checklist starts again.** Settings → Service times, three options:
 

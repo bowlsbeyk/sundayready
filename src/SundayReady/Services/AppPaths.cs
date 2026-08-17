@@ -16,10 +16,22 @@ namespace SundayReady.Services;
 /// </summary>
 public static class AppPaths
 {
-    public static string DataDirectory =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SundayReady");
+    /// <summary>
+    /// State, logs, and on macOS the station's content.
+    /// <para>
+    /// Spelled out on macOS rather than taken from <c>SpecialFolder.LocalApplicationData</c>,
+    /// which .NET maps to <c>~/.local/share</c> there — correct for Unix, but not where any Mac
+    /// user would look, and this is a folder people are told to open.
+    /// </para>
+    /// </summary>
+    public static string DataDirectory => Path.Combine(DataRoot, "SundayReady");
+
+    private static string DataRoot => OperatingSystem.IsMacOS()
+        ? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Library",
+            "Application Support")
+        : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
     /// <summary>The content that ships with the build, and the source for <see cref="SeedContent"/>.</summary>
     public static string ShippedContentDirectory => AppContext.BaseDirectory;
