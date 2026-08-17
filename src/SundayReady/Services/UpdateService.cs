@@ -41,10 +41,16 @@ public sealed class UpdateService : IDisposable
     public const string DefaultRepository = "bowlsbeyk/sundayready";
 
     /// <summary>
-    /// How many releases back to look. A station left off for a season can be several releases
-    /// behind, and on a narrow channel most of the recent tags will not be ones it accepts.
+    /// How many tags to pull. A station left off for a season can be well behind, and on a narrow
+    /// channel most recent tags will not be ones it accepts.
     /// </summary>
-    private const int ReleasesToScan = 40;
+    private const int TagsToScan = 100;
+
+    /// <summary>
+    /// How many candidate tags to try resolving before giving up. Bounds the request count when a
+    /// run of tags has no releases behind them, which is what a string of failed builds looks like.
+    /// </summary>
+    private const int CandidatesToResolve = 6;
 
     private readonly HttpClient _client;
     private readonly string _repository;
@@ -64,50 +70,103 @@ public sealed class UpdateService : IDisposable
     public string ReleasesUrl => $"https://github.com/{_repository}/releases";
 
     /// <summary>
-    /// Returns the newest release this station is willing to run, if it is newer than the
-    /// running build. Network failure is not an error worth surfacing loudly — it throws, and
-    /// the caller records it as a status line rather than bothering the operator.
+    /// Returns the newest release this station is willing to run, if it is newer than the running
+    /// build. Network failure is not an error worth surfacing loudly — it throws, and the caller
+    /// records it as a status line rather than bothering the operator.
     /// <para>
-    /// Two endpoints, because neither one is enough on its own. <c>/releases/latest</c> is exact,
-    /// cheap and always current, but it never returns a prerelease — a station on beta asking only
-    /// that question would sit on production forever. The release list does return prereleases,
-    /// but it is a cached collection endpoint that has been observed answering <c>200 []</c> for a
-    /// repository whose releases are plainly there. So: ask the list when the channel needs it,
-    /// and always fall back to <c>latest</c>, which means the worst case for a booth PC is that it
-    /// finds the finished release rather than nothing at all.
+    /// Deliberately does not use <c>/releases</c>. That collection endpoint was observed answering
+    /// <c>200 []</c> for this repository, repeatedly and for long stretches, while the releases
+    /// were plainly there — and a station that believed it would report itself up to date. So the
+    /// question is asked two ways that do work:
+    /// </para>
+    /// <para>
+    /// <c>/releases/latest</c> is the whole answer for a production station: one request, exact,
+    /// and it comes with the assets. It excludes prereleases by design, so a station on beta needs
+    /// more — and that comes from the tag list, since a tag <em>is</em> a version here. Candidates
+    /// are resolved newest-first through <c>/releases/tags/…</c>, stepping over tags that have no
+    /// release: a tag whose build failed is a real and ordinary thing, and it must not stop the
+    /// station finding the good build underneath it.
     /// </para>
     /// </summary>
     public async Task<AvailableUpdate?> CheckAsync(ReleaseChannel channel, CancellationToken cancellationToken)
     {
-        AvailableUpdate? best = null;
+        var api = $"https://api.github.com/repos/{_repository}";
 
-        if (channel != ReleaseChannel.Production)
+        // A production release supersedes its own prereleases, so this is both the production
+        // answer and the floor for every other channel.
+        var latest = await GetOrNullAsync<GitHubRelease>($"{api}/releases/latest", cancellationToken)
+            .ConfigureAwait(true);
+
+        var best = latest is null ? null : Better(null, latest, channel);
+
+        if (channel == ReleaseChannel.Production)
         {
-            var url = $"https://api.github.com/repos/{_repository}/releases?per_page={ReleasesToScan}";
-            var releases = await _client
-                .GetFromJsonAsync<List<GitHubRelease>>(url, cancellationToken)
+            return best;
+        }
+
+        var refs = await GetOrNullAsync<List<GitHubRef>>(
+                $"{api}/git/refs/tags?per_page={TagsToScan}", cancellationToken)
+            .ConfigureAwait(true);
+
+        var candidates = (refs ?? new List<GitHubRef>())
+            .Select(r => ReleaseVersion.Parse(TagFromRef(r.Ref)))
+            .Where(v => v is not null)
+            .Select(v => v!)
+            .Where(v => v.IsOffered(channel)
+                && v > AppVersion.Current
+                && (best is null || v > best.Version))
+            .OrderByDescending(v => v)
+            .Take(CandidatesToResolve)
+            .ToList();
+
+        foreach (var candidate in candidates)
+        {
+            var release = await GetOrNullAsync<GitHubRelease>(
+                    $"{api}/releases/tags/{Uri.EscapeDataString(candidate.Tag)}", cancellationToken)
                 .ConfigureAwait(true);
 
-            foreach (var release in releases ?? new List<GitHubRelease>())
+            if (release is null)
             {
-                best = Better(best, release, channel);
+                // The tag is there but nothing was ever published for it — a release run that
+                // failed. Keep walking down.
+                continue;
+            }
+
+            var resolved = Better(best, release, channel);
+            if (resolved is not null && (best is null || resolved.Version > best.Version))
+            {
+                return resolved;
             }
         }
 
-        // Always: a production release supersedes its own prereleases, so this can only ever
-        // improve on what the list found — and it is the whole answer for a production station.
-        var latest = await _client
-            .GetFromJsonAsync<GitHubRelease>(
-                $"https://api.github.com/repos/{_repository}/releases/latest",
-                cancellationToken)
-            .ConfigureAwait(true);
+        return best;
+    }
 
-        if (latest is not null)
+    /// <summary><c>refs/tags/v1.2.3</c> to <c>v1.2.3</c>.</summary>
+    private static string? TagFromRef(string? gitRef) =>
+        gitRef is not null && gitRef.StartsWith("refs/tags/", StringComparison.Ordinal)
+            ? gitRef["refs/tags/".Length..]
+            : null;
+
+    /// <summary>
+    /// A GET that treats "not there" as an answer rather than an exception. <c>/releases/latest</c>
+    /// 404s on a repository whose only releases are prereleases, and a tag with no release 404s
+    /// too — both are ordinary, and neither should read as a broken update check.
+    /// </summary>
+    private async Task<T?> GetOrNullAsync<T>(string url, CancellationToken cancellationToken)
+        where T : class
+    {
+        using var response = await _client.GetAsync(url, cancellationToken).ConfigureAwait(true);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            best = Better(best, latest, channel);
+            return null;
         }
 
-        return best;
+        response.EnsureSuccessStatusCode();
+        return await response.Content
+            .ReadFromJsonAsync<T>(cancellationToken)
+            .ConfigureAwait(true);
     }
 
     /// <summary>
@@ -255,6 +314,12 @@ public sealed class UpdateService : IDisposable
 
         [JsonPropertyName("assets")]
         public List<GitHubAsset> Assets { get; set; } = new();
+    }
+
+    private sealed class GitHubRef
+    {
+        [JsonPropertyName("ref")]
+        public string? Ref { get; set; }
     }
 
     private sealed class GitHubAsset
