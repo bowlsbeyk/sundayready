@@ -33,8 +33,8 @@ source being advertised. That covers most booths without SundayReady needing to 
 equipment is. Nothing here is affiliated with or endorsed by any of the software it can be pointed at.
 
 > **Where it came from, honestly.** It was written for the A/V team at one church, Trinity Baptist,
-> and the sample checklists still smell of it — vMix, ProPresenter, a balcony camera, a Subsplash
-> stream. **None of that is baked in.** The samples are examples to delete or rewrite; see
+> and the sample checklists still smell of it — vMix, ProPresenter, a Subsplash stream.
+> **None of that is baked in.** The samples are examples to delete or rewrite; see
 > [making it yours](#making-it-yours). It is early software, used every week at the church it was
 > built for and not yet by many others, so expect to find rough edges and please say so when you do.
 
@@ -253,8 +253,8 @@ One file is one tab. Comments and trailing commas are allowed when reading.
       "verify": { "kind": "httpContains", "url": "http://127.0.0.1:8088/api",
                   "contains": "Cam 3", "maxAttempts": 3 },
       "checkSteps": [                     // your words, shown on the failed-verify screen
-        "Is the balcony camera's PoE injector lit?",
-        "In vMix, does Add Input → NDI list \"BALCONY-CAM\"?"
+        "Is Cam 3's PoE injector lit? It is the grey box on the shelf behind the booth.",
+        "In vMix, does Add Input → NDI list the camera?"
       ],
       "remediationLabel": "Reload preset",
       "remediation": { "run": "C:\\vMix\\Presets\\Sunday.vmix" } }

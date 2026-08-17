@@ -1,5 +1,8 @@
 {
   // Local to this PC. Delete this file to fall back to hostname auto-detect.
+  //
+  // SAMPLE VALUES. The station name, operator, service times and launch buttons below are
+  // illustrative - they describe nobody's actual building. Settings rewrites all of them.
   "station": "Livestream Video",
   "operator": "J. Mercer",
   "checklists": [

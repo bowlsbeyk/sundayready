@@ -37,7 +37,7 @@
                 <TextBlock Classes="microLabel" Text="WHY ARE YOU OVERRIDING THIS?" />
                 <TextBox Classes="field" Text="{Binding Note, Mode=TwoWay}" AcceptsReturn="True"
                          TextWrapping="Wrap" MinHeight="96" FontSize="15"
-                         Watermark="Going live on three cameras — balcony PoE is dead, told the tech director." />
+                         Watermark="Going live without Cam 3 — its PoE injector is dead and there is no spare." />
             </StackPanel>
 
             <!-- Both fields are required: an override is a person taking responsibility. -->
