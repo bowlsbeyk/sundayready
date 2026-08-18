@@ -140,9 +140,30 @@ public abstract partial class MapProbeViewModel : ObservableObject
 public sealed partial class MapDeviceViewModel : MapProbeViewModel
 {
     /// <summary>Node box, per the handoff's 2a geometry. Fixed so wire geometry needs no layout pass.</summary>
-    public const double BoxWidth = 210;
+    public const double BoxWidth = 262;
 
     public const double BoxHeight = 64;
+
+    /// <summary>Vertical distance between port tiles, per the handoff's port anatomy.</summary>
+    public const double PortPitch = 22;
+
+    /// <summary>Where the first port tile's top edge sits, from the top of the box.</summary>
+    public const double PortFirstTop = 26;
+
+    /// <summary>
+    /// This box's height. The base 64 when it declares no ports; otherwise it grows so every
+    /// socket gets its 22px of edge — the handoff sizes nodes by content, not by rank.
+    /// </summary>
+    public double Height
+    {
+        get
+        {
+            var left = Model.Ports.Count(p => p.Side is MapPortSides.In or MapPortSides.Both);
+            var right = Model.Ports.Count(p => MapPortSides.AcceptsOut(p.Side));
+            var rows = Math.Max(left, right);
+            return rows == 0 ? BoxHeight : Math.Max(BoxHeight, PortFirstTop + (rows * PortPitch) + 8);
+        }
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Centre), nameof(RightPort), nameof(LeftPort))]
@@ -296,7 +317,7 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
         }
     }
 
-    public Point Centre => new(X + (BoxWidth / 2), Y + (BoxHeight / 2));
+    public Point Centre => new(X + (BoxWidth / 2), Y + (Height / 2));
 
     public Point RightPort => new(X + BoxWidth, Y + (BoxHeight / 2));
 
@@ -386,23 +407,18 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
 public readonly record struct MapPortAnchor(
     string PortId,
     string Label,
-    double Slot,
+    double Offset,
     int Wires,
     string Side,
-    bool RightSide)
+    bool RightSide,
+    string? Colour)
 {
-    /// <summary>Pixels down the box, matching <see cref="MapConnectionViewModel"/>'s edge maths.</summary>
-    public double Offset => 10 + (Slot * (MapDeviceViewModel.BoxHeight - 20));
-
-    /// <summary>Top edge of the tick, for a Canvas that positions by corner.</summary>
-    public double Top => Offset - 5;
-
-    /// <summary>Top of the click target, which is deliberately larger than the mark it covers.</summary>
-    public double HitTop => Offset - 11;
+    /// <summary>Top of the 22px hit panel the tile sits in. The tile itself is centred.</summary>
+    public double Top => Offset - 11;
 
     public bool IsShared => Wires > 1;
 
-    /// <summary>Nothing plugged in. Drawn hollow, and still clickable — that is the point.</summary>
+    /// <summary>Nothing plugged in. Drawn hollow with no label — spare capacity at a glance.</summary>
     public bool IsVacant => Wires == 0;
 
     /// <summary>Can a run start here? An input-only socket cannot.</summary>
@@ -413,6 +429,48 @@ public readonly record struct MapPortAnchor(
 
     /// <summary>Both directions are genuinely open, so the operator has to say which.</summary>
     public bool IsAmbiguous => Side == MapPortSides.Both;
+
+    /// <summary>
+    /// The tile's fill: the occupying run's signal colour, per the handoff — port colour comes
+    /// from the connection in the hole, so a filled tile tells you what it carries before you
+    /// read anything. Vacant tiles get the canvas colour and read as holes.
+    /// </summary>
+    public IBrush FillBrush => !IsVacant && Colour is { } hex && Color.TryParse(hex, out var c)
+        ? new SolidColorBrush(c)
+        : new SolidColorBrush(Color.Parse("#0b0d10"));
+
+    /// <summary>
+    /// What fits inside a 16px tile: the channel or number, not the whole silkscreen. The
+    /// handoff wants the real port number, never an index — so this compresses the label the
+    /// author typed rather than inventing one. <c>AES50 A</c> → <c>A</c>, <c>CH 1-16</c> →
+    /// <c>1-16</c>, <c>ETHERNET</c> → <c>ETH</c>.
+    /// </summary>
+    public string ShortLabel
+    {
+        get
+        {
+            var label = Label.Trim();
+
+            if (label.Length <= 4)
+            {
+                return label;
+            }
+
+            var tokens = label.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (tokens.Length > 1 && tokens[^1].Length <= 4)
+            {
+                return tokens[^1];
+            }
+
+            if (tokens[0].Length <= 4)
+            {
+                return tokens[0];
+            }
+
+            return label[..3];
+        }
+    }
 
     public string Tooltip => Wires switch
     {
@@ -476,9 +534,9 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
     /// patch panel.
     /// </para>
     /// </summary>
-    public double FromSlot { get; set; } = 0.5;
+    public double FromOffset { get; set; } = -1;
 
-    public double ToSlot { get; set; } = 0.5;
+    public double ToOffset { get; set; } = -1;
 
     public string? Label => Model.Label;
 
@@ -565,11 +623,10 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
     public bool IsDown => FlowState == "down";
 
     /// <summary>Where the wire leaves and arrives: facing edges, vertical centre.</summary>
-    /// <summary>The point on an edge for a given slot fraction.</summary>
-    private static Point EdgePoint(MapDeviceViewModel device, bool rightSide, double slot)
+    /// <summary>The point on an edge for a pixel offset from the box top. Negative = centre.</summary>
+    private static Point EdgePoint(MapDeviceViewModel device, bool rightSide, double offset)
     {
-        // Inset so a fan never lands exactly on a rounded corner.
-        var y = device.Y + 10 + (slot * (MapDeviceViewModel.BoxHeight - 20));
+        var y = device.Y + (offset < 0 ? device.Height / 2 : offset);
         return new Point(rightSide ? device.X + MapDeviceViewModel.BoxWidth : device.X, y);
     }
 
@@ -577,8 +634,8 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
     {
         var forward = To.Centre.X >= From.Centre.X;
         return forward
-            ? (EdgePoint(From, true, FromSlot), EdgePoint(To, false, ToSlot))
-            : (EdgePoint(From, false, FromSlot), EdgePoint(To, true, ToSlot));
+            ? (EdgePoint(From, true, FromOffset), EdgePoint(To, false, ToOffset))
+            : (EdgePoint(From, false, FromOffset), EdgePoint(To, true, ToOffset));
     }
 
     /// <summary>

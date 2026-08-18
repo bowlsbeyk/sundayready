@@ -91,6 +91,31 @@ public static class MapNoteTones
     public static IReadOnlyList<string> All { get; } = new[] { Plain, Warning };
 }
 
+/// <summary>
+/// What a map export file carries: the map itself plus any custom signal types it uses.
+/// <para>
+/// This is the integrator hand-off format. An installer wires the building, exports one file,
+/// and the church imports it — the custom types travel inside the bundle because a map whose
+/// runs reference a type the receiving machine has never heard of would arrive drawn in
+/// unknown-grey, which reads as "broken" rather than "new". Built-in types are never bundled;
+/// every copy of the app already has them.
+/// </para>
+/// </summary>
+public sealed class SystemMapExport
+{
+    /// <summary>Identifies the file when someone opens it in a text editor: what and from where.</summary>
+    public string Format { get; set; } = "sundayready-map";
+
+    public int Version { get; set; } = 1;
+
+    /// <summary>Free text about who made it — an integrator's name, a date, a job number.</summary>
+    public string? ExportedBy { get; set; }
+
+    public SystemMap? Map { get; set; }
+
+    public List<MapConnectionType> Types { get; set; } = new();
+}
+
 /// <summary>A labelled vertical band behind the graph.</summary>
 public sealed class MapColumn
 {

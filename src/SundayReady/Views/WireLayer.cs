@@ -173,28 +173,39 @@ public sealed class WireLayer : Control
             var wl = Color.FromArgb((byte)(255 * 0.80 * dim), colour.R, colour.G, colour.B);
             var offset = -(phase * 128) / type.StrokeWidth;
 
+            if (wire.IsBidirectional)
+            {
+                DrawDuplexTrains(context, geometry, wl, type.StrokeWidth, 8, offset);
+                return;
+            }
+
             context.DrawGeometry(null, new Pen(new SolidColorBrush(wl), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
             {
                 DashStyle = new DashStyle(new double[] { 8 / type.StrokeWidth, 8 / type.StrokeWidth }, offset),
                 LineCap = PenLineCap.Round,
             }, geometry);
-
-            if (wire.IsBidirectional)
-            {
-                DrawReturn(context, geometry, colour, type, dim, 0.80, 8, 128, phase, selected);
-            }
-
             return;
         }
 
-        // 1. The cable — the static physical run.
-        var cableOpacity = type.Id == "cat6" ? 0.42 : 0.36;
+        // 1. The cable — the static physical run. A duplex run's cable is wider and dimmer:
+        //    one fatter conduit carrying two conversations, per the handoff's 5a pattern.
+        var cableOpacity = wire.IsBidirectional ? 0.30 : type.Id == "cat6" ? 0.42 : 0.36;
+        var cableWidth = wire.IsBidirectional
+            ? Math.Max(3.5, type.StrokeWidth + 1)
+            : selected ? type.StrokeWidth + 1 : type.StrokeWidth;
         var cable = Color.FromArgb((byte)(255 * cableOpacity * dim), colour.R, colour.G, colour.B);
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(cable), selected ? type.StrokeWidth + 1 : type.StrokeWidth), geometry);
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(cable), cableWidth), geometry);
+
+        var signal = Color.FromArgb((byte)(255 * 1.00 * dim), colour.R, colour.G, colour.B);
+
+        if (wire.IsBidirectional)
+        {
+            DrawDuplexTrains(context, geometry, signal, 2, 2, -(phase * 64) / 2);
+            return;
+        }
 
         // 2. The signal — dash "2 18" drifting -64 per cycle. Avalonia's dash units are
         //    multiples of stroke width, so the handoff's pixel values divide by it.
-        var signal = Color.FromArgb((byte)(255 * 1.00 * dim), colour.R, colour.G, colour.B);
         var signalOffset = -(phase * 64) / type.StrokeWidth;
 
         context.DrawGeometry(null, new Pen(new SolidColorBrush(signal), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
@@ -202,48 +213,47 @@ public sealed class WireLayer : Control
             DashStyle = new DashStyle(new double[] { 2 / type.StrokeWidth, 18 / type.StrokeWidth }, signalOffset),
             LineCap = PenLineCap.Round,
         }, geometry);
-
-        if (wire.IsBidirectional)
-        {
-            DrawReturn(context, geometry, colour, type, dim, 1.00, 2, 64, phase, selected);
-        }
     }
 
     /// <summary>
-    /// The second half of a two-way run: the same dash drifting the other way.
+    /// The duplex pattern: two thin dash trains 6px apart on the same run, one flowing forward
+    /// and one flowing back.
     /// <para>
-    /// Two details make it read as one cable carrying both directions rather than as a rendering
-    /// glitch. The offset is <em>positive</em>, so this stream travels against the first. And it is
-    /// phase-shifted by half the dash period, so the two sets of pulses interleave into a steady
-    /// alternating procession instead of landing on top of each other and cancelling out into
-    /// something that looks like it is standing still.
+    /// The handoff is emphatic about what NOT to do here — never counter-moving dashes on a
+    /// single line, which reads as a fault rather than as two directions. The perpendicular
+    /// offset is approximated with a vertical translate, which holds because the map's béziers
+    /// enter and leave horizontally; a wire would need to run nearly vertical before the two
+    /// trains visibly converged, and this graph's columns make that rare.
     /// </para>
     /// </summary>
-    private static void DrawReturn(
+    private static void DrawDuplexTrains(
         DrawingContext context,
         Geometry geometry,
         Color colour,
-        MapConnectionType type,
-        double dim,
-        double opacity,
+        double strokeWidth,
         double dashOn,
-        double travel,
-        double phase,
-        bool selected)
+        double offset)
     {
-        var gap = type.Wireless ? dashOn : 18;
-        var period = dashOn + gap;
+        var brush = new SolidColorBrush(colour);
+        var gap = dashOn == 2 ? 18d : dashOn;
 
-        // Slightly fainter than the outbound stream: on a glance you should still read which way
-        // the run is named, and the return is the answer to a question you asked second.
-        var back = Color.FromArgb((byte)(255 * opacity * 0.72 * dim), colour.R, colour.G, colour.B);
-        var offset = ((phase * travel) + (period / 2)) / type.StrokeWidth;
-
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(back), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
+        using (context.PushTransform(Matrix.CreateTranslation(0, -3)))
         {
-            DashStyle = new DashStyle(new double[] { dashOn / type.StrokeWidth, gap / type.StrokeWidth }, offset),
-            LineCap = PenLineCap.Round,
-        }, geometry);
+            context.DrawGeometry(null, new Pen(brush, strokeWidth)
+            {
+                DashStyle = new DashStyle(new[] { dashOn / strokeWidth, gap / strokeWidth }, offset),
+                LineCap = PenLineCap.Round,
+            }, geometry);
+        }
+
+        using (context.PushTransform(Matrix.CreateTranslation(0, 3)))
+        {
+            context.DrawGeometry(null, new Pen(brush, strokeWidth)
+            {
+                DashStyle = new DashStyle(new[] { dashOn / strokeWidth, gap / strokeWidth }, -offset),
+                LineCap = PenLineCap.Round,
+            }, geometry);
+        }
     }
 
     /// <summary>A 0→1→0 triangle wave with the given period — the fail pulse.</summary>

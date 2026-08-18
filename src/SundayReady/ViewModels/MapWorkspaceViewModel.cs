@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Text.Json;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -132,84 +133,111 @@ public sealed partial class SystemMapViewModel : ObservableObject
             declared[device.Model.Ports[i].Id] = i;
         }
 
-        string KeyFor(string? portId) =>
-            portId is { Length: > 0 } id && declared.ContainsKey(id) ? "port:" + id : null!;
+        bool IsDeclared(string? portId) =>
+            portId is { Length: > 0 } id && declared.ContainsKey(id);
 
-        // Declared ports hold a slot on their edge whether or not anything is plugged in. Without
-        // this an empty socket would have nowhere to be drawn — and you cannot click a socket to
-        // wire it if it is invisible until something is already wired to it. It also keeps ports
-        // from jumping about the moment a wire is added or removed.
-        var vacant = device.Model.Ports
-            .Where(p => !usedPorts.Contains(p.Id))
-            .Where(p => rightSide ? MapPortSides.AcceptsOut(p.Side) : p.Side == MapPortSides.In)
-            .ToList();
+        // Which sockets sit on THIS edge: every one a wire lands on here, plus the vacant ones
+        // whose side puts them here. A vacant socket still holds its slot — a socket that only
+        // appears once something is plugged in is a socket nobody can click to plug in.
+        var edgePortIds = new List<string>();
 
-        if (ends.Count == 0 && vacant.Count == 0)
+        foreach (var end in ends.Where(e => IsDeclared(e.PortId)))
         {
-            device.SetPortAnchors(rightSide, Array.Empty<MapPortAnchor>());
-            return;
+            if (!edgePortIds.Contains(end.PortId!, StringComparer.OrdinalIgnoreCase))
+            {
+                edgePortIds.Add(end.PortId!);
+            }
         }
 
-        var groups = ends
-            .GroupBy(e => KeyFor(e.PortId) ?? "wire:" + e.Wire.Model.Id + (e.FromEnd ? ":a" : ":b"))
-            .Select(g => new
+        foreach (var port in device.Model.Ports)
+        {
+            var here = rightSide ? MapPortSides.AcceptsOut(port.Side) : port.Side == MapPortSides.In;
+
+            if (here && !usedPorts.Contains(port.Id)
+                && !edgePortIds.Contains(port.Id, StringComparer.OrdinalIgnoreCase))
             {
-                Ends = g.ToList(),
-                PortId = KeyFor(g.First().PortId) is null ? null : g.First().PortId,
-                Order = KeyFor(g.First().PortId) is null
-                    ? (int?)null
-                    : declared[g.First().PortId!],
-                FarY = g.Average(e => e.FarY),
-            })
-            .Concat(vacant.Select(p => new
-            {
-                Ends = new List<(MapConnectionViewModel Wire, bool FromEnd, string? PortId, double FarY)>(),
-                PortId = (string?)p.Id,
-                Order = (int?)declared[p.Id],
-                FarY = 0d,
-            }))
-            .OrderBy(g => g.Order is null ? 1 : 0)
-            .ThenBy(g => g.Order ?? 0)
-            .ThenBy(g => g.FarY)
-            .ToList();
+                edgePortIds.Add(port.Id);
+            }
+        }
+
+        // Declared order decides the pitch position — the operator ordered the list on purpose.
+        edgePortIds.Sort((a, b) => declared[a].CompareTo(declared[b]));
 
         var anchors = new List<MapPortAnchor>();
+        var offsets = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
-        for (var i = 0; i < groups.Count; i++)
+        for (var i = 0; i < edgePortIds.Count; i++)
         {
-            var slot = Slot(i, groups.Count);
+            // Tile centres: first tile's top at 26, 16 tall, 22 pitch.
+            offsets[edgePortIds[i]] = MapDeviceViewModel.PortFirstTop
+                + (i * MapDeviceViewModel.PortPitch) + 8;
+        }
 
-            foreach (var end in groups[i].Ends)
+        foreach (var portId in edgePortIds)
+        {
+            var portEnds = ends.Where(e => string.Equals(e.PortId, portId, StringComparison.OrdinalIgnoreCase)).ToList();
+            var spec = device.Model.Ports.First(p => string.Equals(p.Id, portId, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var end in portEnds)
             {
                 if (end.FromEnd)
                 {
-                    end.Wire.FromSlot = slot;
+                    end.Wire.FromOffset = offsets[portId];
                 }
                 else
                 {
-                    end.Wire.ToSlot = slot;
+                    end.Wire.ToOffset = offsets[portId];
                 }
             }
 
-            if (groups[i].PortId is { } portId)
-            {
-                var spec = device.Model.Ports.FirstOrDefault(p => p.Id == portId);
-                anchors.Add(new MapPortAnchor(
-                    portId,
-                    spec?.Label ?? portId,
-                    slot,
-                    groups[i].Ends.Count,
-                    spec?.Side ?? MapPortSides.Both,
-                    rightSide));
-            }
+            anchors.Add(new MapPortAnchor(
+                spec.Id,
+                spec.Label,
+                offsets[portId],
+                portEnds.Count,
+                spec.Side,
+                rightSide,
+                portEnds.Count > 0 ? portEnds[0].Wire.Type.Colour : null));
         }
 
         device.SetPortAnchors(rightSide, anchors);
-    }
 
-    /// <summary>One wire sits at the centre; several spread evenly across the edge.</summary>
-    private static double Slot(int index, int count) =>
-        count <= 1 ? 0.5 : (index + 0.5) / count;
+        // Unnamed wires fan in whatever edge is left below the sockets, ordered by where their
+        // far end sits so the fan does not cross itself.
+        var loose = ends
+            .Where(e => !IsDeclared(e.PortId))
+            .OrderBy(e => e.FarY)
+            .ToList();
+
+        if (loose.Count == 0)
+        {
+            return;
+        }
+
+        var top = edgePortIds.Count == 0
+            ? 10
+            : MapDeviceViewModel.PortFirstTop + (edgePortIds.Count * MapDeviceViewModel.PortPitch) + 4;
+        var bottom = device.Height - 10;
+
+        if (bottom <= top)
+        {
+            bottom = top + 1;
+        }
+
+        for (var i = 0; i < loose.Count; i++)
+        {
+            var y = top + (((i + 0.5) / loose.Count) * (bottom - top));
+
+            if (loose[i].FromEnd)
+            {
+                loose[i].Wire.FromOffset = y;
+            }
+            else
+            {
+                loose[i].Wire.ToOffset = y;
+            }
+        }
+    }
 
     /// <summary>Re-fans after anything that changes the wiring or the layout.</summary>
     public void RefreshPorts() => AssignPortSlots();
@@ -1642,7 +1670,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     public MapDeviceViewModel? DeviceAt(Avalonia.Point point) =>
         Current?.Devices.FirstOrDefault(d =>
             point.X >= d.X && point.X <= d.X + MapDeviceViewModel.BoxWidth
-            && point.Y >= d.Y && point.Y <= d.Y + MapDeviceViewModel.BoxHeight);
+            && point.Y >= d.Y && point.Y <= d.Y + d.Height);
 
     [RelayCommand]
     private void CancelWire()
@@ -1772,6 +1800,104 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             map.RefreshExtent();
             map.RefreshPorts();
             RebuildLegend();
+        }
+    }
+
+    /// <summary>
+    /// Writes the open map and its custom types to one file — the integrator hand-off. Returns
+    /// an error sentence, or null on success.
+    /// </summary>
+    public string? ExportMap(string path)
+    {
+        if (Current is not { } map)
+        {
+            return "No map is open.";
+        }
+
+        try
+        {
+            var bundle = new SystemMapExport
+            {
+                Map = map.Model,
+                Types = _types.Where(t => !t.BuiltIn).ToList(),
+                ExportedBy = Environment.UserName,
+            };
+
+            File.WriteAllText(path, JsonSerializer.Serialize(bundle, ChecklistWriter.WriteOptions));
+            Status = $"Exported {map.Name} to {Path.GetFileName(path)}.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"Could not export: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Brings a map file in — a bundle exported from another install, or a bare map JSON
+    /// somebody wrote by hand. Returns an error sentence, or null on success.
+    /// <para>
+    /// Import never overwrites. The map lands under a fresh file name even when one with the
+    /// same name exists, because "the integrator's file replaced our map" is an afternoon of
+    /// lost work and there is no undo across files. Unknown custom types come in with the
+    /// bundle; types whose id is already registered keep the local definition — the church's
+    /// own palette wins over the visitor's.
+    /// </para>
+    /// </summary>
+    public string? ImportMap(string path)
+    {
+        SystemMapExport? bundle;
+
+        try
+        {
+            var text = File.ReadAllText(path);
+            bundle = JsonSerializer.Deserialize<SystemMapExport>(text, ChecklistLoader.JsonOptions);
+
+            if (bundle?.Map is null)
+            {
+                // Not a bundle. Try it as a bare map before giving up.
+                var bare = JsonSerializer.Deserialize<SystemMap>(text, ChecklistLoader.JsonOptions);
+
+                bundle = bare is null || bare.Devices.Count == 0
+                    ? null
+                    : new SystemMapExport { Map = bare };
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Could not read that file: {ex.Message}";
+        }
+
+        if (bundle?.Map is not { } imported)
+        {
+            return "That file does not contain a map.";
+        }
+
+        try
+        {
+            var known = new HashSet<string>(_types.Select(t => t.Id), StringComparer.OrdinalIgnoreCase);
+            var incoming = bundle.Types.Where(t => !t.BuiltIn && !known.Contains(t.Id)).ToList();
+
+            if (incoming.Count > 0)
+            {
+                _store.SaveTypes(_types.Where(t => !t.BuiltIn).Concat(incoming));
+            }
+
+            var slug = SystemMapStore.NewId(imported.Name);
+            var fileName = slug + ".json";
+            _store.Save(imported, fileName);
+
+            Load();
+            Current = _maps.FirstOrDefault(m => m.FileName == fileName) ?? Current;
+
+            Status = incoming.Count > 0
+                ? $"Imported {imported.Name}, with {incoming.Count} new signal type{(incoming.Count == 1 ? "" : "s")}."
+                : $"Imported {imported.Name}.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"Could not import: {ex.Message}";
         }
     }
 

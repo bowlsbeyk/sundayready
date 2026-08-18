@@ -467,9 +467,10 @@ anything while editing opens its editor in the rail: label, the mono sub-line, k
 verifier of their own. **Apply changes**, then **Save map**.
 
 **Runs that go both ways.** A snake carrying stage inputs up and IEM mixes back down is one cable,
-not two, and ticking **carries both ways on one cable** draws it as one — flow drifting in both
-directions at once. It is a topology claim too: a two-way run is treated as broken from either end,
-because losing that cable really does cost you both directions.
+not two, and ticking **carries both ways on one cable** draws it as one — a wider, dimmer cable
+carrying two thin dash trains a few pixels apart, one flowing each way. It is a topology claim too:
+a two-way run is treated as broken from either end, because losing that cable really does cost you
+both directions.
 
 **Ports.** Select a device while editing and the rail carries a **PORTS** list: add sockets, name
 them (`AES50 A`, `CH 25-26`, `MAIN L/R`), say whether each is an in, an out or carries both ways,
@@ -477,13 +478,22 @@ and drag them into the order they sit down the edge of the box. Renaming a socke
 runs landing on it; removing one lets its runs float back onto the edge rather than deleting cable
 that still exists in the building.
 
-Named sockets appear as ticks on the box — filled when something is plugged in, hollow when not.
-**Click a socket to wire it.** An output can only send and an input can only receive, so for those
+Named sockets draw as **16px tiles straddling the box's border** — half in, half out, so a wire
+visibly terminates *in* something rather than touching its edge. A tile is filled in the colour of
+the signal occupying it, with the channel or letter inside (`A`, `1-16`, `L/R`); an empty socket is
+a hollow hole, so a box's spare capacity reads at a glance. Boxes grow taller as they declare more
+sockets. **Click a socket to wire it.** An output can only send and an input can only receive, so for those
 the click just arms the run and you click the far end to finish; only a socket that genuinely
 carries both ways asks which direction you meant. Two runs sharing one socket stay one point and the
 tick widens, because two cables in one jack is a fact worth seeing rather than a drawing to tidy
 away. Ports are entirely optional throughout: skip them and a busy box still fans its wires along
 the edge so each stays followable.
+
+**Export and import.** The rail's **Export…** writes the open map and any custom signal types it
+uses into one JSON file — the hand-off format for integrators. An installer wires the building,
+exports one file, and the church imports it with **Import…**; it arrives as a *new* map, never an
+overwrite, and unknown signal types come along inside the bundle. A bare hand-written map JSON
+imports too.
 
 **Notes.** **Add note** pins one to the canvas, for the things boxes and lines cannot say — the run
 that goes through the ceiling, the spare cable in the drawer under the amp, the XLR that needs a

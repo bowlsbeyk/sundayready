@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using SundayReady.Services;
 using SundayReady.ViewModels;
 
 namespace SundayReady.Views;
@@ -256,6 +258,65 @@ public partial class MapWindow : Window
         // things on one spot.
         var origin = CanvasScroll.Offset;
         workspace.AddNote(origin.X + 320, origin.Y + 80);
+    }
+
+    // ---------------------------------------------------------------- import / export
+
+    /// <summary>
+    /// The integrator hand-off, outbound. A file dialog because the destination is a USB stick
+    /// or an email attachment, not the maps folder — the maps folder is already shared.
+    /// </summary>
+    private async void OnExportClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { Current: { } map } workspace || StorageProvider is not { } storage)
+        {
+            return;
+        }
+
+        var file = await storage.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "Export map",
+            SuggestedFileName = SystemMapStore.NewId(map.Name) + ".sundayready.json",
+            FileTypeChoices = new[]
+            {
+                new Avalonia.Platform.Storage.FilePickerFileType("SundayReady map")
+                {
+                    Patterns = new[] { "*.sundayready.json", "*.json" },
+                },
+            },
+        });
+
+        if (file?.TryGetLocalPath() is { } path && workspace.ExportMap(path) is { } error)
+        {
+            workspace.Status = error;
+        }
+    }
+
+    private async void OnImportClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { } workspace || StorageProvider is not { } storage)
+        {
+            return;
+        }
+
+        var files = await storage.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Import map",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new Avalonia.Platform.Storage.FilePickerFileType("SundayReady map")
+                {
+                    Patterns = new[] { "*.json" },
+                },
+            },
+        });
+
+        if (files.Count == 1 && files[0].TryGetLocalPath() is { } path
+            && workspace.ImportMap(path) is { } error)
+        {
+            workspace.Status = error;
+        }
     }
 
     // ---------------------------------------------------------------- ports

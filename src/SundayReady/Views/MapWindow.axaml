@@ -39,11 +39,12 @@
             <Setter Property="Opacity" Value="0.55" />
         </Style>
 
-        <!-- An empty socket: present and clickable, but plainly carrying nothing. -->
+        <!-- An empty socket: a hollow hole in the canvas colour, no label. Spare capacity
+             should be readable at a glance without opening anything. -->
         <Style Selector="Border.vacant">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{StaticResource TextLockedBrush}" />
-            <Setter Property="BorderThickness" Value="1.2" />
+            <Setter Property="Background" Value="#0b0d10" />
+            <Setter Property="BorderBrush" Value="#38FFFFFF" />
+            <Setter Property="BorderThickness" Value="1.5" />
         </Style>
 
         <!-- Notes: a bare text field that only looks like a field once you are editing. -->
@@ -262,7 +263,7 @@
                                                    FontWeight="SemiBold" LetterSpacing="1.55"
                                                    Foreground="{StaticResource TextFainterBrush}"
                                                    Margin="16,0,0,0" />
-                                        <Rectangle Width="242" Height="{Binding Height}"
+                                        <Rectangle Width="300" Height="{Binding Height}"
                                                    Fill="#04FFFFFF" RadiusX="14" RadiusY="14" />
                                     </StackPanel>
                                 </DataTemplate>
@@ -331,7 +332,7 @@
                             </ItemsControl.Styles>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:MapDeviceViewModel">
-                                    <Panel Width="210" Height="64"
+                                    <Panel Width="262" Height="{Binding Height}"
                                            Classes.hub="{Binding IsHub}"
                                            Classes.inferred="{Binding IsInferred}"
                                            Classes.fail="{Binding ShowsFailure}"
@@ -350,55 +351,75 @@
                                              somebody is reading in a hurry. A shared socket draws
                                              wider, because two cables in one jack is a fact. -->
                                         <Canvas>
-                                            <ItemsControl ItemsSource="{Binding LeftPortAnchors}">
+                                            <!-- Port tiles, per the handoff's port anatomy:
+                                                 16x16 at 4px radius, straddling the border half
+                                                 in half out so a wire visibly terminates IN the
+                                                 box. Fill is the occupying signal's colour;
+                                                 vacant is a hollow hole with no label, so free
+                                                 capacity reads at a glance. The 1px canvas-dark
+                                                 keyline keeps overlapping wires off the shape. -->
+                                            <ItemsControl ItemsSource="{Binding LeftPortAnchors}"
+                                                          Canvas.Left="-14" Canvas.Top="0"
+                                                          Width="28" Height="{Binding Height}"
+                                                          ClipToBounds="False">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.Styles>
                                                     <Style Selector="ContentPresenter" x:DataType="vm:MapPortAnchor">
-                                                        <Setter Property="Canvas.Left" Value="-11" />
-                                                        <Setter Property="Canvas.Top" Value="{Binding HitTop}" />
+                                                        <Setter Property="Canvas.Left" Value="0" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
                                                     </Style>
                                                 </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="vm:MapPortAnchor">
-                                                        <!-- The click target is far bigger than the
-                                                             mark. A 6px tick is honest on a diagram
-                                                             and impossible to hit with a mouse. -->
-                                                        <Panel Width="24" Height="22"
-                                                               Background="Transparent"
+                                                        <Panel Width="28" Height="22" Background="Transparent"
                                                                PointerPressed="OnPortPressed"
                                                                ToolTip.Tip="{Binding Tooltip}">
-                                                            <Border Height="10" CornerRadius="3"
-                                                                    HorizontalAlignment="Right" Margin="0,0,2,0"
-                                                                    Width="{Binding IsShared, Converter={x:Static views:MapConverters.PortTickWidth}}"
-                                                                    Background="{StaticResource TextFaintBrush}"
-                                                                    Classes.vacant="{Binding IsVacant}" />
+                                                            <Border Width="16" Height="16" CornerRadius="4"
+                                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                    BorderThickness="1" BorderBrush="#0b0d10"
+                                                                    Background="{Binding FillBrush}"
+                                                                    Classes.vacant="{Binding IsVacant}">
+                                                                <TextBlock Classes="mono" FontSize="7.5" FontWeight="Bold"
+                                                                           Foreground="#0b0d10"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                           Text="{Binding ShortLabel}"
+                                                                           IsVisible="{Binding !IsVacant}" />
+                                                            </Border>
                                                         </Panel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <ItemsControl ItemsSource="{Binding RightPortAnchors}">
+                                            <ItemsControl ItemsSource="{Binding RightPortAnchors}"
+                                                          Canvas.Left="248" Canvas.Top="0"
+                                                          Width="28" Height="{Binding Height}"
+                                                          ClipToBounds="False">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.Styles>
                                                     <Style Selector="ContentPresenter" x:DataType="vm:MapPortAnchor">
-                                                        <Setter Property="Canvas.Left" Value="197" />
-                                                        <Setter Property="Canvas.Top" Value="{Binding HitTop}" />
+                                                        <Setter Property="Canvas.Left" Value="0" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
                                                     </Style>
                                                 </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="vm:MapPortAnchor">
-                                                        <Panel Width="24" Height="22"
-                                                               Background="Transparent"
+                                                        <Panel Width="28" Height="22" Background="Transparent"
                                                                PointerPressed="OnPortPressed"
                                                                ToolTip.Tip="{Binding Tooltip}">
-                                                            <Border Height="10" CornerRadius="3"
-                                                                    HorizontalAlignment="Left" Margin="2,0,0,0"
-                                                                    Width="{Binding IsShared, Converter={x:Static views:MapConverters.PortTickWidth}}"
-                                                                    Background="{StaticResource TextFaintBrush}"
-                                                                    Classes.vacant="{Binding IsVacant}" />
+                                                            <Border Width="16" Height="16" CornerRadius="4"
+                                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                    BorderThickness="1" BorderBrush="#0b0d10"
+                                                                    Background="{Binding FillBrush}"
+                                                                    Classes.vacant="{Binding IsVacant}">
+                                                                <TextBlock Classes="mono" FontSize="7.5" FontWeight="Bold"
+                                                                           Foreground="#0b0d10"
+                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                           Text="{Binding ShortLabel}"
+                                                                           IsVisible="{Binding !IsVacant}" />
+                                                            </Border>
                                                         </Panel>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -407,13 +428,11 @@
 
                                         <!-- Wire handles. Visible only while editing, because
                                              they are an affordance, not decoration. -->
-                                        <Border Width="26" HorizontalAlignment="Left" Margin="1,7"
-                                                CornerRadius="7,0,0,7"
+                                        <Border Width="16" HorizontalAlignment="Left" Margin="11,7"
                                                 Background="{StaticResource Overlay06Brush}"
                                                 IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
                                                 IsHitTestVisible="False" />
-                                        <Border Width="26" HorizontalAlignment="Right" Margin="1,7"
-                                                CornerRadius="0,7,7,0"
+                                        <Border Width="16" HorizontalAlignment="Right" Margin="11,7"
                                                 Background="{StaticResource Overlay06Brush}"
                                                 IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
                                                 IsHitTestVisible="False" />
@@ -1198,6 +1217,14 @@
                                 <Button Grid.Column="2" Classes="primary" Content="Save map"
                                         Padding="16,8" IsVisible="{Binding IsEditing}"
                                         Command="{Binding SaveCommand}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,9,Auto,*">
+                                <Button Classes="quiet" Content="Export…" Padding="13,7" FontSize="12.5"
+                                        Click="OnExportClick"
+                                        ToolTip.Tip="One file carrying this map and its custom signal types — hand it to an integrator, or to another church." />
+                                <Button Grid.Column="2" Classes="quiet" Content="Import…" Padding="13,7" FontSize="12.5"
+                                        Click="OnImportClick"
+                                        ToolTip.Tip="Bring in a map somebody exported. It arrives as a new map — nothing here is overwritten." />
                             </Grid>
                         </StackPanel>
                     </Border>
