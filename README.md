@@ -657,7 +657,12 @@ In plain terms, and this is a summary rather than the licence itself — **the f
   machines as you like, change it, share your changes. That covers essentially everyone this was
   written for.
 - **Selling it, or using it commercially: no.** Not without a separate licence.
-- **Contributions are welcome** and are covered by the same terms.
+- **Contributions are welcome.** By opening a pull request you keep your copyright, and you grant
+  the project's maintainer the right to use your contribution under this licence *and* to include
+  it in a future commercially-licensed version. That second half matters: without it a single
+  contributor could freeze the project's licence forever, and every contributor would have to be
+  tracked down and asked before anything could change. Nothing about your contribution stops being
+  free for churches.
 
 If you want to use it commercially, ask — the answer may well be yes, it just needs a conversation.
 
