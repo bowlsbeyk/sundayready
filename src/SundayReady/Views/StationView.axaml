@@ -104,6 +104,7 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button x:Name="TourHelp" Classes="chip" Content="HELP" Click="OnHelpClick" />
                         <Button Classes="chip" Content="TECHDESK" Click="OnTechdeskClick" />
+                        <Button Classes="chip" Content="MAP" Click="OnMapClick" />
                         <Button x:Name="TourEdit" Classes="chip" Content="EDIT" Click="OnEditClick" />
                         <Button Classes="chip" Content="RELOAD" Command="{Binding ReloadCommand}" />
                         <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick" />

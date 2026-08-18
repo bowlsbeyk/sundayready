@@ -7,7 +7,7 @@ using SundayReady.Services;
 namespace SundayReady.ViewModels;
 
 /// <summary>
-/// Anything on a map that can be checked — a box or a line.
+/// Anything on a map that can be checked — a device or a connection.
 /// <para>
 /// Deliberately thinner than a checklist item. An item has to tick itself, log the transition and
 /// hold an override; a map probe only has to say what it can see right now. Sharing the retry
@@ -135,13 +135,13 @@ public abstract partial class MapProbeViewModel : ObservableObject
     }
 }
 
-/// <summary>A box on the map.</summary>
-public sealed partial class MapComponentViewModel : MapProbeViewModel
+/// <summary>A device on the map, with the handoff's tier semantics baked in.</summary>
+public sealed partial class MapDeviceViewModel : MapProbeViewModel
 {
-    /// <summary>Box size. Fixed, so connection geometry can be computed without a layout pass.</summary>
-    public const double Width = 184;
+    /// <summary>Node box, per the handoff's 2a geometry. Fixed so wire geometry needs no layout pass.</summary>
+    public const double BoxWidth = 210;
 
-    public const double Height = 68;
+    public const double BoxHeight = 64;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Centre), nameof(RightPort), nameof(LeftPort))]
@@ -154,16 +154,29 @@ public sealed partial class MapComponentViewModel : MapProbeViewModel
     [ObservableProperty]
     private bool _isSelected;
 
-    /// <summary>Health of the map this box links to, folded into <see cref="EffectiveStatus"/>.</summary>
+    /// <summary>Set true by the legend's isolate filter when this device carries none of the type.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EffectiveStatus), nameof(ShowsFailure), nameof(ShowsOk))]
+    private bool _isDimmed;
+
+    /// <summary>Health of the map this device links to, folded into <see cref="EffectiveStatus"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EffectiveStatus), nameof(ShowsFailure), nameof(ShowsOk), nameof(ShowsHollowDot))]
     private VerifyStatus _linkedStatus = VerifyStatus.Unknown;
+
+    /// <summary>For inferred devices: the upstream's status, set by the workspace rollup.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EffectiveStatus), nameof(ShowsFailure), nameof(ShowsOk), nameof(ShowsHollowDot))]
+    private VerifyStatus _upstreamStatus = VerifyStatus.Unknown;
 
     [ObservableProperty]
     private string _label = string.Empty;
 
     [ObservableProperty]
-    private string _kind = MapComponentKinds.Device;
+    private string _kind = MapDeviceKinds.Device;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDetail))]
+    private string? _detail;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLink))]
@@ -173,51 +186,139 @@ public sealed partial class MapComponentViewModel : MapProbeViewModel
     [NotifyPropertyChangedFor(nameof(HasLocation))]
     private string? _location;
 
-    public MapComponentViewModel(MapComponent model, VerifierRegistry registry)
+    public MapDeviceViewModel(MapDevice model, VerifierRegistry registry, MapConnectionType? dominantType)
         : base(model.Verify, model.CheckSteps, registry)
     {
         Model = model;
         Id = model.Id;
+        Tier = model.Tier ?? (model.Verify is null ? MapTiers.Inferred : MapTiers.Verified);
+        DominantType = dominantType;
         _label = model.Label;
         _kind = model.Kind;
+        _detail = model.Detail;
         _x = model.X;
         _y = model.Y;
         _linksTo = model.LinksTo;
         _location = model.Location;
     }
 
-    public MapComponent Model { get; }
+    public MapDevice Model { get; }
 
     public string Id { get; }
+
+    /// <summary>One of <see cref="MapTiers"/>. How the app knows this device's state.</summary>
+    public string Tier { get; }
+
+    /// <summary>Drives the left accent bar; null draws no bar.</summary>
+    public MapConnectionType? DominantType { get; }
+
+    public bool IsHub => Model.Hub;
+
+    public bool OffCampus => Model.OffCampus;
+
+    public bool IsVerifiedTier => Tier == MapTiers.Verified;
+
+    public bool IsReported => Tier == MapTiers.Reported;
+
+    /// <summary>Hollow: faint fill, dashed border, ring dot. "Probably fine" must not look "checked".</summary>
+    public bool IsInferred => Tier == MapTiers.Inferred;
+
+    public bool IsHuman => Tier == MapTiers.Human;
+
+    /// <summary>REPORTED / ASK A HUMAN. Empty for tiers whose treatment says it all.</summary>
+    public string TierBadge => Tier switch
+    {
+        MapTiers.Reported => "REPORTED",
+        MapTiers.Human => "ASK A HUMAN",
+        _ => string.Empty,
+    };
+
+    public bool HasTierBadge => TierBadge.Length > 0;
+
+    /// <summary>
+    /// The one gating rule, enforced here rather than in a view: only a verified, on-campus
+    /// device may ever hold <c>Ready to go</c> shut. A volunteer must never face a red checklist
+    /// because Facebook is having a day.
+    /// </summary>
+    public bool CanHoldGate => IsVerifiedTier && !OffCampus;
+
+    public bool HasDetail => !string.IsNullOrWhiteSpace(Detail);
+
+    /// <summary>The 3px left accent bar: the dominant signal type's colour, or nothing.</summary>
+    public IBrush? AccentBrush =>
+        DominantType is { } type && Color.TryParse(type.Colour, out var colour)
+            ? new SolidColorBrush(colour)
+            : null;
+
+    public bool HasAccent => AccentBrush is not null;
+
+    /// <summary>The mock's failing-node badge: the state, in the verifier's vocabulary.</summary>
+    public string FailBadge => Verify?.Kind is "hostReachable" or "internetReachable" ? "NO PING" : "DOWN";
 
     public bool HasLink => !string.IsNullOrWhiteSpace(LinksTo);
 
     public bool HasLocation => !string.IsNullOrWhiteSpace(Location);
 
-    public Point Centre => new(X + (Width / 2), Y + (Height / 2));
+    public Point Centre => new(X + (BoxWidth / 2), Y + (BoxHeight / 2));
 
-    /// <summary>Where a connection leaves this box, and where one arrives.</summary>
-    public Point RightPort => new(X + Width, Y + (Height / 2));
+    public Point RightPort => new(X + BoxWidth, Y + (BoxHeight / 2));
 
-    public Point LeftPort => new(X, Y + (Height / 2));
+    public Point LeftPort => new(X, Y + (BoxHeight / 2));
 
     /// <summary>
-    /// The worse of this box's own check and the map it links to. A container whose contents are
-    /// broken has to look broken, or drilling down would be the only way to find anything.
+    /// What this device's dot or badge should show, by tier:
+    /// verified — its own check; reported — its own check, except that a failed call renders as
+    /// wait, because "we learned nothing" is different from "we know it is broken"; inferred —
+    /// the upstream's status, and the view draws the dot hollow; human — nothing machine-known.
+    /// A linked map's health folds in on top, so a container whose contents are broken looks it.
     /// </summary>
-    public VerifyStatus EffectiveStatus => Worst(Status, LinkedStatus);
+    public VerifyStatus EffectiveStatus
+    {
+        get
+        {
+            var own = Tier switch
+            {
+                MapTiers.Verified => Status,
+                MapTiers.Reported => Status is VerifyStatus.Failed ? VerifyStatus.Polling : Status,
+                MapTiers.Inferred => UpstreamStatus,
+                _ => VerifyStatus.Unknown,
+            };
 
-    public bool ShowsFailure => EffectiveStatus is VerifyStatus.Failed or VerifyStatus.Unsupported;
+            return Worst(own, LinkedStatus);
+        }
+    }
 
-    public bool ShowsOk => EffectiveStatus == VerifyStatus.Passed;
+    /// <summary>
+    /// Red treatment is a claim of knowledge, so an inferred device never gets it — the
+    /// handoff's rule for a broken chain is that downstream hops go hollow, "starved", not red.
+    /// Painting five boxes red hides which one actually broke.
+    /// <para>
+    /// The one exception is a linked map: its health comes from verified checks inside it, so a
+    /// container whose contents are provably broken says so, whatever its own tier is.
+    /// </para>
+    /// </summary>
+    public bool ShowsFailure =>
+        LinkedStatus is VerifyStatus.Failed or VerifyStatus.Unsupported
+        || (!IsInferred && EffectiveStatus is VerifyStatus.Failed or VerifyStatus.Unsupported);
 
-    public bool ShowsPolling => EffectiveStatus == VerifyStatus.Polling;
+    public bool ShowsOk => EffectiveStatus == VerifyStatus.Passed
+        && (!IsInferred || LinkedStatus == VerifyStatus.Passed);
+
+    public bool ShowsPolling => EffectiveStatus == VerifyStatus.Polling && !IsInferred;
+
+    /// <summary>The inferred tier's ring: present, never filled, never green.</summary>
+    public bool ShowsHollowDot => IsInferred;
+
+    /// <summary>An inferred device whose upstream is broken: nothing is arriving here.</summary>
+    public bool IsStarved => IsInferred
+        && UpstreamStatus is VerifyStatus.Failed or VerifyStatus.Unsupported;
 
     /// <summary>Pushes edited values back onto the model so the map can be saved.</summary>
     public void Apply()
     {
         Model.Label = Label.Trim();
         Model.Kind = Kind;
+        Model.Detail = string.IsNullOrWhiteSpace(Detail) ? null : Detail.Trim();
         Model.X = Math.Round(X);
         Model.Y = Math.Round(Y);
         Model.LinksTo = string.IsNullOrWhiteSpace(LinksTo) ? null : LinksTo.Trim();
@@ -230,45 +331,105 @@ public sealed partial class MapComponentViewModel : MapProbeViewModel
         OnPropertyChanged(nameof(ShowsFailure));
         OnPropertyChanged(nameof(ShowsOk));
         OnPropertyChanged(nameof(ShowsPolling));
+        OnPropertyChanged(nameof(IsStarved));
     }
+
+    partial void OnUpstreamStatusChanged(VerifyStatus value) => OnPropertyChanged(nameof(IsStarved));
 }
 
-/// <summary>A line between two boxes, and the signal it claims to carry.</summary>
+/// <summary>A wire: two devices, a signal type, and what the animation should be doing.</summary>
 public sealed partial class MapConnectionViewModel : MapProbeViewModel
 {
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private bool _isDimmed;
+
     public MapConnectionViewModel(
         MapConnection model,
-        MapComponentViewModel from,
-        MapComponentViewModel to,
+        MapDeviceViewModel from,
+        MapDeviceViewModel to,
+        MapConnectionType type,
         VerifierRegistry registry)
         : base(model.Verify, model.CheckSteps, registry)
     {
         Model = model;
         From = from;
         To = to;
+        Type = type;
 
-        // The line follows the boxes, so it is rebuilt whenever either end moves or changes state.
+        // Per-wire speed jitter, stable across restarts via the stored seed. Identical durations
+        // make the whole map throb in lockstep — "alive" versus "loading spinner".
+        var jitter = (model.FlowSeed % 997) / 997.0;
+        FlowSeconds = type.Wireless
+            ? 6.2 + (jitter * 1.0)
+            : Math.Clamp(type.FlowSeconds + ((jitter - 0.5) * 1.6), 3.0, 5.6);
+
         from.PropertyChanged += OnEndChanged;
         to.PropertyChanged += OnEndChanged;
     }
 
     public MapConnection Model { get; }
 
-    public MapComponentViewModel From { get; }
+    public MapDeviceViewModel From { get; }
 
-    public MapComponentViewModel To { get; }
+    public MapDeviceViewModel To { get; }
+
+    public MapConnectionType Type { get; }
+
+    /// <summary>This wire's own cycle time, seconds. The view's clock divides by this.</summary>
+    public double FlowSeconds { get; }
 
     public string? Label => Model.Label;
 
-    public bool HasLabel => !string.IsNullOrWhiteSpace(Model.Label);
+    public int? LengthFt => Model.LengthFt;
+
+    public bool IsStandby => Model.Standby;
 
     /// <summary>
-    /// A cubic curve rather than a straight line. Straight lines between boxes on a grid overlap
-    /// each other and become impossible to follow; a curve that leaves horizontally and arrives
-    /// horizontally reads as signal flow and separates naturally.
+    /// live — flowing dashes in the type's colour; standby — grey, still, by design;
+    /// down — this wire's own check failed: the reserved red alarm pattern;
+    /// starved — nothing arriving because upstream is broken: faint, still, not red,
+    /// because a starved hop is not a broken hop and drawing five red boxes hides the cause.
+    /// </summary>
+    public string FlowState
+    {
+        get
+        {
+            if (IsStandby)
+            {
+                return "standby";
+            }
+
+            if (HasVerify && IsFailed)
+            {
+                return "down";
+            }
+
+            if (From.ShowsFailure || From.IsStarved)
+            {
+                return "starved";
+            }
+
+            return "live";
+        }
+    }
+
+    public bool IsDown => FlowState == "down";
+
+    /// <summary>Where the wire leaves and arrives: facing edges, vertical centre.</summary>
+    public (Point Start, Point End) Ports()
+    {
+        var forward = To.Centre.X >= From.Centre.X;
+        return forward
+            ? (From.RightPort, To.LeftPort)
+            : (From.LeftPort, To.RightPort);
+    }
+
+    /// <summary>
+    /// The handoff's curve: cubic bézier with horizontal control points, so wires converging on
+    /// a hub read as a patch panel. Same-device loops bow out to the left on purpose.
     /// </summary>
     public Geometry Geometry
     {
@@ -286,7 +447,6 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
         }
     }
 
-    /// <summary>Midpoint of the curve, where the label sits.</summary>
     public Point Midpoint
     {
         get
@@ -303,47 +463,30 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
         }
     }
 
-    public double LabelLeft => Midpoint.X - (LabelWidth / 2);
-
-    public double LabelTop => Midpoint.Y - 14;
-
-    public static double LabelWidth => 150;
-
-    /// <summary>
-    /// Dashes only travel when the signal is believed to be arriving. Movement means working, and
-    /// a line that stops moving is the thing your eye catches from across the room.
-    /// </summary>
-    public bool IsFlowing => HasVerify
-        ? Status == VerifyStatus.Passed
-        : !From.ShowsFailure && !To.ShowsFailure;
-
-    private (Point Start, Point End) Ports()
-    {
-        // Leave from whichever side faces the target, so a box wired right-to-left does not draw
-        // a curve looping back through itself.
-        var forward = To.Centre.X >= From.Centre.X;
-        return forward
-            ? (From.RightPort, To.LeftPort)
-            : (From.LeftPort, To.RightPort);
-    }
+    /// <summary>Rail card title: <c>Cam 3 · Balcony → vMix</c>.</summary>
+    public string Title => $"{From.Label} → {To.Label}";
 
     private void OnEndChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MapComponentViewModel.X)
-            or nameof(MapComponentViewModel.Y)
-            or nameof(MapComponentViewModel.Centre))
+        if (e.PropertyName is nameof(MapDeviceViewModel.X)
+            or nameof(MapDeviceViewModel.Y)
+            or nameof(MapDeviceViewModel.Centre))
         {
             OnPropertyChanged(nameof(Geometry));
             OnPropertyChanged(nameof(Midpoint));
-            OnPropertyChanged(nameof(LabelLeft));
-            OnPropertyChanged(nameof(LabelTop));
         }
 
-        if (e.PropertyName is nameof(MapComponentViewModel.ShowsFailure))
+        if (e.PropertyName is nameof(MapDeviceViewModel.ShowsFailure)
+            or nameof(MapDeviceViewModel.IsStarved))
         {
-            OnPropertyChanged(nameof(IsFlowing));
+            OnPropertyChanged(nameof(FlowState));
+            OnPropertyChanged(nameof(IsDown));
         }
     }
 
-    protected override void StatusChanged() => OnPropertyChanged(nameof(IsFlowing));
+    protected override void StatusChanged()
+    {
+        OnPropertyChanged(nameof(FlowState));
+        OnPropertyChanged(nameof(IsDown));
+    }
 }

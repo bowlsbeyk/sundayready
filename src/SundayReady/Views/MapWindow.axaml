@@ -1,0 +1,493 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SundayReady.ViewModels"
+        xmlns:views="using:SundayReady.Views"
+        mc:Ignorable="d" d:DesignWidth="1920" d:DesignHeight="1080"
+        x:Class="SundayReady.Views.MapWindow"
+        x:DataType="vm:MapWorkspaceViewModel"
+        Title="System map"
+        Icon="/Assets/logo.png"
+        Width="1600" Height="960"
+        MinWidth="1180" MinHeight="720"
+        WindowState="Maximized"
+        Background="{StaticResource MapBgBrush}"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <!-- Node hierarchy is expressed by surface, not size — every node is the same box. -->
+        <Style Selector="Rectangle.nodeFace">
+            <Setter Property="Fill" Value="{StaticResource PanelRaisedBrush}" />
+            <Setter Property="Stroke" Value="{StaticResource BorderNodeBrush}" />
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="RadiusX" Value="8" />
+            <Setter Property="RadiusY" Value="8" />
+        </Style>
+        <Style Selector="Panel.hub Rectangle.nodeFace">
+            <Setter Property="Fill" Value="{StaticResource NodeHubBrush}" />
+            <Setter Property="Stroke" Value="{StaticResource BorderHubBrush}" />
+        </Style>
+        <!-- Inferred: faint fill, dashed border. "Probably fine" must never look "checked". -->
+        <Style Selector="Panel.inferred Rectangle.nodeFace">
+            <Setter Property="Fill" Value="{StaticResource Overlay02Brush}" />
+            <Setter Property="Stroke" Value="#2BFFFFFF" />
+            <Setter Property="StrokeDashArray" Value="3,3" />
+        </Style>
+        <Style Selector="Panel.fail Rectangle.nodeFace">
+            <Setter Property="Fill" Value="{StaticResource FailFillBrush}" />
+            <Setter Property="Stroke" Value="{StaticResource FailBorderBrush}" />
+        </Style>
+        <Style Selector="Panel.picked Rectangle.nodeFace">
+            <Setter Property="Stroke" Value="{StaticResource ActionBrush}" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="StrokeDashArray" Value="" />
+        </Style>
+
+        <Style Selector="TextBlock.nodeTitle">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Panel.hub TextBlock.nodeTitle">
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+        <Style Selector="Panel.inferred TextBlock.nodeTitle">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.nodeSub">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style Selector="Panel.fail TextBlock.nodeSub">
+            <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+        </Style>
+
+        <Style Selector="Panel.dimmed">
+            <Setter Property="Opacity" Value="0.15" />
+        </Style>
+
+        <Style Selector="TextBlock.tierBadge">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="0.95" />
+        </Style>
+
+        <Style Selector="Button.segment">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style Selector="Button.segment.active /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay09Brush}" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextBrush}" />
+        </Style>
+
+        <Style Selector="Button.legendRow">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.legendRow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay04Brush}" />
+        </Style>
+
+        <Style Selector="TextBlock.failText">
+            <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
+        </Style>
+        <Style Selector="Button.legendRow.active /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Overlay08Brush}" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="80,*">
+
+        <!-- Top bar -->
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,26,Auto,18,Auto,*,Auto,11,Auto,11,Auto,26,Auto" Margin="26,0">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
+                            VerticalAlignment="Center">
+                    <TextBlock Classes="wordmark" Text="SundayReady" />
+                    <TextBlock Text="{Binding Title}" FontSize="19"
+                               Foreground="{StaticResource TextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- The 3-way view switcher. Building and Stream path are on the way; showing
+                     them disabled is what tells people the map will grow. -->
+                <Border Grid.Column="2" Background="{StaticResource Overlay04Brush}" CornerRadius="8"
+                        Padding="3" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="segment active" Content="Signal flow" />
+                        <Button Classes="segment" Content="Building" IsEnabled="False"
+                                ToolTip.Tip="The floorplan view is coming — this map's data already carries it." />
+                        <Button Classes="segment" Content="Stream path" IsEnabled="False"
+                                ToolTip.Tip="The off-campus view is coming." />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="4" Background="{StaticResource FailPillFillBrush}"
+                        BorderBrush="{StaticResource FailPillBorderBrush}" BorderThickness="1"
+                        CornerRadius="20" Padding="13,6" VerticalAlignment="Center"
+                        IsVisible="{Binding Current.HasLinksDown, FallbackValue=False}">
+                    <TextBlock Classes="mono" Text="{Binding Current.LinksDownLabel, FallbackValue=''}"
+                               FontSize="11" FontWeight="SemiBold" LetterSpacing="0.8"
+                               Foreground="{StaticResource FailTagBrush}" />
+                </Border>
+
+                <Button Grid.Column="6" Classes="quiet" Content="Add device"
+                        VerticalAlignment="Center" Click="OnAddDeviceClick"
+                        IsVisible="{Binding IsEditing}" />
+                <Button Grid.Column="8" Classes="quiet" Content="Draw connection"
+                        VerticalAlignment="Center" Command="{Binding BeginWireCommand}"
+                        IsVisible="{Binding IsEditing}" />
+                <Button Grid.Column="10" Classes="quiet dashed" VerticalAlignment="Center"
+                        Command="{Binding ToggleEditingCommand}">
+                    <TextBlock Text="Edit layout" />
+                </Button>
+
+                <TextBlock Grid.Column="12" x:Name="Clock" Classes="mono" FontSize="24"
+                           FontWeight="SemiBold" LetterSpacing="-0.5" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,340">
+
+            <!-- The graph -->
+            <Panel Grid.Column="0">
+                <ScrollViewer x:Name="CanvasScroll" HorizontalScrollBarVisibility="Auto"
+                              AllowAutoHide="False">
+                    <Panel x:Name="GraphSurface"
+                           Width="{Binding Current.CanvasWidth, FallbackValue=1500}"
+                           Height="{Binding Current.CanvasHeight, FallbackValue=900}"
+                           Background="Transparent"
+                           PointerPressed="OnSurfacePressed">
+
+                        <!-- Role-column bands: layout furniture that carries rank. -->
+                        <ItemsControl ItemsSource="{Binding Current.ColumnBands, FallbackValue={x:Null}}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.Styles>
+                                <Style Selector="ContentPresenter" x:DataType="vm:MapColumnBand">
+                                    <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                    <Setter Property="Canvas.Top" Value="24" />
+                                </Style>
+                            </ItemsControl.Styles>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:MapColumnBand">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Classes="mono" Text="{Binding Label}" FontSize="11"
+                                                   FontWeight="SemiBold" LetterSpacing="1.55"
+                                                   Foreground="{StaticResource TextFainterBrush}"
+                                                   Margin="16,0,0,0" />
+                                        <Rectangle Width="242" Height="{Binding Height}"
+                                                   Fill="#04FFFFFF" RadiusX="14" RadiusY="14" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Wires, behind the nodes, all drawn by one control from one clock. -->
+                        <views:WireLayer x:Name="Wires"
+                                         Connections="{Binding Current.Connections, FallbackValue={x:Null}}"
+                                         Frozen="{Binding FreezeWires}" />
+
+                        <!-- Nodes -->
+                        <ItemsControl x:Name="Nodes"
+                                      ItemsSource="{Binding Current.Devices, FallbackValue={x:Null}}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.Styles>
+                                <Style Selector="ContentPresenter" x:DataType="vm:MapDeviceViewModel">
+                                    <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                    <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                </Style>
+                            </ItemsControl.Styles>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:MapDeviceViewModel">
+                                    <Panel Width="210" Height="64"
+                                           Classes.hub="{Binding IsHub}"
+                                           Classes.inferred="{Binding IsInferred}"
+                                           Classes.fail="{Binding ShowsFailure}"
+                                           Classes.picked="{Binding IsSelected}"
+                                           Classes.dimmed="{Binding IsDimmed}"
+                                           PointerPressed="OnNodePressed"
+                                           PointerMoved="OnNodeMoved"
+                                           PointerReleased="OnNodeReleased"
+                                           DoubleTapped="OnNodeDoubleTapped"
+                                           Background="Transparent">
+                                        <Rectangle Classes="nodeFace" />
+
+                                        <!-- The 3px accent bar: the dominant signal type. -->
+                                        <Border Width="3" HorizontalAlignment="Left" Margin="0,10"
+                                                CornerRadius="1.5" Background="{Binding AccentBrush}"
+                                                IsVisible="{Binding HasAccent}" />
+
+                                        <Grid RowDefinitions="Auto,Auto" Margin="14,11,12,0"
+                                              VerticalAlignment="Top">
+                                            <Grid Grid.Row="0" ColumnDefinitions="*,8,Auto">
+                                                <TextBlock Grid.Column="0" Classes="nodeTitle"
+                                                           Text="{Binding Label}" />
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                            Spacing="6" VerticalAlignment="Center">
+                                                    <!-- Tier badge, when the tier needs saying. -->
+                                                    <Border CornerRadius="3" Padding="6,2"
+                                                            IsVisible="{Binding IsReported}"
+                                                            Background="#1F4a93e0" BorderThickness="1"
+                                                            BorderBrush="#804a93e0">
+                                                        <TextBlock Classes="tierBadge" Text="REPORTED"
+                                                                   Foreground="{StaticResource ActionBrush}" />
+                                                    </Border>
+                                                    <Border CornerRadius="3" Padding="6,2"
+                                                            IsVisible="{Binding IsHuman}"
+                                                            Background="#1Fd6a53c" BorderThickness="1"
+                                                            BorderBrush="{StaticResource WaitBorderBrush}">
+                                                        <TextBlock Classes="tierBadge" Text="ASK A HUMAN"
+                                                                   Foreground="{StaticResource WaitBrush}" />
+                                                    </Border>
+
+                                                    <!-- The failing state badge: NO PING / DOWN. -->
+                                                    <Border CornerRadius="20" Padding="7,2"
+                                                            Background="{StaticResource FailBrush}"
+                                                            IsVisible="{Binding ShowsFailure}">
+                                                        <TextBlock Classes="tierBadge"
+                                                                   Text="{Binding FailBadge}"
+                                                                   Foreground="#0b0d10" />
+                                                    </Border>
+
+                                                    <!-- Dots: filled = checked; hollow = inferred,
+                                                         never green, never filled. -->
+                                                    <Ellipse Width="8" Height="8"
+                                                             Fill="{StaticResource OkBrush}"
+                                                             IsVisible="{Binding ShowsOk}" />
+                                                    <Ellipse Width="8" Height="8"
+                                                             Fill="{StaticResource WaitBrush}"
+                                                             IsVisible="{Binding ShowsPolling}" />
+                                                    <Ellipse Width="8" Height="8"
+                                                             Stroke="{StaticResource TextFainterBrush}"
+                                                             StrokeThickness="1.5"
+                                                             IsVisible="{Binding ShowsHollowDot}" />
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Grid.Row="1" Classes="nodeSub"
+                                                       Text="{Binding Detail}" Margin="0,5,0,0"
+                                                       IsVisible="{Binding HasDetail}" />
+                                        </Grid>
+
+                                        <!-- Sub-map affordance: a corner chevron on linked boxes. -->
+                                        <TextBlock Text="›" FontSize="15" FontWeight="Bold"
+                                                   Foreground="{StaticResource TextFainterBrush}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                   Margin="0,0,9,2" IsVisible="{Binding HasLink}" />
+                                    </Panel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Panel>
+                </ScrollViewer>
+
+                <!-- Footnote, pinned to the viewport not the canvas. -->
+                <Border VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="26,0,0,14"
+                        Background="#B00c0f13" CornerRadius="6" Padding="10,5">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <TextBlock Classes="mono" FontSize="11"
+                                   Foreground="{StaticResource TextDisabledBrush}"
+                                   Text="DRAG A NODE TO MOVE IT · DOUBLE-CLICK A LINKED NODE TO OPEN ITS MAP · LAYOUT SAVED TO system-map.json" />
+                        <TextBlock Classes="mono" FontSize="11"
+                                   Foreground="{StaticResource ActionBrush}"
+                                   Text="{Binding ModeLabel}"
+                                   IsVisible="{Binding IsEditing}" />
+                    </StackPanel>
+                </Border>
+
+                <Button Classes="secondary" Content="◂ Back" VerticalAlignment="Top"
+                        HorizontalAlignment="Left" Margin="26,14,0,0"
+                        IsVisible="{Binding CanGoBack}" Command="{Binding BackCommand}" />
+            </Panel>
+
+            <!-- Right rail -->
+            <Border Grid.Column="1" Background="{StaticResource RailBgBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0">
+                <Grid RowDefinitions="*,Auto">
+                    <ScrollViewer Grid.Row="0">
+                        <StackPanel Margin="20,18,20,18" Spacing="18">
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="microLabel" Text="SIGNAL TYPES" />
+                                <TextBlock Grid.Column="1" Classes="mono" Text="TAP TO ISOLATE"
+                                           FontSize="9.5" LetterSpacing="1"
+                                           Foreground="{StaticResource TextDisabledBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Legend}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Spacing="2" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:MapLegendRowViewModel">
+                                        <Button Classes="legendRow" Classes.active="{Binding IsIsolated}"
+                                                Click="OnLegendRowClick">
+                                            <Grid ColumnDefinitions="40,12,*,Auto">
+                                                <!-- A live key, not a static swatch. -->
+                                                <views:WireSample Grid.Column="0" Width="40" Height="12"
+                                                                  Type="{Binding Type}" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Name}"
+                                                           FontSize="13" FontWeight="Medium"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="3" Classes="mono"
+                                                           Text="{Binding Count}" FontSize="11"
+                                                           Foreground="{StaticResource TextFaintBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Grid ColumnDefinitions="40,12,*" Margin="8,4,8,0"
+                                  IsVisible="{Binding Current.HasLinksDown, FallbackValue=False}">
+                                <views:WireSample Grid.Column="0" Width="40" Height="12"
+                                                  IsFailSample="True" />
+                                <TextBlock Grid.Column="2" Text="Link down" FontSize="13"
+                                           FontWeight="Medium"
+                                           Foreground="{StaticResource FailTagBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Selected wire -->
+                            <StackPanel Spacing="10" IsVisible="{Binding HasSelectedConnection}">
+                                <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                <TextBlock Classes="microLabel" Text="SELECTED LINK" />
+                                <TextBlock Text="{Binding SelectedConnection.Title, FallbackValue=''}"
+                                           FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <Border Classes="card" Padding="12,10">
+                                    <StackPanel Spacing="5">
+                                        <Grid ColumnDefinitions="64,*">
+                                            <TextBlock Classes="mono" Text="TYPE" FontSize="10.5"
+                                                       Foreground="{StaticResource TextFainterBrush}" />
+                                            <TextBlock Grid.Column="1" Classes="mono" FontSize="12"
+                                                       Text="{Binding SelectedConnection.Type.Name, FallbackValue=''}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="64,*"
+                                              IsVisible="{Binding SelectedConnection.Label, FallbackValue=False, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Classes="mono" Text="PATH" FontSize="10.5"
+                                                       Foreground="{StaticResource TextFainterBrush}" />
+                                            <TextBlock Grid.Column="1" Classes="mono" FontSize="12"
+                                                       Text="{Binding SelectedConnection.Label, FallbackValue=''}"
+                                                       TextWrapping="Wrap" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="64,*">
+                                            <TextBlock Classes="mono" Text="STATE" FontSize="10.5"
+                                                       Foreground="{StaticResource TextFainterBrush}" />
+                                            <TextBlock Grid.Column="1" Classes="mono" FontSize="12"
+                                                       Text="{Binding SelectedConnection.StatusLabel, FallbackValue=''}"
+                                                       TextWrapping="Wrap"
+                                                       Classes.failText="{Binding SelectedConnection.IsDown, FallbackValue=False}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Orientation="Horizontal" Spacing="9">
+                                    <Button Classes="primary" Content="Ping again" Padding="15,8"
+                                            IsVisible="{Binding SelectedConnection.HasVerify, FallbackValue=False}"
+                                            Command="{Binding PingAgainCommand}" />
+                                    <Button Classes="danger" Content="Delete" Padding="15,8"
+                                            IsVisible="{Binding IsEditing}"
+                                            Command="{Binding DeleteSelectedCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Selected device -->
+                            <StackPanel Spacing="10"
+                                        IsVisible="{Binding SelectedDevice, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                <TextBlock Classes="microLabel" Text="SELECTED DEVICE" />
+                                <TextBlock Text="{Binding SelectedDevice.Label, FallbackValue=''}"
+                                           FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Classes="mono" FontSize="12"
+                                           Text="{Binding SelectedDevice.Detail, FallbackValue=''}"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           IsVisible="{Binding SelectedDevice.HasDetail, FallbackValue=False}" />
+                                <TextBlock FontSize="13" TextWrapping="Wrap"
+                                           Text="{Binding SelectedDevice.Location, FallbackValue=''}"
+                                           Foreground="{StaticResource TextFaintBrush}"
+                                           IsVisible="{Binding SelectedDevice.HasLocation, FallbackValue=False}" />
+                                <TextBlock Classes="mono" FontSize="12" TextWrapping="Wrap"
+                                           Text="{Binding SelectedDevice.StatusLabel, FallbackValue=''}"
+                                           Foreground="{StaticResource TextMutedBrush}" />
+                                <ItemsControl ItemsSource="{Binding SelectedDevice.CheckSteps, FallbackValue={x:Null}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <TextBlock FontSize="13" TextWrapping="Wrap"
+                                                       Text="{Binding}"
+                                                       Foreground="{StaticResource TextDimBrush}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Spacing="9">
+                                    <Button Classes="secondary" Content="Open its map" Padding="15,8"
+                                            IsVisible="{Binding SelectedDevice.HasLink, FallbackValue=False}"
+                                            Click="OnOpenLinkedClick" />
+                                    <Button Classes="primary" Content="Check now" Padding="15,8"
+                                            IsVisible="{Binding SelectedDevice.HasVerify, FallbackValue=False}"
+                                            Command="{Binding PingAgainCommand}" />
+                                    <Button Classes="danger" Content="Delete" Padding="15,8"
+                                            IsVisible="{Binding IsEditing}"
+                                            Command="{Binding DeleteSelectedCommand}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextDisabledBrush}"
+                                       Text="{Binding Status}"
+                                       IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- SHOW chips + housekeeping -->
+                    <Border Grid.Row="1" BorderBrush="{StaticResource HairlineBrush}"
+                            BorderThickness="0,1,0,0" Padding="20,13">
+                        <StackPanel Spacing="11">
+                            <TextBlock Classes="microLabel" Text="SHOW" />
+                            <WrapPanel>
+                                <Button Classes="chip" Content="All signals" Margin="0,0,7,7"
+                                        Command="{Binding SetCategoryCommand}" CommandParameter="{x:Null}" />
+                                <Button Classes="chip" Content="Video only" Margin="0,0,7,7"
+                                        Command="{Binding SetCategoryCommand}" CommandParameter="video" />
+                                <Button Classes="chip" Content="Audio only" Margin="0,0,7,7"
+                                        Command="{Binding SetCategoryCommand}" CommandParameter="audio" />
+                                <Button Classes="chip" Content="Lighting" Margin="0,0,7,7"
+                                        Command="{Binding SetCategoryCommand}" CommandParameter="lighting" />
+                                <Button Classes="chip" Content="Faults only" Margin="0,0,7,7"
+                                        Command="{Binding SetCategoryCommand}" CommandParameter="faults" />
+                            </WrapPanel>
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <CheckBox Content="Freeze wires" FontSize="13"
+                                          IsChecked="{Binding FreezeWires, Mode=TwoWay}"
+                                          ToolTip.Tip="The map stays fully readable with all animation off — for a slow booth PC or a wall display." />
+                                <Button Grid.Column="2" Classes="primary" Content="Save map"
+                                        Padding="16,8" IsVisible="{Binding IsEditing}"
+                                        Command="{Binding SaveCommand}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

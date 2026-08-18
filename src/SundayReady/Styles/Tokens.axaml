@@ -39,6 +39,12 @@
          it has to read as "not this bit" over panels that are already near-black. -->
     <SolidColorBrush x:Key="ScrimBrush" Color="#B4000000" />
 
+    <!-- System map surfaces (design handoff: node hierarchy is surface, not size). -->
+    <SolidColorBrush x:Key="MapBgBrush" Color="#0c0f13" />
+    <SolidColorBrush x:Key="NodeHubBrush" Color="#191d23" />
+    <SolidColorBrush x:Key="BorderNodeBrush" Color="#17FFFFFF" />
+    <SolidColorBrush x:Key="BorderHubBrush" Color="#29FFFFFF" />
+
     <!-- Text ramp -->
     <SolidColorBrush x:Key="TextBrush" Color="#e9ebee" />
     <SolidColorBrush x:Key="TextDimBrush" Color="#c7ccd2" />

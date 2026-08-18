@@ -1,0 +1,159 @@
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using SundayReady.ViewModels;
+
+namespace SundayReady.Views;
+
+/// <summary>
+/// The system map window. Owns only what a view must: the clock, pointer gestures, and moving
+/// the spotlight of selection — everything it learns goes straight to the workspace view model.
+/// </summary>
+public partial class MapWindow : Window
+{
+    private DispatcherTimer? _clock;
+
+    private MapDeviceViewModel? _dragging;
+    private Avalonia.Point _dragOffset;
+    private bool _dragMoved;
+
+    public MapWindow()
+    {
+        // The generated InitializeComponent, deliberately — a hand-written one that only calls
+        // AvaloniaXamlLoader.Load leaves every x:Name field null. That bit twice already.
+        InitializeComponent();
+
+        _clock = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _clock.Tick += (_, _) => Clock.Text = DateTime.Now.ToString("h:mm");
+        _clock.Start();
+        Clock.Text = DateTime.Now.ToString("h:mm");
+
+        Closed += (_, _) =>
+        {
+            _clock?.Stop();
+            _clock = null;
+
+            if (DataContext is MapWorkspaceViewModel workspace)
+            {
+                workspace.Dispose();
+            }
+        };
+    }
+
+    private MapWorkspaceViewModel? Workspace => DataContext as MapWorkspaceViewModel;
+
+    // ---------------------------------------------------------------- nodes
+
+    private void OnNodePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control { DataContext: MapDeviceViewModel device } control
+            || Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        workspace.Select(device);
+
+        if (workspace.IsEditing && !workspace.IsWiring)
+        {
+            var position = e.GetPosition(GraphSurface);
+            _dragging = device;
+            _dragOffset = new Avalonia.Point(position.X - device.X, position.Y - device.Y);
+            _dragMoved = false;
+            e.Pointer.Capture(control);
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnNodeMoved(object? sender, PointerEventArgs e)
+    {
+        if (_dragging is not { } device)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(GraphSurface);
+        device.X = Math.Max(0, position.X - _dragOffset.X);
+        device.Y = Math.Max(0, position.Y - _dragOffset.Y);
+        _dragMoved = true;
+    }
+
+    private void OnNodeReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_dragging is null)
+        {
+            return;
+        }
+
+        e.Pointer.Capture(null);
+        _dragging = null;
+
+        if (_dragMoved)
+        {
+            Workspace?.Current?.RefreshExtent();
+        }
+    }
+
+    private void OnNodeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: MapDeviceViewModel device }
+            && Workspace is { } workspace)
+        {
+            workspace.Drill(device);
+            e.Handled = true;
+        }
+    }
+
+    // ---------------------------------------------------------------- surface
+
+    /// <summary>A press that no node claimed: try the wires, then clear the selection.</summary>
+    private void OnSurfacePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        var hit = Wires.HitTest(e.GetPosition(Wires));
+        if (hit is not null)
+        {
+            workspace.Select(hit);
+            return;
+        }
+
+        workspace.ClearSelection();
+    }
+
+    // ---------------------------------------------------------------- rail & top bar
+
+    private void OnLegendRowClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: MapLegendRowViewModel row }
+            && Workspace is { } workspace)
+        {
+            workspace.ToggleIsolate(row);
+        }
+    }
+
+    private void OnOpenLinkedClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is { SelectedDevice: { } device } workspace)
+        {
+            workspace.Drill(device);
+        }
+    }
+
+    /// <summary>Drops a new device in the top-left of the current viewport, ready to drag.</summary>
+    private void OnAddDeviceClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        var origin = CanvasScroll.Offset;
+        workspace.AddDevice(origin.X + 80, origin.Y + 80);
+    }
+}

@@ -38,6 +38,22 @@ public partial class StationView : UserControl
         }
     }
 
+    private void OnMapClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not StationViewModel station)
+        {
+            return;
+        }
+
+        var workspace = station.CreateMapWorkspace();
+        var window = new MapWindow { DataContext = workspace };
+
+        // The window disposes the workspace when it closes; Start is here because the map
+        // polls, and polling belongs to being on screen.
+        Show(window);
+        workspace.Start();
+    }
+
     private void OnTechdeskClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not StationViewModel station)

@@ -208,6 +208,13 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
 
     public FirstRunViewModel CreateWalkthrough() => new(_config, _stationLoader, _checklists);
 
+    /// <summary>
+    /// The system map, reading the shared maps folder — the same share the techdesk uses, so
+    /// every machine sees the same building.
+    /// </summary>
+    public MapWorkspaceViewModel CreateMapWorkspace() =>
+        new(new SystemMapStore(_config.TechdeskShare), _registry);
+
     public CompletionLogViewModel CreateLog() => new(this);
 
     /// <summary>
