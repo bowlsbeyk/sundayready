@@ -1,0 +1,217 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:SundayReady.ViewModels"
+        xmlns:views="using:SundayReady.Views"
+        mc:Ignorable="d" d:DesignWidth="1180" d:DesignHeight="820"
+        x:Class="SundayReady.Views.MapTypesWindow"
+        x:DataType="vm:MapTypeRegistryViewModel"
+        Title="Connection types"
+        Icon="/Assets/logo.png"
+        Width="1180" Height="820"
+        MinWidth="960" MinHeight="640"
+        Background="{StaticResource BgBrush}"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.fieldLabel">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+            <Setter Property="Margin" Value="0,0,0,5" />
+        </Style>
+        <Style Selector="Border.typeCard">
+            <Setter Property="Background" Value="{StaticResource PanelRaisedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="15,13" />
+        </Style>
+        <Style Selector="Border.typeCard.custom">
+            <Setter Property="BorderBrush" Value="#664a93e0" />
+        </Style>
+        <Style Selector="Border.typeCard.picked">
+            <Setter Property="BorderBrush" Value="{StaticResource ActionBrush}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+        </Style>
+        <Style Selector="Button.swatch">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="72,*">
+        <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource HairlineBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="28,0">
+                <TextBlock Classes="screenTitle" Text="Connection types" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Classes="mono" Text="{Binding CountsLine}" FontSize="11"
+                           Foreground="{StaticResource TextFainterBrush}" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,360">
+
+            <!-- The registry -->
+            <ScrollViewer Grid.Column="0" AllowAutoHide="False">
+                <StackPanel Margin="28,22,20,40" Spacing="16">
+                    <ItemsControl ItemsSource="{Binding Cards}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:MapTypeCardViewModel">
+                                <Border Classes="typeCard" Margin="0,0,10,10"
+                                        Classes.custom="{Binding IsCustom}"
+                                        PointerPressed="OnCardPressed" Background="{StaticResource PanelRaisedBrush}">
+                                    <StackPanel Spacing="8">
+                                        <Grid ColumnDefinitions="Auto,10,*,Auto">
+                                            <Border Width="11" Height="11" CornerRadius="3"
+                                                    VerticalAlignment="Center"
+                                                    Background="{Binding Type.Colour}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding Name}"
+                                                       FontSize="15" FontWeight="SemiBold" />
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
+                                                <Border CornerRadius="3" Padding="6,2" Background="#1F4a93e0"
+                                                        IsVisible="{Binding IsCustom}">
+                                                    <TextBlock Classes="mono" Text="CUSTOM" FontSize="9.5"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource ActionBrush}" />
+                                                </Border>
+                                                <TextBlock Classes="mono" Text="{Binding Usage}" FontSize="12"
+                                                           Foreground="{StaticResource TextFaintBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Rendered by the same code as the map: a key, not a swatch. -->
+                                        <views:WireSample Height="14" Type="{Binding Type}" />
+
+                                        <TextBlock Classes="mono" Text="{Binding Spec}" FontSize="10.5"
+                                                   Foreground="{StaticResource TextFainterBrush}"
+                                                   Classes.warnSpec="{Binding HasWarning}" />
+                                        <TextBlock Classes="mono" Text="{Binding Provenance}" FontSize="10"
+                                                   Foreground="{StaticResource TextDisabledBrush}"
+                                                   IsVisible="{Binding HasProvenance}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                        <ItemsControl.Styles>
+                            <Style Selector="TextBlock.warnSpec">
+                                <Setter Property="Foreground" Value="{StaticResource WaitBrush}" />
+                            </Style>
+                        </ItemsControl.Styles>
+                    </ItemsControl>
+
+                    <!-- Deleting: never silently orphans runs. -->
+                    <StackPanel Spacing="9" IsVisible="{Binding CanDelete}">
+                        <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                        <TextBlock FontSize="13" TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextDimBrush}"
+                                   Text="{Binding DeleteExplanation}" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ComboBox Width="220" ItemsSource="{Binding ReplacementChoices}"
+                                      SelectedItem="{Binding ReplacementTypeId, Mode=TwoWay}"
+                                      PlaceholderText="runs become…" />
+                            <Button Classes="danger" Content="Delete type" Padding="15,8"
+                                    Command="{Binding DeleteSelectedCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{StaticResource TextDisabledBrush}"
+                               Text="TYPES LIVE IN connection-types.json · DELETING A TYPE IN USE REASSIGNS ITS RUNS FIRST" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- The editor -->
+            <Border Grid.Column="1" Background="{StaticResource RailBgBrush}"
+                    BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0">
+                <ScrollViewer>
+                    <StackPanel Margin="22,20" Spacing="14">
+                        <TextBlock Classes="microLabel" Text="NEW CONNECTION TYPE" />
+
+                        <StackPanel>
+                            <TextBlock Classes="fieldLabel" Text="NAME" />
+                            <TextBox Classes="field" FontSize="15" Text="{Binding Name, Mode=TwoWay}"
+                                     Watermark="Fiber · single mode" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="7">
+                            <TextBlock Classes="fieldLabel" Text="COLOUR — CURATED, AWAY FROM THE BUILT-IN HUES" />
+                            <ItemsControl ItemsSource="{Binding SwatchChoices}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="10" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Button Classes="swatch" Background="{Binding}"
+                                                Click="OnSwatchClick" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Spacing="7">
+                            <TextBlock Classes="fieldLabel" Text="LINE STYLE" />
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <Button Classes="chip" Content="Solid" Click="OnStyleClick" Tag="solid" />
+                                <Button Classes="chip" Content="Dashed" Click="OnStyleClick" Tag="dashed" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="fieldLabel" Text="FLOW SPEED" />
+                                <TextBlock Grid.Column="1" Classes="mono" Text="{Binding FlowLabel}"
+                                           FontSize="12" Foreground="{StaticResource TextMutedBrush}" />
+                            </Grid>
+                            <Slider Minimum="2" Maximum="8" Value="{Binding FlowSeconds, Mode=TwoWay}" />
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Classes="mono" Text="BRISK" FontSize="9.5"
+                                           Foreground="{StaticResource TextDisabledBrush}" />
+                                <TextBlock Grid.Column="2" Classes="mono" Text="STILL" FontSize="9.5"
+                                           Foreground="{StaticResource TextDisabledBrush}" />
+                            </Grid>
+                        </StackPanel>
+
+                        <CheckBox Content="Wireless — no cable stroke, drawn dashed and faint"
+                                  FontSize="13" IsChecked="{Binding Wireless, Mode=TwoWay}" />
+
+                        <StackPanel>
+                            <TextBlock Classes="fieldLabel" Text="WARN OVER (FT, OPTIONAL)" />
+                            <TextBox Classes="field" FontSize="13" FontFamily="{StaticResource MonoFont}"
+                                     Text="{Binding WarnOverFt, Mode=TwoWay}" Watermark="50" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="7">
+                            <TextBlock Classes="fieldLabel" Text="PREVIEW — EXACTLY WHAT THE MAP DRAWS" />
+                            <Border Classes="card" Padding="14,16">
+                                <views:WireSample Height="14" Type="{Binding Preview}" />
+                            </Border>
+                        </StackPanel>
+
+                        <Button Classes="primary" Content="Add type" Padding="18,10"
+                                Command="{Binding AddTypeCommand}" />
+
+                        <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextDisabledBrush}"
+                                   Text="{Binding Status}"
+                                   IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

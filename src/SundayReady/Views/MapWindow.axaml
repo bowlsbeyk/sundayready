@@ -393,6 +393,10 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
+                            <Button Classes="quiet dashed" Content="+ New connection type"
+                                    HorizontalAlignment="Stretch" Margin="0,4,0,0"
+                                    Click="OnTypesClick" FontSize="13" />
+
                             <Grid ColumnDefinitions="40,12,*" Margin="8,4,8,0"
                                   IsVisible="{Binding Current.HasLinksDown, FallbackValue=False}">
                                 <views:WireSample Grid.Column="0" Width="40" Height="12"
@@ -490,6 +494,8 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                                 <StackPanel Orientation="Horizontal" Spacing="9">
+                                    <Button Classes="primary" Content="Inspect" Padding="15,8"
+                                            Click="OnInspectClick" />
                                     <Button Classes="secondary" Content="Open its map" Padding="15,8"
                                             IsVisible="{Binding SelectedDevice.HasLink, FallbackValue=False}"
                                             Click="OnOpenLinkedClick" />

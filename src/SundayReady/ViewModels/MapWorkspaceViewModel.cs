@@ -267,6 +267,9 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
     public IReadOnlyList<MapConnectionType> Types => _types;
 
+    /// <summary>The store, for surfaces that share it — the type registry window.</summary>
+    public SystemMapStore Store => _store;
+
     public bool HasCurrent => Current is not null;
 
     public bool IsEmpty => Current is null;

@@ -462,9 +462,20 @@ must never look checked), *ask a human* (somebody's job). Nothing off campus can
 volunteer's checklist; that is enforced in the model, not the styling.
 
 A box can link to another map — one tidy overview drilling into per-room detail — and a sub-map's
-verified failures surface on the box that links to it. Still to come from the design handoff: the
-floorplan view with cable routing, the off-campus stream path view, the connection-type editor,
-the device inspector, and the path trace.
+verified failures surface on the box that links to it.
+
+**Double-click any box** (or select it → **Inspect**) for the device inspector: every connection in
+and out with its state, type and cable length, plus the signal's onward path traced hop by hop with
+a plain-English verdict — *"The break is at vMix. Everything after it is starved, not broken."*
+Runs the map documents but nothing verifies are flagged **DOCUMENTED BUT NEVER VERIFIED**, with a
+one-click **make this a checklist item** — which is how the checklist grows to match reality.
+
+**+ New connection type** in the legend opens the type registry: add your own signal types with
+curated colours (kept away from the built-in hues so the legend stays learnable), dash style, flow
+speed and length warnings. Deleting a type in use reassigns its runs first — never orphans them.
+
+Still to come from the design handoff: the floorplan view with cable routing, and the off-campus
+stream path view with the property line.
 
 ## The techdesk
 

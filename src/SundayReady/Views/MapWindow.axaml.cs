@@ -98,12 +98,23 @@ public partial class MapWindow : Window
 
     private void OnNodeDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Control { DataContext: MapDeviceViewModel device }
-            && Workspace is { } workspace)
+        if (sender is not Control { DataContext: MapDeviceViewModel device }
+            || Workspace is not { Current: { } map } workspace)
         {
-            workspace.Drill(device);
-            e.Handled = true;
+            return;
         }
+
+        // A linked box drills into its map; anything else opens the inspector, so a
+        // double-click always answers "tell me more about this".
+        if (!workspace.Drill(device))
+        {
+            new MapInspectorWindow
+            {
+                DataContext = new MapInspectorViewModel(workspace, map, device),
+            }.Show(this);
+        }
+
+        e.Handled = true;
     }
 
     // ---------------------------------------------------------------- surface
@@ -143,6 +154,33 @@ public partial class MapWindow : Window
         {
             workspace.Drill(device);
         }
+    }
+
+    private void OnInspectClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { SelectedDevice: { } device, Current: { } map } workspace)
+        {
+            return;
+        }
+
+        new MapInspectorWindow
+        {
+            DataContext = new MapInspectorViewModel(workspace, map, device),
+        }.Show(this);
+    }
+
+    private void OnTypesClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        var window = new MapTypesWindow
+        {
+            DataContext = new MapTypeRegistryViewModel(workspace.Store, workspace),
+        };
+        window.Show(this);
     }
 
     /// <summary>Drops a new device in the top-left of the current viewport, ready to drag.</summary>
