@@ -419,6 +419,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         SelectedConnection = null;
         SelectedDevice = device;
         RefreshEditors();
+        RaiseVerdict();
     }
 
     /// <summary>Selects a wire, surfacing it in the rail. Unrelated wires dim rather than hide.</summary>
@@ -437,6 +438,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         SelectedDevice = null;
         SelectedConnection = connection;
         RefreshEditors();
+        RaiseVerdict();
     }
 
     public void ClearSelection()
@@ -577,6 +579,162 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         RollUp();
     }
 
+    /// <summary>
+    /// One line for the techdesk: what the map knows is wrong, worst first. Two severities on
+    /// purpose. An on-campus verified failure is real ("Cam 3 is not answering"); a reported
+    /// node that stopped answering is only silence ("their API went quiet"), which the handoff
+    /// files under banner, never alarm.
+    /// </summary>
+    public (string Text, bool IsFail)? MapAlert()
+    {
+        var broken = new List<string>();
+        var quiet = new List<string>();
+
+        foreach (var map in _maps)
+        {
+            foreach (var device in map.Devices)
+            {
+                if (device.CanHoldGate && device.HasVerify && device.IsFailed)
+                {
+                    broken.Add(device.Label);
+                }
+                else if (device.IsReported && device.HasVerify && device.Status == VerifyStatus.Failed)
+                {
+                    quiet.Add(device.Label);
+                }
+            }
+
+            foreach (var connection in map.Connections.Where(c =>
+                         c.IsDown && !c.From.OffCampus && !c.To.OffCampus))
+            {
+                broken.Add($"{connection.From.Label} \u2192 {connection.To.Label}");
+            }
+        }
+
+        if (broken.Count > 0)
+        {
+            var first = broken[0];
+            var more = broken.Count - 1;
+            return (more == 0
+                ? $"MAP \u00b7 {first} is down"
+                : $"MAP \u00b7 {first} is down \u00b7 {more} more", true);
+        }
+
+        if (quiet.Count > 0)
+        {
+            var first = quiet[0];
+            var more = quiet.Count - 1;
+            return (more == 0
+                ? $"MAP \u00b7 {first} went quiet \u2014 its API stopped answering"
+                : $"MAP \u00b7 {first} went quiet \u00b7 {more} more", false);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The plain-English conclusion for whatever is selected — the handoff's rule that a trace
+    /// showing five red boxes and making the volunteer infer the cause has failed at its job.
+    /// Empty when there is nothing useful to conclude.
+    /// </summary>
+    public string SelectedVerdict
+    {
+        get
+        {
+            if (SelectedConnection is { } wire)
+            {
+                return wire.FlowState switch
+                {
+                    "down" => $"The signal dies between {wire.From.Label} and {wire.To.Label} \u2014 "
+                        + "the link's own check is failing while both ends may be fine. "
+                        + "Suspect the cable, the port, or whatever powers the run.",
+                    "starved" => wire.From.ShowsFailure && wire.From.HasVerify
+                        ? $"Nothing is arriving because {wire.From.Label} itself is down. "
+                            + "This run is starved, not broken — fix the box, not the cable."
+                        : FindBreak(wire.From) is { } origin
+                            ? $"Nothing is arriving here because the break is upstream, at {origin}. "
+                                + "This run is starved, not broken."
+                            : string.Empty,
+                    _ => string.Empty,
+                };
+            }
+
+            if (SelectedDevice is { } device)
+            {
+                if (device.IsStarved)
+                {
+                    return FindBreak(device) is { } origin
+                        ? $"This box is fine as far as anyone knows \u2014 nothing is reaching it. "
+                            + $"The break is upstream, at {origin}."
+                        : string.Empty;
+                }
+
+                if (device.ShowsFailure && device.HasVerify)
+                {
+                    var starving = Current?.Connections
+                        .Count(c => ReferenceEquals(c.From, device) && c.FlowState == "starved") ?? 0;
+
+                    return starving > 0
+                        ? $"The break is here. {starving} path{(starving == 1 ? string.Empty : "s")} "
+                            + "downstream carry nothing because of it \u2014 they are starved, not broken."
+                        : "The break is here.";
+                }
+            }
+
+            return string.Empty;
+        }
+    }
+
+    public bool HasSelectedVerdict => SelectedVerdict.Length > 0;
+
+    /// <summary>
+    /// Walks upstream from a starved element to the first thing that is provably broken: a down
+    /// connection, or a verified device whose own check is failing. Breadth-first with a visited
+    /// set, so a miswired loop terminates.
+    /// </summary>
+    private string? FindBreak(MapDeviceViewModel start)
+    {
+        if (Current is not { } map)
+        {
+            return null;
+        }
+
+        var visited = new HashSet<MapDeviceViewModel> { start };
+        var queue = new Queue<MapDeviceViewModel>();
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            var device = queue.Dequeue();
+
+            foreach (var feed in map.Connections.Where(c => ReferenceEquals(c.To, device)))
+            {
+                if (feed.IsDown)
+                {
+                    return $"the {feed.Type.Name} link {feed.From.Label} \u2192 {feed.To.Label}";
+                }
+
+                if (feed.From.ShowsFailure && feed.From.HasVerify)
+                {
+                    return feed.From.Label;
+                }
+
+                if (visited.Add(feed.From))
+                {
+                    queue.Enqueue(feed.From);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void RaiseVerdict()
+    {
+        OnPropertyChanged(nameof(SelectedVerdict));
+        OnPropertyChanged(nameof(HasSelectedVerdict));
+    }
+
     /// <summary>Finds the device whose label best matches a checklist item's wording.</summary>
     public (SystemMapViewModel Map, MapDeviceViewModel Device)? Find(string text)
     {
@@ -693,6 +851,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         {
             Resolve(map);
         }
+
+        RaiseVerdict();
     }
 
     /// <summary>

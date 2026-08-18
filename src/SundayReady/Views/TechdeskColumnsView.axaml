@@ -12,6 +12,12 @@
          worked in rather than glanced at. -->
 
     <UserControl.Styles>
+        <Style Selector="Button.waitTint /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1Fd6a53c" />
+        </Style>
+        <Style Selector="TextBlock.waitText">
+            <Setter Property="Foreground" Value="{StaticResource WaitBrush}" />
+        </Style>
         <!-- Summary pill. Amber while anything is outstanding, red once something is failing. -->
         <Style Selector="Border.summary">
             <Setter Property="Background" Value="{StaticResource WaitPillFillBrush}" />
@@ -86,7 +92,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid Background="{StaticResource BgBrush}" RowDefinitions="80,*">
+    <Grid Background="{StaticResource BgBrush}" RowDefinitions="80,Auto,*">
 
         <!-- Top bar -->
         <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
@@ -113,9 +119,13 @@
 
                 <!-- A techdesk PC shows nothing else, so this is the only way to Settings and
                      the only way back out of techdesk mode. -->
-                <Button Grid.Column="3" Classes="chip" Content="SETTINGS" Click="OnSettingsClick"
-                        IsVisible="{Binding CanOpenSettings}" Margin="0,0,20,0"
-                        HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="9" Margin="0,0,20,0"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Classes="chip" Content="MAP" Click="OnMapClick"
+                            IsVisible="{Binding CanOpenMap}" />
+                    <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick"
+                            IsVisible="{Binding CanOpenSettings}" />
+                </StackPanel>
 
                 <StackPanel Grid.Column="4" Spacing="3" VerticalAlignment="Center" HorizontalAlignment="Right">
                     <TextBlock Classes="microLabel" Text="SERVICE IN" LetterSpacing="1.32"
@@ -135,9 +145,25 @@
                                Foreground="{StaticResource TextFainterBrush}" HorizontalAlignment="Right" />
                 </StackPanel>
             </Grid>
+
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,436">
+<!-- What the shared map knows is wrong. Clicking it opens the map. -->
+            <Button Classes="quiet" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    Grid.Row="1" Margin="17,8,453,0" Padding="14,8" CornerRadius="7" Click="OnMapClick"
+                    IsVisible="{Binding HasMapAlert}"
+                    Background="{StaticResource FailPillFillBrush}"
+                    Classes.waitTint="{Binding !MapAlertIsFail}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Classes="mono" Text="{Binding MapAlert}" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{StaticResource FailTagBrush}"
+                               Classes.waitText="{Binding !MapAlertIsFail}" />
+                    <TextBlock Classes="mono" Text="OPEN MAP ›" FontSize="11"
+                               Foreground="{StaticResource TextFaintBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,436">
 
             <!-- Station columns. The 7px item margin makes the 14px gutter the design asks for. -->
             <ItemsControl Grid.Column="0" ItemsSource="{Binding Stations}" Margin="17,15">

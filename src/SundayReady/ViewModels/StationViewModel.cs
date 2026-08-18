@@ -222,7 +222,12 @@ public sealed partial class StationViewModel : ObservableObject, IChecklistHost,
     /// PC into techdesk mode and restarting. The mode setting still exists for the PC that
     /// really is the techdesk and should boot straight into it.
     /// </summary>
-    public TechdeskViewModel CreateTechdesk() => new(_config, _launcher);
+    /// <summary>
+    /// The registry rides along so the windowed techdesk gets the map and its banner; the
+    /// checklist loaders deliberately do not, so it still hides Settings — a station already
+    /// has its own way there.
+    /// </summary>
+    public TechdeskViewModel CreateTechdesk() => new(_config, _launcher, registry: _registry);
 
     public ChecklistEditorViewModel CreateEditor() =>
         new(_config, _checklists, new ChecklistWriter(_checklists.Directory), _stationLoader, _registry);

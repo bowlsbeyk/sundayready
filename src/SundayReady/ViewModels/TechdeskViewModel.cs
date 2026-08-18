@@ -182,8 +182,49 @@ public sealed partial class TechdeskViewModel : ObservableObject, IDisposable
         _sweepTimer = new DispatcherTimer { Interval = SnapshotStore.PublishInterval };
         _sweepTimer.Tick += (_, _) => Sweep();
 
+        // The techdesk watches the shared map for the same reason it watches stations: it is
+        // the room's one screen. Only when a registry exists — a headless techdesk cannot poll.
+        if (registry is not null)
+        {
+            _mapWatch = new MapWorkspaceViewModel(new SystemMapStore(config.TechdeskShare), registry);
+        }
+
         Tick();
         Sweep();
+    }
+
+    private readonly MapWorkspaceViewModel? _mapWatch;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMapAlert))]
+    private string _mapAlert = string.Empty;
+
+    [ObservableProperty]
+    private bool _mapAlertIsFail;
+
+    public bool HasMapAlert => MapAlert.Length > 0;
+
+    public bool CanOpenMap => _registry is not null;
+
+    /// <summary>A fresh workspace for the MAP window; the banner watcher stays untouched.</summary>
+    public MapWorkspaceViewModel? CreateMapWorkspace() =>
+        _registry is null ? null : new(new SystemMapStore(_config.TechdeskShare), _registry);
+
+    /// <summary>
+    /// Off-campus trouble surfaces here — as a line on the techdesk, never as a volunteer's red
+    /// checklist. On-campus breaks show here too, because whoever watches this screen is whoever
+    /// walks over and fixes them.
+    /// </summary>
+    private void RefreshMapAlert()
+    {
+        if (_mapWatch is null)
+        {
+            return;
+        }
+
+        var alert = _mapWatch.MapAlert();
+        MapAlert = alert?.Text ?? string.Empty;
+        MapAlertIsFail = alert?.IsFail ?? false;
     }
 
     /// <summary>
@@ -222,6 +263,7 @@ public sealed partial class TechdeskViewModel : ObservableObject, IDisposable
     {
         _clockTimer.Start();
         _sweepTimer.Start();
+        _mapWatch?.Start();
     }
 
     // ---- Header ----
@@ -364,6 +406,8 @@ public sealed partial class TechdeskViewModel : ObservableObject, IDisposable
 
     private void Sweep()
     {
+        RefreshMapAlert();
+
         if (_disposed)
         {
             return;
@@ -656,5 +700,6 @@ public sealed partial class TechdeskViewModel : ObservableObject, IDisposable
         _disposed = true;
         _clockTimer.Stop();
         _sweepTimer.Stop();
+        _mapWatch?.Dispose();
     }
 }

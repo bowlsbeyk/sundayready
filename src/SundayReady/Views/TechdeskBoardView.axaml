@@ -92,8 +92,13 @@
                                    VerticalAlignment="Center" />
                         <!-- Quiet, because this lives on a wall — but a techdesk PC shows
                              nothing else, so it is the only way to Settings and back out. -->
+                        <Button Classes="chip" Content="MAP" Click="OnMapClick"
+                                IsVisible="{Binding CanOpenMap}" VerticalAlignment="Center" />
                         <Button Classes="chip" Content="SETTINGS" Click="OnSettingsClick"
                                 IsVisible="{Binding CanOpenSettings}" VerticalAlignment="Center" />
+                        <TextBlock Classes="mono" Text="{Binding MapAlert}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{StaticResource FailTagBrush}" VerticalAlignment="Center"
+                                   IsVisible="{Binding HasMapAlert}" Margin="10,0,0,0" />
                     </StackPanel>
                     <!-- Line height is above the design's 1.0: a clipped descender on the one
                          word read from across the room is worse than three extra pixels. -->

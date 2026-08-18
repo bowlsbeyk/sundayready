@@ -502,6 +502,18 @@
                                 </StackPanel>
                             </StackPanel>
 
+                            <!-- The conclusion, in plain English. The handoff's rule: a trace
+                                 that makes the volunteer infer the cause has failed at its job. -->
+                            <Border Classes="card" Padding="14,12" IsVisible="{Binding HasSelectedVerdict}"
+                                    BorderBrush="{StaticResource WaitBorderBrush}">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="microLabel" Text="WHAT THIS MEANS" />
+                                    <TextBlock FontSize="13" LineHeight="19" TextWrapping="Wrap"
+                                               Text="{Binding SelectedVerdict}"
+                                               Foreground="{StaticResource TextDimBrush}" />
+                                </StackPanel>
+                            </Border>
+
                             <!-- Device editor: how a box gets its name, tier and check. -->
                             <StackPanel Spacing="11"
                                         IsVisible="{Binding DeviceEditor, Converter={x:Static ObjectConverters.IsNotNull}}">
