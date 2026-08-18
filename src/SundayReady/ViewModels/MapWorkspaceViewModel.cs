@@ -43,7 +43,51 @@ public sealed partial class SystemMapViewModel : ObservableObject
                     connection, from, to, Resolve(connection.Type), registry));
             }
         }
+
+        AssignPortSlots();
     }
+
+    /// <summary>
+    /// Spreads each device's wires along its edges so a heavily-patched box stays readable.
+    /// Ordered by the far end's vertical position, which is what stops the fan crossing itself.
+    /// </summary>
+    private void AssignPortSlots()
+    {
+        foreach (var device in Devices)
+        {
+            var leaving = Connections
+                .Where(c => ReferenceEquals(c.From, device))
+                .OrderBy(c => c.To.Centre.Y)
+                .ToList();
+
+            for (var i = 0; i < leaving.Count; i++)
+            {
+                leaving[i].FromSlot = Slot(i, leaving.Count);
+            }
+
+            var arriving = Connections
+                .Where(c => ReferenceEquals(c.To, device))
+                .OrderBy(c => c.From.Centre.Y)
+                .ToList();
+
+            for (var i = 0; i < arriving.Count; i++)
+            {
+                arriving[i].ToSlot = Slot(i, arriving.Count);
+            }
+        }
+
+        foreach (var connection in Connections)
+        {
+            connection.RefreshGeometry();
+        }
+    }
+
+    /// <summary>One wire sits at the centre; several spread evenly across the edge.</summary>
+    private static double Slot(int index, int count) =>
+        count <= 1 ? 0.5 : (index + 0.5) / count;
+
+    /// <summary>Re-fans after anything that changes the wiring or the layout.</summary>
+    public void RefreshPorts() => AssignPortSlots();
 
     public SystemMap Model { get; }
 
@@ -108,6 +152,9 @@ public sealed partial class SystemMapViewModel : ObservableObject
         OnPropertyChanged(nameof(CanvasWidth));
         OnPropertyChanged(nameof(CanvasHeight));
         OnPropertyChanged(nameof(ColumnBands));
+
+        // Moving a box changes which order its wires should fan in.
+        AssignPortSlots();
     }
 
     public void RefreshHealthDetail()
@@ -287,8 +334,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     public string MapsFolder => _store.Directory;
 
     public string ModeLabel => IsWiring
-        ? "Click the device this one feeds into"
-        : IsEditing ? "Editing — drag to move, select a device then Wire to connect" : string.Empty;
+        ? $"Wiring from {WireFrom?.Label} — drop on the device it feeds"
+        : IsEditing ? "Editing — drag a box's middle to move it, drag from either end to wire it" : string.Empty;
 
     public void Start()
     {
@@ -1008,6 +1055,30 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         }
     }
 
+    /// <summary>Starts a wire from a specific device — the drag gesture's entry point.</summary>
+    public void BeginWireFrom(MapDeviceViewModel device) => WireFrom = device;
+
+    /// <summary>
+    /// Finishes a drag-wire onto whatever is under the pointer. Public because the drag lives in
+    /// the view: only it knows what the pointer is over.
+    /// </summary>
+    public void FinishWire(MapDeviceViewModel? target)
+    {
+        if (WireFrom is { } from && target is not null)
+        {
+            CompleteWire(from, target);
+            return;
+        }
+
+        WireFrom = null;
+    }
+
+    /// <summary>The device whose box contains a canvas point, if any.</summary>
+    public MapDeviceViewModel? DeviceAt(Avalonia.Point point) =>
+        Current?.Devices.FirstOrDefault(d =>
+            point.X >= d.X && point.X <= d.X + MapDeviceViewModel.BoxWidth
+            && point.Y >= d.Y && point.Y <= d.Y + MapDeviceViewModel.BoxHeight);
+
     [RelayCommand]
     private void CancelWire() => WireFrom = null;
 
@@ -1043,8 +1114,10 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         var vm = new MapConnectionViewModel(model, from, to, lastType, _registry);
         map.Connections.Add(vm);
+        map.RefreshPorts();
         RebuildLegend();
         Select(vm);
+        Status = $"Wired {from.Label} → {to.Label} as {lastType.Name}. Change the type in the rail.";
     }
 
     [RelayCommand]
@@ -1060,6 +1133,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             map.Model.Connections.Remove(connection.Model);
             map.Connections.Remove(connection);
             SelectedConnection = null;
+            map.RefreshPorts();
             RebuildLegend();
             return;
         }
@@ -1078,6 +1152,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             map.Devices.Remove(device);
             SelectedDevice = null;
             map.RefreshExtent();
+            map.RefreshPorts();
             RebuildLegend();
         }
     }
@@ -1125,54 +1200,153 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>
-    /// The empty state's other button: a three-box example that shows what wires, verifiers and
-    /// the hollow tier look like, generically enough to describe nobody's building.
+    /// The empty state's other button: a worked example of a real church rig.
+    /// <para>
+    /// Modelled on an actual building, because a three-box toy does not show the thing that
+    /// makes maps worth having — a console with ten connections, wireless that starts at a
+    /// receiver rather than in mid-air, and a digital snake carrying both directions at once.
+    /// Every label is meant to be renamed; the shape is the lesson, not the inventory.
+    /// </para>
     /// </summary>
     [RelayCommand]
     private void CreateExampleMap()
     {
+        // Five columns of signal flow. Places live on each device's Location, so the same data
+        // will drive the floorplan view when it lands.
+        const double srcX = 16, boxX = 430, deskX = 844, distX = 1258, outX = 1672;
+
+        static MapDevice Dev(
+            string id, string label, string kind, double x, double y, string place,
+            string? detail = null, string? dominant = null, bool hub = false,
+            VerifySpec? verify = null) => new()
+        {
+            Id = id, Label = label, Kind = kind, X = x, Y = y,
+            Location = place, Detail = detail, DominantType = dominant, Hub = hub, Verify = verify,
+            Tier = verify is null ? MapTiers.Inferred : MapTiers.Verified,
+        };
+
+        static MapConnection Wire(string from, string to, string type, string? label = null) => new()
+        {
+            Id = $"{from}--{to}--{type}",
+            From = from, To = to, Type = type, Label = label,
+            FlowSeed = SystemMapStore.StableHash($"{from}{to}{type}"),
+        };
+
         var model = new SystemMap
         {
-            Name = "System map",
-            Summary = "An example to start from. Rename these boxes to your real gear, or delete them.",
+            Name = "Signal flow",
+            Summary = "A worked example of a real church rig. Rename these to your gear, or delete "
+                + "them and start clean. Every box says which room it lives in.",
             Columns =
             {
-                new MapColumn { Label = "SOURCES", X = 16 },
-                new MapColumn { Label = "BOOTH", X = 420 },
-                new MapColumn { Label = "OUT", X = 824 },
+                new MapColumn { Label = "STAGE & PLATFORM", X = srcX },
+                new MapColumn { Label = "STAGE BOX & RECEIVERS", X = boxX },
+                new MapColumn { Label = "SOUND BOOTH", X = deskX },
+                new MapColumn { Label = "DISTRIBUTION", X = distX },
+                new MapColumn { Label = "OUTPUTS", X = outX },
             },
             Devices =
             {
-                new MapDevice
-                {
-                    Id = "camera-1", Label = "A camera", Kind = MapDeviceKinds.Camera,
-                    Detail = "GIVE IT YOUR CAMERA'S ADDRESS", X = 16, Y = 80,
-                    Verify = new VerifySpec { Kind = "hostReachable", Host = "10.0.1.21" },
-                },
-                new MapDevice
-                {
-                    Id = "switcher", Label = "The switcher", Kind = MapDeviceKinds.Computer,
-                    Hub = true, Detail = "VMIX / OBS / ATEM - THIS PC", X = 420, Y = 80,
-                    Verify = new VerifySpec
-                    {
-                        Kind = "httpContains",
-                        Url = "http://127.0.0.1:8088/api",
-                        Contains = "<vmix>",
-                    },
-                },
-                new MapDevice
-                {
-                    Id = "stream", Label = "The stream", Kind = MapDeviceKinds.Cloud,
-                    Tier = MapTiers.Inferred, OffCampus = true,
-                    Detail = "HOLLOW - NOTHING CHECKS THIS YET", X = 824, Y = 80,
-                },
-            },
-            Connections =
-            {
-                new MapConnection { Id = "camera-1--switcher", From = "camera-1", To = "switcher", Type = "ndi" },
-                new MapConnection { Id = "switcher--stream", From = "switcher", To = "stream", Type = "cat6", Label = "RTMP" },
+                // ---- wired sources, by place ----
+                Dev("piano-mic", "Piano Mic", MapDeviceKinds.Audio, srcX, 60, "Piano pit", "XLR", "xlr"),
+                Dev("cong-left", "Left Congregation Mic", MapDeviceKinds.Audio, srcX, 140, "Piano pit", "XLR", "xlr"),
+                Dev("gtr-elec", "Electric Guitar", MapDeviceKinds.Audio, srcX, 220, "Stage Left", "DI", "xlr"),
+                Dev("gtr-acoustic", "Acoustic Guitar", MapDeviceKinds.Audio, srcX, 300, "Stage", "DI", "xlr"),
+                Dev("violin", "Violin", MapDeviceKinds.Audio, srcX, 380, "Stage", "DI", "xlr"),
+                Dev("gtr-bass", "Bass Guitar", MapDeviceKinds.Audio, srcX, 460, "Stage Right", "DI", "xlr"),
+                Dev("drums", "Electric Drums", MapDeviceKinds.Audio, srcX, 540, "Drum pit", "STEREO PAIR", "xlr"),
+                Dev("cong-right", "Right Congregation Mic", MapDeviceKinds.Audio, srcX, 620, "Drum pit", "XLR", "xlr"),
+
+                // ---- wireless sources ----
+                Dev("mic-white", "White Mic", MapDeviceKinds.Audio, srcX, 730, "Stage", "WIRELESS HANDHELD", "wl-audio"),
+                Dev("mic-yellow", "Yellow Mic", MapDeviceKinds.Audio, srcX, 810, "Stage", "WIRELESS HANDHELD", "wl-audio"),
+                Dev("mic-green", "Green Mic", MapDeviceKinds.Audio, srcX, 890, "Stage", "WIRELESS HANDHELD", "wl-audio"),
+                Dev("mic-purple", "Purple Mic", MapDeviceKinds.Audio, srcX, 970, "Stage", "WIRELESS HANDHELD", "wl-audio"),
+                Dev("mic-lapel", "Lapel", MapDeviceKinds.Audio, srcX, 1050, "Stage", "WIRELESS BELT PACK", "wl-audio"),
+                Dev("mic-baptismal", "Baptismal Mic", MapDeviceKinds.Audio, srcX, 1130, "Baptismal", "WIRELESS", "wl-audio"),
+
+                // ---- cameras, by place ----
+                Dev("cam-1", "NDI Camera 1", MapDeviceKinds.Camera, srcX, 1240, "Sound booth", "NDI · GIVE IT ITS ADDRESS", "ndi"),
+                Dev("cam-2", "NDI Camera 2", MapDeviceKinds.Camera, srcX, 1320, "Right Sanctuary", "NDI · GIVE IT ITS ADDRESS", "ndi"),
+                Dev("cam-3", "NDI Camera 3", MapDeviceKinds.Camera, srcX, 1400, "Left Sanctuary", "NDI · GIVE IT ITS ADDRESS", "ndi"),
+
+                // ---- stage box and receivers ----
+                Dev("s16", "S16 stage box", MapDeviceKinds.Audio, boxX, 300, "Piano pit",
+                    "16 IN · AES50 TO X32", "aes50", hub: true),
+                Dev("receivers", "Mic Receivers", MapDeviceKinds.Audio, boxX, 890, "Sound booth",
+                    "6 CHANNELS · RACK", "wl-audio", hub: true),
+                Dev("focusrite", "Focusrite interface", MapDeviceKinds.Audio, boxX, 1130, "Sound booth",
+                    "PROPRESENTER AUDIO OUT", "xlr"),
+
+                // ---- the booth ----
+                Dev("x32", "X32", MapDeviceKinds.Audio, deskX, 480, "Sound booth",
+                    "32 IN · THE HUB OF EVERYTHING", "aes50", hub: true),
+                Dev("propresenter", "ProPresenter", MapDeviceKinds.Computer, deskX, 1050, "Sound booth",
+                    "SLIDES & LYRICS", "cat6", hub: true),
+
+                // ---- distribution ----
+                Dev("m4250", "M4250 switch", MapDeviceKinds.Network, distX, 900, "Sound booth",
+                    "AV NETWORK BACKBONE", "cat6", hub: true),
+                Dev("x32-compact", "X32 Compact", MapDeviceKinds.Audio, distX, 480, "Media room",
+                    "LIVESTREAM MIX · FED BY SNAKE", "analog-snake", hub: true),
+                Dev("iem-tx", "IEM transmitters", MapDeviceKinds.Audio, distX, 180, "Piano pit",
+                    "FED FROM THE S16", "wl-audio"),
+
+                // ---- outputs ----
+                Dev("speakers", "Main Speakers", MapDeviceKinds.Display, outX, 380, "Stage", "L / R", "xlr"),
+                Dev("subs", "Subs", MapDeviceKinds.Display, outX, 460, "Stage", "AUX FED", "xlr"),
+                Dev("iems", "In Ear Monitors", MapDeviceKinds.Audio, outX, 180, "Piano pit",
+                    "PERSONAL MIXES", "wl-audio"),
+                Dev("livestream", "Livestream station", MapDeviceKinds.Computer, outX, 900, "Media room",
+                    "ENCODER & SWITCHER", "ndi", hub: true),
             },
         };
+
+        // ---- wired instruments and mics into the S16 ----
+        foreach (var id in new[]
+                 {
+                     "piano-mic", "cong-left", "gtr-elec", "gtr-acoustic",
+                     "violin", "gtr-bass", "drums", "cong-right",
+                 })
+        {
+            model.Connections.Add(Wire(id, "s16", "xlr"));
+        }
+
+        // ---- wireless mics land on a receiver, never in mid-air ----
+        foreach (var id in new[]
+                 {
+                     "mic-white", "mic-yellow", "mic-green", "mic-purple", "mic-lapel", "mic-baptismal",
+                 })
+        {
+            model.Connections.Add(Wire(id, "receivers", "wl-audio"));
+        }
+
+        model.Connections.Add(Wire("receivers", "x32", "xlr", "RECEIVER OUTS"));
+        model.Connections.Add(Wire("propresenter", "focusrite", "cat6", "USB AUDIO"));
+        model.Connections.Add(Wire("focusrite", "x32", "xlr", "XLR INS"));
+
+        // ---- the digital snake, both directions: inputs up, IEM sends back ----
+        model.Connections.Add(Wire("s16", "x32", "aes50", "AES50 · 16 INPUTS"));
+        model.Connections.Add(Wire("x32", "s16", "aes50", "AES50 · IEM SENDS"));
+        model.Connections.Add(Wire("s16", "iem-tx", "xlr", "IEM FEEDS"));
+        model.Connections.Add(Wire("iem-tx", "iems", "wl-audio"));
+
+        // ---- house outputs ----
+        model.Connections.Add(Wire("x32", "speakers", "xlr", "MAIN L/R"));
+        model.Connections.Add(Wire("x32", "subs", "xlr", "SUB AUX"));
+
+        // ---- network, both ways ----
+        model.Connections.Add(Wire("x32", "m4250", "cat6", "CONTROL & AoIP"));
+        model.Connections.Add(Wire("m4250", "x32", "cat6", "RETURN"));
+        model.Connections.Add(Wire("propresenter", "m4250", "cat6"));
+
+        // ---- the stream path ----
+        model.Connections.Add(Wire("x32", "x32-compact", "analog-snake", "SNAKE TO MEDIA ROOM"));
+        model.Connections.Add(Wire("x32-compact", "livestream", "xlr", "STREAM MIX"));
+        model.Connections.Add(Wire("cam-1", "m4250", "ndi"));
+        model.Connections.Add(Wire("cam-2", "m4250", "ndi"));
+        model.Connections.Add(Wire("cam-3", "m4250", "ndi"));
+        model.Connections.Add(Wire("m4250", "livestream", "ndi", "NDI TO ENCODER"));
 
         try
         {
@@ -1186,6 +1360,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         Load();
         IsEditing = true;
+        Status = "Example rig created. Rename the boxes to your gear, and give each one a check.";
     }
 
     public SystemMapViewModel? CreateMap(string name)

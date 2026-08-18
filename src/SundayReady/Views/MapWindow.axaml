@@ -239,6 +239,19 @@
                                            Background="Transparent">
                                         <Rectangle Classes="nodeFace" />
 
+                                        <!-- Wire handles. Visible only while editing, because
+                                             they are an affordance, not decoration. -->
+                                        <Border Width="26" HorizontalAlignment="Left" Margin="1,7"
+                                                CornerRadius="7,0,0,7"
+                                                Background="{StaticResource Overlay06Brush}"
+                                                IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
+                                                IsHitTestVisible="False" />
+                                        <Border Width="26" HorizontalAlignment="Right" Margin="1,7"
+                                                CornerRadius="0,7,7,0"
+                                                Background="{StaticResource Overlay06Brush}"
+                                                IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
+                                                IsHitTestVisible="False" />
+
                                         <!-- The 3px accent bar: the dominant signal type. -->
                                         <Border Width="3" HorizontalAlignment="Left" Margin="0,10"
                                                 CornerRadius="1.5" Background="{Binding AccentBrush}"
@@ -313,7 +326,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <TextBlock Classes="mono" FontSize="11"
                                    Foreground="{StaticResource TextDisabledBrush}"
-                                   Text="DRAG A NODE TO MOVE IT · DOUBLE-CLICK A LINKED NODE TO OPEN ITS MAP · LAYOUT SAVED TO system-map.json" />
+                                   Text="DOUBLE-CLICK A BOX TO INSPECT IT · IN EDIT MODE: DRAG THE MIDDLE TO MOVE, DRAG FROM EITHER END TO WIRE" />
                         <TextBlock Classes="mono" FontSize="11"
                                    Foreground="{StaticResource ActionBrush}"
                                    Text="{Binding ModeLabel}"

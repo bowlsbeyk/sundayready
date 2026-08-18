@@ -254,16 +254,18 @@ public static class MapConnectionTypes
 {
     public static IReadOnlyList<MapConnectionType> BuiltIn { get; } = new[]
     {
-        new MapConnectionType { Id = "xlr", Name = "XLR analog audio", Colour = "#dcbb50", FlowSeconds = 3.8, Category = "audio", BuiltIn = true },
-        new MapConnectionType { Id = "wl-audio", Name = "Wireless audio", Colour = "#e8cf83", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.6, Wireless = true, Category = "audio", BuiltIn = true },
-        new MapConnectionType { Id = "dante", Name = "Dante / audio over IP", Colour = "#30c8cf", FlowSeconds = 3.4, Category = "audio", BuiltIn = true },
-        new MapConnectionType { Id = "ndi", Name = "NDI", Colour = "#5aa3ec", FlowSeconds = 3.2, Category = "video", BuiltIn = true },
-        new MapConnectionType { Id = "sdi", Name = "SDI", Colour = "#d084d5", FlowSeconds = 3.6, Category = "video", BuiltIn = true },
-        new MapConnectionType { Id = "hdmi", Name = "HDMI", Colour = "#f69370", FlowSeconds = 4.0, WarnOverFt = 50, Category = "video", BuiltIn = true },
-        new MapConnectionType { Id = "dmx", Name = "DMX 512", Colour = "#a181ef", FlowSeconds = 4.4, Category = "lighting", BuiltIn = true },
-        new MapConnectionType { Id = "wl-dmx", Name = "Wireless DMX", Colour = "#bda6ff", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.8, Wireless = true, Category = "lighting", BuiltIn = true },
-        new MapConnectionType { Id = "wl-video", Name = "Wireless video", Colour = "#e8a0ec", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.4, Wireless = true, Category = "video", BuiltIn = true },
-        new MapConnectionType { Id = "cat6", Name = "Network · Cat6", Colour = "#6e8398", FlowSeconds = 5.0, Category = "network", BuiltIn = true },
+        new MapConnectionType { Id = "xlr", Name = "XLR analog audio", Colour = "#ffd45e", FlowSeconds = 3.8, Category = "audio", BuiltIn = true },
+        new MapConnectionType { Id = "wl-audio", Name = "Wireless audio", Colour = "#ffe9a8", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.6, Wireless = true, Category = "audio", BuiltIn = true },
+        new MapConnectionType { Id = "dante", Name = "Dante / audio over IP", Colour = "#3ce0e8", FlowSeconds = 3.4, Category = "audio", BuiltIn = true },
+        new MapConnectionType { Id = "aes50", Name = "AES50 / digital snake", Colour = "#67f0c8", FlowSeconds = 3.0, Category = "audio", BuiltIn = true },
+        new MapConnectionType { Id = "analog-snake", Name = "Analog snake", Colour = "#e0a866", FlowSeconds = 4.2, Category = "audio", BuiltIn = true },
+        new MapConnectionType { Id = "ndi", Name = "NDI", Colour = "#6bb6ff", FlowSeconds = 3.2, Category = "video", BuiltIn = true },
+        new MapConnectionType { Id = "sdi", Name = "SDI", Colour = "#ef9bf5", FlowSeconds = 3.6, Category = "video", BuiltIn = true },
+        new MapConnectionType { Id = "hdmi", Name = "HDMI", Colour = "#ffa585", FlowSeconds = 4.0, WarnOverFt = 50, Category = "video", BuiltIn = true },
+        new MapConnectionType { Id = "dmx", Name = "DMX 512", Colour = "#b795ff", FlowSeconds = 4.4, Category = "lighting", BuiltIn = true },
+        new MapConnectionType { Id = "wl-dmx", Name = "Wireless DMX", Colour = "#d4c2ff", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.8, Wireless = true, Category = "lighting", BuiltIn = true },
+        new MapConnectionType { Id = "wl-video", Name = "Wireless video", Colour = "#f7b6fb", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.4, Wireless = true, Category = "video", BuiltIn = true },
+        new MapConnectionType { Id = "cat6", Name = "Network · Cat6", Colour = "#8ba3bd", FlowSeconds = 5.0, Category = "network", BuiltIn = true },
     };
 
     /// <summary>The fallback for a connection whose type is missing or unknown.</summary>
@@ -271,7 +273,7 @@ public static class MapConnectionTypes
     {
         Id = "unknown",
         Name = "Unknown type",
-        Colour = "#6e8398",
+        Colour = "#8ba3bd",
         LineStyle = MapLineStyles.Dashed,
         StrokeWidth = 2,
         FlowSeconds = 5.0,

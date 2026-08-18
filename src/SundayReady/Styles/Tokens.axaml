@@ -11,64 +11,64 @@
 
     <!-- Surfaces -->
     <SolidColorBrush x:Key="BgBrush" Color="#0b0d10" />
-    <SolidColorBrush x:Key="PanelBrush" Color="#101317" />
-    <SolidColorBrush x:Key="PanelRaisedBrush" Color="#14171c" />
-    <SolidColorBrush x:Key="RailBgBrush" Color="#0e1115" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#161a20" />
+    <SolidColorBrush x:Key="PanelRaisedBrush" Color="#1c212a" />
+    <SolidColorBrush x:Key="RailBgBrush" Color="#12161b" />
 
     <!-- Hairlines. Depth comes from surface lightness only — no shadows anywhere. -->
-    <SolidColorBrush x:Key="HairlineBrush" Color="#12FFFFFF" />
-    <SolidColorBrush x:Key="HairlineStrongBrush" Color="#1FFFFFFF" />
-    <SolidColorBrush x:Key="HairlineDashedBrush" Color="#24FFFFFF" />
-    <SolidColorBrush x:Key="RowBorderBrush" Color="#0FFFFFFF" />
+    <SolidColorBrush x:Key="HairlineBrush" Color="#26FFFFFF" />
+    <SolidColorBrush x:Key="HairlineStrongBrush" Color="#3AFFFFFF" />
+    <SolidColorBrush x:Key="HairlineDashedBrush" Color="#3DFFFFFF" />
+    <SolidColorBrush x:Key="RowBorderBrush" Color="#1FFFFFFF" />
 
     <!-- White overlays, by the alpha the design calls for -->
-    <SolidColorBrush x:Key="Overlay02Brush" Color="#05FFFFFF" />
-    <SolidColorBrush x:Key="Overlay03Brush" Color="#08FFFFFF" />
-    <SolidColorBrush x:Key="Overlay04Brush" Color="#0AFFFFFF" />
-    <SolidColorBrush x:Key="Overlay05Brush" Color="#0DFFFFFF" />
-    <SolidColorBrush x:Key="Overlay06Brush" Color="#0FFFFFFF" />
-    <SolidColorBrush x:Key="Overlay08Brush" Color="#14FFFFFF" />
-    <SolidColorBrush x:Key="Overlay09Brush" Color="#17FFFFFF" />
-    <SolidColorBrush x:Key="Overlay10Brush" Color="#1AFFFFFF" />
-    <SolidColorBrush x:Key="Overlay13Brush" Color="#21FFFFFF" />
-    <SolidColorBrush x:Key="Overlay14Brush" Color="#24FFFFFF" />
-    <SolidColorBrush x:Key="Overlay20Brush" Color="#33FFFFFF" />
-    <SolidColorBrush x:Key="Overlay22Brush" Color="#38FFFFFF" />
+    <SolidColorBrush x:Key="Overlay02Brush" Color="#0AFFFFFF" />
+    <SolidColorBrush x:Key="Overlay03Brush" Color="#12FFFFFF" />
+    <SolidColorBrush x:Key="Overlay04Brush" Color="#17FFFFFF" />
+    <SolidColorBrush x:Key="Overlay05Brush" Color="#1CFFFFFF" />
+    <SolidColorBrush x:Key="Overlay06Brush" Color="#21FFFFFF" />
+    <SolidColorBrush x:Key="Overlay08Brush" Color="#29FFFFFF" />
+    <SolidColorBrush x:Key="Overlay09Brush" Color="#2EFFFFFF" />
+    <SolidColorBrush x:Key="Overlay10Brush" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="Overlay13Brush" Color="#3DFFFFFF" />
+    <SolidColorBrush x:Key="Overlay14Brush" Color="#42FFFFFF" />
+    <SolidColorBrush x:Key="Overlay20Brush" Color="#54FFFFFF" />
+    <SolidColorBrush x:Key="Overlay22Brush" Color="#5CFFFFFF" />
 
     <!-- Dim behind the guided tour's spotlight. Dark rather than a lightening overlay, because
          it has to read as "not this bit" over panels that are already near-black. -->
     <SolidColorBrush x:Key="ScrimBrush" Color="#B4000000" />
 
     <!-- System map surfaces (design handoff: node hierarchy is surface, not size). -->
-    <SolidColorBrush x:Key="MapBgBrush" Color="#0c0f13" />
-    <SolidColorBrush x:Key="NodeHubBrush" Color="#191d23" />
-    <SolidColorBrush x:Key="BorderNodeBrush" Color="#17FFFFFF" />
-    <SolidColorBrush x:Key="BorderHubBrush" Color="#29FFFFFF" />
+    <SolidColorBrush x:Key="MapBgBrush" Color="#0d1116" />
+    <SolidColorBrush x:Key="NodeHubBrush" Color="#252c37" />
+    <SolidColorBrush x:Key="BorderNodeBrush" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="BorderHubBrush" Color="#5CFFFFFF" />
 
     <!-- Text ramp -->
     <SolidColorBrush x:Key="TextBrush" Color="#e9ebee" />
-    <SolidColorBrush x:Key="TextDimBrush" Color="#c7ccd2" />
-    <SolidColorBrush x:Key="TextMutedBrush" Color="#aeb4bb" />
-    <SolidColorBrush x:Key="TextFaintBrush" Color="#868d95" />
-    <SolidColorBrush x:Key="TextFainterBrush" Color="#6f767e" />
-    <SolidColorBrush x:Key="TextDisabledBrush" Color="#5f666e" />
-    <SolidColorBrush x:Key="TextLockedBrush" Color="#4e555d" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#d6dbe2" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#c2c8d0" />
+    <SolidColorBrush x:Key="TextFaintBrush" Color="#9ba3ad" />
+    <SolidColorBrush x:Key="TextFainterBrush" Color="#8a929c" />
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#79818b" />
+    <SolidColorBrush x:Key="TextLockedBrush" Color="#69707a" />
 
     <!-- Status. Grey means no human has looked at this yet. -->
-    <SolidColorBrush x:Key="OkBrush" Color="#4ec27f" />
-    <SolidColorBrush x:Key="WaitBrush" Color="#d6a53c" />
-    <SolidColorBrush x:Key="FailBrush" Color="#d75a44" />
-    <SolidColorBrush x:Key="ActionBrush" Color="#4a93e0" />
-    <SolidColorBrush x:Key="ActionHoverBrush" Color="#6aa8e8" />
-    <SolidColorBrush x:Key="FailTextBrush" Color="#eda294" />
-    <SolidColorBrush x:Key="FailTagBrush" Color="#e5786a" />
+    <SolidColorBrush x:Key="OkBrush" Color="#4ade9a" />
+    <SolidColorBrush x:Key="WaitBrush" Color="#f5bf45" />
+    <SolidColorBrush x:Key="FailBrush" Color="#ff6b52" />
+    <SolidColorBrush x:Key="ActionBrush" Color="#5aa9ff" />
+    <SolidColorBrush x:Key="ActionHoverBrush" Color="#84c0ff" />
+    <SolidColorBrush x:Key="FailTextBrush" Color="#ffb3a4" />
+    <SolidColorBrush x:Key="FailTagBrush" Color="#ff8a75" />
 
     <!-- Status tints: fills at .06–.12, borders at .35–.45 -->
-    <SolidColorBrush x:Key="FailFillBrush" Color="#12d75a44" />
-    <SolidColorBrush x:Key="FailPillFillBrush" Color="#1Fd75a44" />
-    <SolidColorBrush x:Key="FailBorderBrush" Color="#73d75a44" />
-    <SolidColorBrush x:Key="FailPillBorderBrush" Color="#66d75a44" />
-    <SolidColorBrush x:Key="WaitBorderBrush" Color="#59d6a53c" />
+    <SolidColorBrush x:Key="FailFillBrush" Color="#26ff6b52" />
+    <SolidColorBrush x:Key="FailPillFillBrush" Color="#33ff6b52" />
+    <SolidColorBrush x:Key="FailBorderBrush" Color="#99ff6b52" />
+    <SolidColorBrush x:Key="FailPillBorderBrush" Color="#8Cff6b52" />
+    <SolidColorBrush x:Key="WaitBorderBrush" Color="#80f5bf45" />
     <SolidColorBrush x:Key="WaitFillBrush" Color="#0Fd6a53c" />
     <SolidColorBrush x:Key="OkFillBrush" Color="#1A4ec27f" />
 

@@ -117,7 +117,7 @@ public sealed class WireLayer : Control
 
         // The legend's isolate filter dims rather than hides — an isolated map with missing
         // wires would look like missing cabling.
-        var dim = wire.IsDimmed ? 0.15 : 1.0;
+        var dim = wire.IsDimmed ? 0.22 : 1.0;
         var selected = wire.IsSelected;
 
         switch (state)
@@ -127,8 +127,8 @@ public sealed class WireLayer : Control
                 // The reserved alarm: red dashes pulsing in place, opacity .3 → .95 → .3 over
                 // 1.7s. It reads as an alarm precisely because it is the one thing not flowing.
                 var pulse = Frozen ? 0.95 : 0.3 + (0.65 * Half(now, 1.7));
-                var fail = Color.FromArgb((byte)(255 * 0.30 * dim), 0xd7, 0x5a, 0x44);
-                var failPulse = Color.FromArgb((byte)(255 * pulse * dim), 0xd7, 0x5a, 0x44);
+                var fail = Color.FromArgb((byte)(255 * 0.42 * dim), 0xff, 0x6b, 0x52);
+                var failPulse = Color.FromArgb((byte)(255 * pulse * dim), 0xff, 0x6b, 0x52);
 
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(fail), 2.5), geometry);
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(failPulse), selected ? 3.5 : 3)
@@ -142,7 +142,7 @@ public sealed class WireLayer : Control
             case "standby":
             {
                 // Grey, dashed, and deliberately not animated. Stillness is the signal.
-                var grey = Color.FromArgb((byte)(255 * 0.45 * dim), 0x86, 0x8d, 0x95);
+                var grey = Color.FromArgb((byte)(255 * 0.60 * dim), 0x9b, 0xa3, 0xad);
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(grey), 2)
                 {
                     DashStyle = new DashStyle(new double[] { 4.5, 4.5 }, 0),
@@ -154,7 +154,7 @@ public sealed class WireLayer : Control
             {
                 // Nothing arriving. Faint and still — not red, because a starved hop is not a
                 // broken hop, and painting it red would hide where the real break is.
-                var faint = Color.FromArgb((byte)(255 * 0.12 * dim), 0xff, 0xff, 0xff);
+                var faint = Color.FromArgb((byte)(255 * 0.26 * dim), 0xff, 0xff, 0xff);
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(faint), 2)
                 {
                     DashStyle = new DashStyle(new double[] { 2, 4 }, 0),
@@ -170,7 +170,7 @@ public sealed class WireLayer : Control
         {
             // No cable stroke at all: radio is present but not a physical object. Slower and
             // fainter than wired, drifting further per cycle.
-            var wl = Color.FromArgb((byte)(255 * 0.60 * dim), colour.R, colour.G, colour.B);
+            var wl = Color.FromArgb((byte)(255 * 0.80 * dim), colour.R, colour.G, colour.B);
             var offset = -(phase * 128) / type.StrokeWidth;
 
             context.DrawGeometry(null, new Pen(new SolidColorBrush(wl), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
@@ -182,13 +182,13 @@ public sealed class WireLayer : Control
         }
 
         // 1. The cable — the static physical run.
-        var cableOpacity = type.Id == "cat6" ? 0.30 : 0.22;
+        var cableOpacity = type.Id == "cat6" ? 0.42 : 0.36;
         var cable = Color.FromArgb((byte)(255 * cableOpacity * dim), colour.R, colour.G, colour.B);
         context.DrawGeometry(null, new Pen(new SolidColorBrush(cable), selected ? type.StrokeWidth + 1 : type.StrokeWidth), geometry);
 
         // 2. The signal — dash "2 18" drifting -64 per cycle. Avalonia's dash units are
         //    multiples of stroke width, so the handoff's pixel values divide by it.
-        var signal = Color.FromArgb((byte)(255 * 0.90 * dim), colour.R, colour.G, colour.B);
+        var signal = Color.FromArgb((byte)(255 * 1.00 * dim), colour.R, colour.G, colour.B);
         var signalOffset = -(phase * 64) / type.StrokeWidth;
 
         context.DrawGeometry(null, new Pen(new SolidColorBrush(signal), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
@@ -261,7 +261,7 @@ public sealed class WireSample : Control
         if (IsFailSample)
         {
             var pulse = 0.3 + (0.65 * (now % 1.7 / 1.7 < 0.5 ? now % 1.7 / 1.7 * 2 : (1 - (now % 1.7 / 1.7)) * 2));
-            context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * pulse), 0xd7, 0x5a, 0x44)), 3)
+            context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * pulse), 0xff, 0x6b, 0x52)), 3)
             {
                 DashStyle = new DashStyle(new double[] { 7 / 3.0, 7 / 3.0 }, 0),
                 LineCap = PenLineCap.Round,
@@ -276,7 +276,7 @@ public sealed class WireSample : Control
 
         if (type.Wireless)
         {
-            context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.60), colour.R, colour.G, colour.B)), type.StrokeWidth)
+            context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.80), colour.R, colour.G, colour.B)), type.StrokeWidth)
             {
                 DashStyle = new DashStyle(new double[] { 8 / type.StrokeWidth, 8 / type.StrokeWidth }, -(now / 6.6 * 128) / type.StrokeWidth),
                 LineCap = PenLineCap.Round,
@@ -284,8 +284,8 @@ public sealed class WireSample : Control
             return;
         }
 
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.22), colour.R, colour.G, colour.B)), type.StrokeWidth), line);
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.90), colour.R, colour.G, colour.B)), type.StrokeWidth)
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.36), colour.R, colour.G, colour.B)), type.StrokeWidth), line);
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 1.00), colour.R, colour.G, colour.B)), type.StrokeWidth)
         {
             DashStyle = new DashStyle(new double[] { 2 / type.StrokeWidth, 18 / type.StrokeWidth }, -(now / type.FlowSeconds * 64) / type.StrokeWidth),
             LineCap = PenLineCap.Round,

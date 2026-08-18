@@ -18,6 +18,9 @@ public partial class MapWindow : Window
     private Avalonia.Point _dragOffset;
     private bool _dragMoved;
 
+    /// <summary>How wide the wire-from-here strip is at each end of a box.</summary>
+    private const double EdgeZone = 26;
+
     public MapWindow()
     {
         // The generated InitializeComponent, deliberately — a hand-written one that only calls
@@ -45,6 +48,12 @@ public partial class MapWindow : Window
 
     // ---------------------------------------------------------------- nodes
 
+    /// <summary>
+    /// A press on a box. While editing, the left and right thirds of a box start a wire and the
+    /// middle moves it — which is what the footnote has always promised ("drag from an edge to
+    /// wire it") and what the previous build did not actually do. Wiring by drag matters more
+    /// than the button did: nobody finds a two-step select-then-press gesture on a diagram.
+    /// </summary>
     private void OnNodePressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Control { DataContext: MapDeviceViewModel device } control
@@ -53,15 +62,34 @@ public partial class MapWindow : Window
             return;
         }
 
+        // A wire already in flight lands here.
+        if (workspace.IsWiring)
+        {
+            workspace.FinishWire(device);
+            e.Handled = true;
+            return;
+        }
+
         workspace.Select(device);
 
-        if (workspace.IsEditing && !workspace.IsWiring)
+        if (workspace.IsEditing)
         {
-            var position = e.GetPosition(GraphSurface);
-            _dragging = device;
-            _dragOffset = new Avalonia.Point(position.X - device.X, position.Y - device.Y);
-            _dragMoved = false;
-            e.Pointer.Capture(control);
+            var local = e.GetPosition(control);
+            var onEdge = local.X <= EdgeZone || local.X >= MapDeviceViewModel.BoxWidth - EdgeZone;
+
+            if (onEdge)
+            {
+                workspace.BeginWireFrom(device);
+                e.Pointer.Capture(control);
+            }
+            else
+            {
+                var position = e.GetPosition(GraphSurface);
+                _dragging = device;
+                _dragOffset = new Avalonia.Point(position.X - device.X, position.Y - device.Y);
+                _dragMoved = false;
+                e.Pointer.Capture(control);
+            }
         }
 
         e.Handled = true;
@@ -82,6 +110,21 @@ public partial class MapWindow : Window
 
     private void OnNodeReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (Workspace is { IsWiring: true } workspace)
+        {
+            // Released over a box: wire to it. Released anywhere else: the wire is still armed,
+            // so a click on the target finishes it — which is what a slip of the hand needs.
+            e.Pointer.Capture(null);
+            var target = workspace.DeviceAt(e.GetPosition(GraphSurface));
+
+            if (target is not null && !ReferenceEquals(target, workspace.WireFrom))
+            {
+                workspace.FinishWire(target);
+            }
+
+            return;
+        }
+
         if (_dragging is null)
         {
             return;
@@ -124,6 +167,12 @@ public partial class MapWindow : Window
     {
         if (Workspace is not { } workspace)
         {
+            return;
+        }
+
+        if (workspace.IsWiring)
+        {
+            workspace.CancelWireCommand.Execute(null);
             return;
         }
 

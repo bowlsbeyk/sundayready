@@ -449,9 +449,11 @@ Maps are shared. They live in a `maps` folder beside the techdesk snapshots (`sy
 human-readable), so every machine sees the same building. With no share configured they fall back
 to a local folder, like everything else.
 
-**The workflow.** Open MAP → first run offers *create an empty map* or *start from a small
-example*. **Edit layout** → **Add device**, drag it into place, select a box then **Draw
-connection** and click what it feeds. Selecting anything while editing opens its editor in the
+**The workflow.** Open MAP → first run offers *create an empty map* or *start from a worked
+example* — a real church rig with a stage box, wireless receivers, a digital snake and a console
+carrying nine connections, so you can see the shape before renaming it to your own gear.
+**Edit layout** → **Add device**, then **drag a box's middle to move it and drag from either end
+to wire it**. A box with many connections fans them across its edge so each stays followable. Selecting anything while editing opens its editor in the
 rail: label, the mono sub-line, kind, and a **verifier** — same kinds as the checklist. Wires take
 a type, a label, a cable length and a verifier of their own. **Apply changes**, then **Save map**.
 

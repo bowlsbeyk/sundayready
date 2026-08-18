@@ -381,6 +381,21 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
     /// <summary>This wire's own cycle time, seconds. The view's clock divides by this.</summary>
     public double FlowSeconds { get; }
 
+    /// <summary>
+    /// Where this wire meets each box, as a fraction down that edge. Assigned by the map once it
+    /// knows how many wires share the edge.
+    /// <para>
+    /// The handoff says many wires converging on one point is correct and desirable, and at four
+    /// or five it is. At ten - a church X32 with a digital snake, wireless receivers, mains, subs,
+    /// IEM sends, a network trunk and an analog snake - they become one rope and you cannot tell
+    /// which strand died. Fanning across the edge keeps each followable while still reading as a
+    /// patch panel.
+    /// </para>
+    /// </summary>
+    public double FromSlot { get; set; } = 0.5;
+
+    public double ToSlot { get; set; } = 0.5;
+
     public string? Label => Model.Label;
 
     public int? LengthFt => Model.LengthFt;
@@ -419,12 +434,20 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
     public bool IsDown => FlowState == "down";
 
     /// <summary>Where the wire leaves and arrives: facing edges, vertical centre.</summary>
+    /// <summary>The point on an edge for a given slot fraction.</summary>
+    private static Point EdgePoint(MapDeviceViewModel device, bool rightSide, double slot)
+    {
+        // Inset so a fan never lands exactly on a rounded corner.
+        var y = device.Y + 10 + (slot * (MapDeviceViewModel.BoxHeight - 20));
+        return new Point(rightSide ? device.X + MapDeviceViewModel.BoxWidth : device.X, y);
+    }
+
     public (Point Start, Point End) Ports()
     {
         var forward = To.Centre.X >= From.Centre.X;
         return forward
-            ? (From.RightPort, To.LeftPort)
-            : (From.LeftPort, To.RightPort);
+            ? (EdgePoint(From, true, FromSlot), EdgePoint(To, false, ToSlot))
+            : (EdgePoint(From, false, FromSlot), EdgePoint(To, true, ToSlot));
     }
 
     /// <summary>
@@ -465,6 +488,13 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
 
     /// <summary>Rail card title: <c>Cam 3 · Balcony → vMix</c>.</summary>
     public string Title => $"{From.Label} → {To.Label}";
+
+    /// <summary>Tells the view the curve moved - after a re-fan, or an endpoint moving.</summary>
+    public void RefreshGeometry()
+    {
+        OnPropertyChanged(nameof(Geometry));
+        OnPropertyChanged(nameof(Midpoint));
+    }
 
     private void OnEndChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
