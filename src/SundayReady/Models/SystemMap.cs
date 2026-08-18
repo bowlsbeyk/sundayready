@@ -37,9 +37,58 @@ public sealed class SystemMap
     /// </summary>
     public List<MapColumn> Columns { get; set; } = new();
 
+    /// <summary>
+    /// Free-standing notes pinned to the canvas. Not devices, not connections — the things a map
+    /// cannot say in boxes and lines: "this run goes through the ceiling, do not pull it",
+    /// "spare cable is in the drawer under the amp", "ask Dave before touching".
+    /// <para>
+    /// Deliberately unverifiable and unrolled-up. A note never affects whether the system reads
+    /// green, because the moment a note could change the verdict, people start writing notes to
+    /// make the verdict what they want.
+    /// </para>
+    /// </summary>
+    public List<MapNote> Notes { get; set; } = new();
+
     /// <summary>File this was loaded from, so a device can link to it and the editor can save it.</summary>
     [JsonIgnore]
     public string SourceFile { get; set; } = string.Empty;
+}
+
+/// <summary>A note pinned to the canvas.</summary>
+public sealed class MapNote
+{
+    public string Id { get; set; } = string.Empty;
+
+    public string Text { get; set; } = string.Empty;
+
+    public double X { get; set; }
+
+    public double Y { get; set; }
+
+    /// <summary>
+    /// Optional <see cref="MapDevice.Id"/> this note is about. An attached note travels with its
+    /// device when the box moves, and draws a faint tether to it, so the note that says "the left
+    /// XLR is intermittent" cannot drift away from the thing it is warning you about.
+    /// </summary>
+    public string? AboutDevice { get; set; }
+
+    /// <summary>One of <see cref="MapNoteTones"/>. Presentation only — never a health signal.</summary>
+    public string Tone { get; set; } = MapNoteTones.Plain;
+
+    /// <summary>Who pinned it, if the author cared to say.</summary>
+    public string? Author { get; set; }
+}
+
+/// <summary>
+/// A note's visual weight. A warning note is drawn in amber, but it is still only a note: it says
+/// "read me", not "something is wrong", and it never touches the rollup.
+/// </summary>
+public static class MapNoteTones
+{
+    public const string Plain = "plain";
+    public const string Warning = "warning";
+
+    public static IReadOnlyList<string> All { get; } = new[] { Plain, Warning };
 }
 
 /// <summary>A labelled vertical band behind the graph.</summary>
@@ -133,6 +182,65 @@ public sealed class MapDevice
 
     /// <summary>Where the thing physically is. "Grey box on the shelf behind the booth."</summary>
     public string? Location { get; set; }
+
+    /// <summary>
+    /// Named sockets on the box — <c>AES50 A</c>, <c>CH 25-26</c>, <c>MAIN L/R</c>. Optional, and
+    /// deliberately so: a map is useful the moment two boxes are joined, and demanding a port list
+    /// before you can draw a line would make the first five minutes miserable.
+    /// <para>
+    /// What they buy you is the difference between "the console is fed from the stage box" and
+    /// "the stage box arrives on AES50 A" — which is the sentence somebody needs while they are
+    /// standing behind the rack with a torch. A device with no ports falls back to spreading its
+    /// wires evenly along the edge, exactly as before.
+    /// </para>
+    /// </summary>
+    public List<MapPort> Ports { get; set; } = new();
+}
+
+/// <summary>
+/// One socket on a device. Ports are anchors with names: a connection that names one lands on it
+/// instead of on an arbitrary point along the edge.
+/// </summary>
+public sealed class MapPort
+{
+    /// <summary>Stable id, referenced by <see cref="MapConnection.FromPort"/> and <c>ToPort</c>.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>What is silkscreened next to it. <c>AES50 A</c>, <c>OUT 1</c>, <c>HDMI 2</c>.</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>One of <see cref="MapPortSides"/>. Decides which edge of the box it sits on.</summary>
+    public string Side { get; set; } = MapPortSides.In;
+
+    /// <summary>
+    /// Optional <see cref="MapConnectionType.Id"/> this socket accepts. Advisory: the editor warns
+    /// when a wire lands somewhere its signal cannot physically go, but never refuses. Real
+    /// buildings contain adapters, and a map that argues with the building loses.
+    /// </summary>
+    public string? Type { get; set; }
+
+    /// <summary>Optional sub-line — <c>CHANNELS 1-8</c>, <c>REAR PANEL</c>.</summary>
+    public string? Detail { get; set; }
+}
+
+/// <summary>
+/// Which edge a port lives on. The graph flows left to right, so inputs face left and outputs
+/// face right. <see cref="Both"/> is for the sockets that genuinely carry traffic each way — an
+/// AES50 jack, an ethernet port — and shows on whichever edge a given wire needs.
+/// </summary>
+public static class MapPortSides
+{
+    public const string In = "in";
+    public const string Out = "out";
+    public const string Both = "both";
+
+    public static IReadOnlyList<string> All { get; } = new[] { In, Out, Both };
+
+    /// <summary>Can a wire <em>arriving</em> at this device land here?</summary>
+    public static bool AcceptsIn(string? side) => side is In or Both;
+
+    /// <summary>Can a wire <em>leaving</em> this device start here?</summary>
+    public static bool AcceptsOut(string? side) => side is Out or Both;
 }
 
 /// <summary>Glyph hints. Recognised values only; anything else draws as a plain device.</summary>
@@ -168,6 +276,27 @@ public sealed class MapConnection
 
     /// <summary>A <see cref="MapConnectionType.Id"/>. The type owns colour, dash and speed.</summary>
     public string? Type { get; set; }
+
+    /// <summary>
+    /// This run carries signal both ways on one cable — an AES50 snake sending inputs up and IEM
+    /// mixes back, a network trunk, a USB link. Drawn as one wire with flow drifting in both
+    /// directions rather than two wires stacked on top of each other.
+    /// <para>
+    /// It is a topology claim as much as a drawing one: a bidirectional run is walked from either
+    /// end when the map works out what starves when something dies, because losing the cable
+    /// really does cost you both directions at once.
+    /// </para>
+    /// </summary>
+    public bool Bidirectional { get; set; }
+
+    /// <summary>
+    /// Optional <see cref="MapPort.Id"/> on the source device this run leaves from. Null means
+    /// "somewhere on that edge" and the map spreads it evenly with the device's other wires.
+    /// </summary>
+    public string? FromPort { get; set; }
+
+    /// <summary>Optional <see cref="MapPort.Id"/> on the destination device this run lands on.</summary>
+    public string? ToPort { get; set; }
 
     /// <summary>Optional free text beyond the type — port numbers, universe, channel range.</summary>
     public string? Label { get; set; }

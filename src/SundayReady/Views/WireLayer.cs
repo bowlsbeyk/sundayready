@@ -178,6 +178,12 @@ public sealed class WireLayer : Control
                 DashStyle = new DashStyle(new double[] { 8 / type.StrokeWidth, 8 / type.StrokeWidth }, offset),
                 LineCap = PenLineCap.Round,
             }, geometry);
+
+            if (wire.IsBidirectional)
+            {
+                DrawReturn(context, geometry, colour, type, dim, 0.80, 8, 128, phase, selected);
+            }
+
             return;
         }
 
@@ -194,6 +200,48 @@ public sealed class WireLayer : Control
         context.DrawGeometry(null, new Pen(new SolidColorBrush(signal), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
         {
             DashStyle = new DashStyle(new double[] { 2 / type.StrokeWidth, 18 / type.StrokeWidth }, signalOffset),
+            LineCap = PenLineCap.Round,
+        }, geometry);
+
+        if (wire.IsBidirectional)
+        {
+            DrawReturn(context, geometry, colour, type, dim, 1.00, 2, 64, phase, selected);
+        }
+    }
+
+    /// <summary>
+    /// The second half of a two-way run: the same dash drifting the other way.
+    /// <para>
+    /// Two details make it read as one cable carrying both directions rather than as a rendering
+    /// glitch. The offset is <em>positive</em>, so this stream travels against the first. And it is
+    /// phase-shifted by half the dash period, so the two sets of pulses interleave into a steady
+    /// alternating procession instead of landing on top of each other and cancelling out into
+    /// something that looks like it is standing still.
+    /// </para>
+    /// </summary>
+    private static void DrawReturn(
+        DrawingContext context,
+        Geometry geometry,
+        Color colour,
+        MapConnectionType type,
+        double dim,
+        double opacity,
+        double dashOn,
+        double travel,
+        double phase,
+        bool selected)
+    {
+        var gap = type.Wireless ? dashOn : 18;
+        var period = dashOn + gap;
+
+        // Slightly fainter than the outbound stream: on a glance you should still read which way
+        // the run is named, and the return is the answer to a question you asked second.
+        var back = Color.FromArgb((byte)(255 * opacity * 0.72 * dim), colour.R, colour.G, colour.B);
+        var offset = ((phase * travel) + (period / 2)) / type.StrokeWidth;
+
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(back), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
+        {
+            DashStyle = new DashStyle(new double[] { dashOn / type.StrokeWidth, gap / type.StrokeWidth }, offset),
             LineCap = PenLineCap.Round,
         }, geometry);
     }

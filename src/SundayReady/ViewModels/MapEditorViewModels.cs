@@ -260,10 +260,24 @@ public sealed partial class MapConnectionEditorViewModel : MapVerifyEditorViewMo
     [ObservableProperty]
     private bool _standby;
 
+    [ObservableProperty]
+    private bool _bidirectional;
+
+    [ObservableProperty]
+    private string _fromPort;
+
+    [ObservableProperty]
+    private string _toPort;
+
+    /// <summary>The empty choice in both port pickers — "anywhere along the edge".</summary>
+    public const string NoPort = "(no specific port)";
+
     public MapConnectionEditorViewModel(
         MapConnection model,
         VerifierRegistry registry,
-        IEnumerable<MapConnectionType> types)
+        IEnumerable<MapConnectionType> types,
+        MapDevice? from = null,
+        MapDevice? to = null)
         : base(model.Verify, registry)
     {
         Model = model;
@@ -282,11 +296,63 @@ public sealed partial class MapConnectionEditorViewModel : MapVerifyEditorViewMo
         _label = model.Label ?? string.Empty;
         _lengthFt = model.LengthFt?.ToString() ?? string.Empty;
         _standby = model.Standby;
+        _bidirectional = model.Bidirectional;
+
+        // Only sockets that can take this end of the run are offered. A two-way run needs a socket
+        // that carries both ways at each end, which is exactly the rule that stops somebody
+        // labelling a snake as arriving on an output.
+        FromPorts.Add(NoPort);
+        foreach (var port in from?.Ports ?? Enumerable.Empty<MapPort>())
+        {
+            if (model.Bidirectional ? port.Side == MapPortSides.Both : MapPortSides.AcceptsOut(port.Side))
+            {
+                FromPorts.Add(port.Label);
+                _fromById[port.Label] = port.Id;
+            }
+        }
+
+        ToPorts.Add(NoPort);
+        foreach (var port in to?.Ports ?? Enumerable.Empty<MapPort>())
+        {
+            if (model.Bidirectional ? port.Side == MapPortSides.Both : MapPortSides.AcceptsIn(port.Side))
+            {
+                ToPorts.Add(port.Label);
+                _toById[port.Label] = port.Id;
+            }
+        }
+
+        _fromPort = LabelFor(from, model.FromPort, FromPorts);
+        _toPort = LabelFor(to, model.ToPort, ToPorts);
     }
+
+    private readonly Dictionary<string, string> _fromById = new();
+    private readonly Dictionary<string, string> _toById = new();
 
     public MapConnection Model { get; }
 
     public ObservableCollection<string> TypeIds { get; } = new();
+
+    public ObservableCollection<string> FromPorts { get; } = new();
+
+    public ObservableCollection<string> ToPorts { get; } = new();
+
+    /// <summary>Hidden entirely when neither end declares a socket this run could use.</summary>
+    public bool HasPortChoices => FromPorts.Count > 1 || ToPorts.Count > 1;
+
+    /// <summary>
+    /// The stored id back to the label shown in the picker. A run pointing at a port that has since
+    /// been deleted falls back to "no specific port" rather than showing a stale name.
+    /// </summary>
+    private static string LabelFor(MapDevice? device, string? portId, ICollection<string> offered)
+    {
+        if (device is null || string.IsNullOrEmpty(portId))
+        {
+            return NoPort;
+        }
+
+        var match = device.Ports.FirstOrDefault(p => p.Id == portId);
+        return match is not null && offered.Contains(match.Label) ? match.Label : NoPort;
+    }
 
     public void Apply()
     {
@@ -294,6 +360,9 @@ public sealed partial class MapConnectionEditorViewModel : MapVerifyEditorViewMo
         Model.Label = Blank(Label);
         Model.LengthFt = int.TryParse(LengthFt, out var ft) && ft > 0 ? ft : null;
         Model.Standby = Standby;
+        Model.Bidirectional = Bidirectional;
+        Model.FromPort = _fromById.TryGetValue(FromPort ?? string.Empty, out var f) ? f : null;
+        Model.ToPort = _toById.TryGetValue(ToPort ?? string.Empty, out var t) ? t : null;
         Model.Verify = BuildVerify();
     }
 }

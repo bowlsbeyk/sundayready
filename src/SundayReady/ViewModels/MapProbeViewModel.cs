@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -259,6 +260,42 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
 
     public bool HasLocation => !string.IsNullOrWhiteSpace(Location);
 
+    /// <summary>
+    /// The sockets this device declares, in the author's order. Shown in the rail when the device
+    /// is selected — the canvas only has room for ticks, and a port list is reference material you
+    /// read once rather than something you scan at a glance.
+    /// </summary>
+    public IReadOnlyList<MapPort> Ports => Model.Ports;
+
+    public bool HasPorts => Model.Ports.Count > 0;
+
+    /// <summary>Ports currently carrying something, per edge, for the ticks drawn on the box.</summary>
+    public ObservableCollection<MapPortAnchor> RightPortAnchors { get; } = new();
+
+    public ObservableCollection<MapPortAnchor> LeftPortAnchors { get; } = new();
+
+    /// <summary>
+    /// Called by the map once it has worked out where each port sits on this box. Only ports with
+    /// something plugged into them get an anchor: an empty socket is worth listing in the rail but
+    /// not worth a mark on a diagram somebody is reading under pressure.
+    /// </summary>
+    public void SetPortAnchors(bool rightSide, IReadOnlyList<MapPortAnchor> anchors)
+    {
+        var target = rightSide ? RightPortAnchors : LeftPortAnchors;
+
+        if (target.Count == anchors.Count && target.SequenceEqual(anchors))
+        {
+            return;
+        }
+
+        target.Clear();
+
+        foreach (var anchor in anchors)
+        {
+            target.Add(anchor);
+        }
+    }
+
     public Point Centre => new(X + (BoxWidth / 2), Y + (BoxHeight / 2));
 
     public Point RightPort => new(X + BoxWidth, Y + (BoxHeight / 2));
@@ -338,6 +375,25 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
 }
 
 /// <summary>A wire: two devices, a signal type, and what the animation should be doing.</summary>
+/// <summary>
+/// A port that has something plugged into it, positioned on its box's edge.
+/// <para>
+/// <paramref name="Slot"/> is a fraction down the edge, matching the wire that lands there.
+/// <paramref name="Wires"/> is how many runs share the socket — more than one is not an error, and
+/// the tick grows so you can see it.
+/// </para>
+/// </summary>
+public readonly record struct MapPortAnchor(string PortId, string Label, double Slot, int Wires)
+{
+    /// <summary>Pixels down the box, matching <see cref="MapConnectionViewModel"/>'s edge maths.</summary>
+    public double Offset => 10 + (Slot * (MapDeviceViewModel.BoxHeight - 20));
+
+    /// <summary>Top edge of the tick, for a Canvas that positions by corner.</summary>
+    public double Top => Offset - 5;
+
+    public bool IsShared => Wires > 1;
+}
+
 public sealed partial class MapConnectionViewModel : MapProbeViewModel
 {
     [ObservableProperty]
@@ -402,6 +458,45 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
 
     public bool IsStandby => Model.Standby;
 
+    /// <summary>One cable, traffic both ways. Drawn with flow drifting in both directions.</summary>
+    public bool IsBidirectional => Model.Bidirectional;
+
+    /// <summary>
+    /// The <see cref="MapPort"/> each end lands on, when the run names one. Null is the common
+    /// case and means "spread it along the edge with everything else".
+    /// </summary>
+    public MapPort? FromPortSpec => Find(From, Model.FromPort);
+
+    public MapPort? ToPortSpec => Find(To, Model.ToPort);
+
+    private static MapPort? Find(MapDeviceViewModel device, string? portId) =>
+        string.IsNullOrEmpty(portId)
+            ? null
+            : device.Model.Ports.FirstOrDefault(p => p.Id == portId);
+
+    /// <summary>
+    /// What to print at each end in the rail: <c>AES50 A → CH 25-26</c>. Empty when neither end
+    /// names a port, which keeps the rail quiet for maps that never adopted them.
+    /// </summary>
+    public string PortRoute
+    {
+        get
+        {
+            var from = FromPortSpec?.Label;
+            var to = ToPortSpec?.Label;
+
+            if (from is null && to is null)
+            {
+                return string.Empty;
+            }
+
+            var arrow = IsBidirectional ? "↔" : "→";
+            return $"{from ?? "—"} {arrow} {to ?? "—"}";
+        }
+    }
+
+    public bool HasPortRoute => PortRoute.Length > 0;
+
     /// <summary>
     /// live — flowing dashes in the type's colour; standby — grey, still, by design;
     /// down — this wire's own check failed: the reserved red alarm pattern;
@@ -422,7 +517,15 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
                 return "down";
             }
 
+            // A one-way run starves when its source dies. A two-way run starves when *either* end
+            // does, because half a conversation is not a working link — an AES50 snake with a dead
+            // console still has a live stage box and carries nothing anybody wants.
             if (From.ShowsFailure || From.IsStarved)
+            {
+                return "starved";
+            }
+
+            if (IsBidirectional && (To.ShowsFailure || To.IsStarved))
             {
                 return "starved";
             }
@@ -486,8 +589,8 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
         }
     }
 
-    /// <summary>Rail card title: <c>Cam 3 · Balcony → vMix</c>.</summary>
-    public string Title => $"{From.Label} → {To.Label}";
+    /// <summary>Rail card title: <c>Cam 3 · Balcony → vMix</c>, or <c>↔</c> when it runs both ways.</summary>
+    public string Title => $"{From.Label} {(IsBidirectional ? "↔" : "→")} {To.Label}";
 
     /// <summary>Tells the view the curve moved - after a re-fan, or an endpoint moving.</summary>
     public void RefreshGeometry()

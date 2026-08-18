@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -44,42 +45,126 @@ public sealed partial class SystemMapViewModel : ObservableObject
             }
         }
 
+        foreach (var note in model.Notes)
+        {
+            Notes.Add(new MapNoteViewModel(
+                note,
+                note.AboutDevice is { Length: > 0 } id && byId.TryGetValue(id, out var about)
+                    ? about
+                    : null));
+        }
+
         AssignPortSlots();
     }
 
     /// <summary>
-    /// Spreads each device's wires along its edges so a heavily-patched box stays readable.
-    /// Ordered by the far end's vertical position, which is what stops the fan crossing itself.
+    /// Spreads each device's wires along its edges so a heavily-patched box stays readable, and
+    /// anchors the ones that name a <see cref="MapPort"/> to that port instead.
     /// </summary>
     private void AssignPortSlots()
     {
         foreach (var device in Devices)
         {
-            var leaving = Connections
-                .Where(c => ReferenceEquals(c.From, device))
-                .OrderBy(c => c.To.Centre.Y)
-                .ToList();
-
-            for (var i = 0; i < leaving.Count; i++)
-            {
-                leaving[i].FromSlot = Slot(i, leaving.Count);
-            }
-
-            var arriving = Connections
-                .Where(c => ReferenceEquals(c.To, device))
-                .OrderBy(c => c.From.Centre.Y)
-                .ToList();
-
-            for (var i = 0; i < arriving.Count; i++)
-            {
-                arriving[i].ToSlot = Slot(i, arriving.Count);
-            }
+            AssignEdge(device, rightSide: true);
+            AssignEdge(device, rightSide: false);
         }
 
         foreach (var connection in Connections)
         {
             connection.RefreshGeometry();
         }
+    }
+
+    /// <summary>
+    /// Positions everything landing on one edge of one box.
+    /// <para>
+    /// Each edge is fanned separately, which matters more than it sounds: a box in the middle of
+    /// the map has wires leaving rightwards and wires leaving leftwards, and numbering them as one
+    /// sequence spreads two half-empty edges instead of two full ones.
+    /// </para>
+    /// <para>
+    /// Wires naming a port collapse onto that port's anchor — one socket is one point, however many
+    /// runs claim it, because two cables in one XLR jack is a fact worth seeing rather than a
+    /// drawing to tidy away. Declared ports sit in the order the author listed them; everything
+    /// unnamed falls below, sorted by where its far end sits so the fan does not cross itself.
+    /// </para>
+    /// </summary>
+    private void AssignEdge(MapDeviceViewModel device, bool rightSide)
+    {
+        var ends = new List<(MapConnectionViewModel Wire, bool FromEnd, string? PortId, double FarY)>();
+
+        foreach (var connection in Connections)
+        {
+            var forward = connection.To.Centre.X >= connection.From.Centre.X;
+
+            if (ReferenceEquals(connection.From, device) && forward == rightSide)
+            {
+                ends.Add((connection, true, connection.Model.FromPort, connection.To.Centre.Y));
+            }
+
+            if (ReferenceEquals(connection.To, device) && forward != rightSide)
+            {
+                ends.Add((connection, false, connection.Model.ToPort, connection.From.Centre.Y));
+            }
+        }
+
+        if (ends.Count == 0)
+        {
+            device.SetPortAnchors(rightSide, Array.Empty<MapPortAnchor>());
+            return;
+        }
+
+        var declared = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < device.Model.Ports.Count; i++)
+        {
+            declared[device.Model.Ports[i].Id] = i;
+        }
+
+        string KeyFor(string? portId) =>
+            portId is { Length: > 0 } id && declared.ContainsKey(id) ? "port:" + id : null!;
+
+        var groups = ends
+            .GroupBy(e => KeyFor(e.PortId) ?? "wire:" + e.Wire.Model.Id + (e.FromEnd ? ":a" : ":b"))
+            .Select(g => new
+            {
+                Ends = g.ToList(),
+                PortId = KeyFor(g.First().PortId) is null ? null : g.First().PortId,
+                Order = KeyFor(g.First().PortId) is null
+                    ? (int?)null
+                    : declared[g.First().PortId!],
+                FarY = g.Average(e => e.FarY),
+            })
+            .OrderBy(g => g.Order is null ? 1 : 0)
+            .ThenBy(g => g.Order ?? 0)
+            .ThenBy(g => g.FarY)
+            .ToList();
+
+        var anchors = new List<MapPortAnchor>();
+
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var slot = Slot(i, groups.Count);
+
+            foreach (var end in groups[i].Ends)
+            {
+                if (end.FromEnd)
+                {
+                    end.Wire.FromSlot = slot;
+                }
+                else
+                {
+                    end.Wire.ToSlot = slot;
+                }
+            }
+
+            if (groups[i].PortId is { } portId)
+            {
+                var spec = device.Model.Ports.FirstOrDefault(p => p.Id == portId);
+                anchors.Add(new MapPortAnchor(portId, spec?.Label ?? portId, slot, groups[i].Ends.Count));
+            }
+        }
+
+        device.SetPortAnchors(rightSide, anchors);
     }
 
     /// <summary>One wire sits at the centre; several spread evenly across the edge.</summary>
@@ -102,6 +187,8 @@ public sealed partial class SystemMapViewModel : ObservableObject
     public ObservableCollection<MapDeviceViewModel> Devices { get; } = new();
 
     public ObservableCollection<MapConnectionViewModel> Connections { get; } = new();
+
+    public ObservableCollection<MapNoteViewModel> Notes { get; } = new();
 
     public IReadOnlyList<MapColumn> Columns => Model.Columns;
 
@@ -139,13 +226,17 @@ public sealed partial class SystemMapViewModel : ObservableObject
     public IEnumerable<MapProbeViewModel> Failing =>
         Probes.Where(p => p.IsFailed && p is not MapDeviceViewModel { IsReported: true });
 
-    public double CanvasWidth => Devices.Count == 0
-        ? 1500
-        : Math.Max(1500, Devices.Max(d => d.X) + MapDeviceViewModel.BoxWidth + 120);
+    public double CanvasWidth => Math.Max(
+        1500,
+        Math.Max(
+            Devices.Count == 0 ? 0 : Devices.Max(d => d.X) + MapDeviceViewModel.BoxWidth + 120,
+            Notes.Count == 0 ? 0 : Notes.Max(n => n.X) + MapNoteViewModel.NoteWidth + 120));
 
-    public double CanvasHeight => Devices.Count == 0
-        ? 900
-        : Math.Max(900, Devices.Max(d => d.Y) + MapDeviceViewModel.BoxHeight + 120);
+    public double CanvasHeight => Math.Max(
+        900,
+        Math.Max(
+            Devices.Count == 0 ? 0 : Devices.Max(d => d.Y) + MapDeviceViewModel.BoxHeight + 120,
+            Notes.Count == 0 ? 0 : Notes.Max(n => n.Y) + 160));
 
     public void RefreshExtent()
     {
@@ -386,6 +477,9 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         SelectedDevice = null;
         SelectedConnection = null;
 
+        // Everything came off disk again, so the history describes states that no longer exist.
+        ForgetUndo();
+
         Status = errors.Count > 0
             ? string.Join(Environment.NewLine, errors)
             : _maps.Count == 0
@@ -503,8 +597,14 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             c.IsSelected = false;
         }
 
+        foreach (var n in Current?.Notes ?? Enumerable.Empty<MapNoteViewModel>())
+        {
+            n.IsSelected = false;
+        }
+
         SelectedDevice = null;
         SelectedConnection = null;
+        SelectedNote = null;
         RefreshEditors();
     }
 
@@ -515,7 +615,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             : null;
 
         ConnectionEditor = IsEditing && SelectedConnection is { } connection
-            ? new MapConnectionEditorViewModel(connection.Model, _registry, _types)
+            ? new MapConnectionEditorViewModel(
+                connection.Model, _registry, _types, connection.From.Model, connection.To.Model)
             : null;
     }
 
@@ -534,6 +635,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         string? reselectDevice = null;
         string? reselectConnection = null;
+
+        Checkpoint(DeviceEditor is not null ? "editing a device" : "editing a connection");
 
         if (DeviceEditor is { } deviceEditor)
         {
@@ -587,6 +690,22 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         if (ReferenceEquals(Current, old))
         {
             Current = rebuilt;
+        }
+
+        // The drill-down history can be holding the view model we just replaced. Left alone, Back
+        // would walk you into a map that is no longer the one on disk — a ghost that still draws
+        // and still answers questions, with pre-edit answers.
+        if (_back.Contains(old))
+        {
+            var trail = _back.ToArray();
+            _back.Clear();
+
+            for (var i = trail.Length - 1; i >= 0; i--)
+            {
+                _back.Push(ReferenceEquals(trail[i], old) ? rebuilt : trail[i]);
+            }
+
+            OnPropertyChanged(nameof(CanGoBack));
         }
 
         RebuildLegend();
@@ -903,6 +1022,11 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         }
 
         RaiseVerdict();
+
+        // The room list and the stream path are derived from device status, so they have to be
+        // recomputed whenever status settles — otherwise the building view keeps showing the
+        // faults from the previous poll.
+        RefreshProjections();
     }
 
     /// <summary>
@@ -1006,6 +1130,216 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         }
     }
 
+    // ------------------------------------------------------------------ projections
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(IsSignalFlow), nameof(IsBuilding), nameof(IsStreamPath),
+        nameof(Rooms), nameof(StreamHops), nameof(StreamVerdict), nameof(HasStreamPath))]
+    private MapViewMode _viewMode = MapViewMode.SignalFlow;
+
+    public bool IsSignalFlow => ViewMode == MapViewMode.SignalFlow;
+
+    public bool IsBuilding => ViewMode == MapViewMode.Building;
+
+    public bool IsStreamPath => ViewMode == MapViewMode.StreamPath;
+
+    public IReadOnlyList<MapRoomViewModel> Rooms =>
+        Current is { } map ? MapProjections.Rooms(map) : Array.Empty<MapRoomViewModel>();
+
+    public IReadOnlyList<MapStreamHopViewModel> StreamHops =>
+        Current is { } map ? MapProjections.StreamPath(map) : Array.Empty<MapStreamHopViewModel>();
+
+    public bool HasStreamPath => StreamHops.Count > 0;
+
+    /// <summary>One sentence about the stream path: where it stops, or that it does not.</summary>
+    public string StreamVerdict
+    {
+        get
+        {
+            var hops = StreamHops;
+
+            if (hops.Count == 0)
+            {
+                return "No path out of the building yet. Wire something to an encoder or a "
+                    + "platform, and mark anything beyond the property line as off campus.";
+            }
+
+            if (hops.FirstOrDefault(h => h.IsFirstBreak) is { } broken)
+            {
+                return broken.HasArriving
+                    ? $"Signal stops at {broken.Device.Label} — the {broken.ArrivingLabel} run into "
+                        + "it is not arriving. Everything after this is waiting, not broken."
+                    : $"{broken.Device.Label} is not passing its own check, so nothing downstream "
+                        + "of it has anything to carry.";
+            }
+
+            return $"All {hops.Count} hops from {hops[0].Device.Label} to "
+                + $"{hops[^1].Device.Label} are clear.";
+        }
+    }
+
+    /// <summary>The view switcher. Takes the mode name so one handler serves all three buttons.</summary>
+    [RelayCommand]
+    private void ShowView(string? mode)
+    {
+        ViewMode = mode switch
+        {
+            "building" => MapViewMode.Building,
+            "stream" => MapViewMode.StreamPath,
+            _ => MapViewMode.SignalFlow,
+        };
+
+        // The other two projections are read-only by nature: there is nothing on them to drag.
+        if (ViewMode != MapViewMode.SignalFlow && IsEditing)
+        {
+            IsEditing = false;
+            WireFrom = null;
+            ClearSelection();
+            RefreshEditors();
+        }
+    }
+
+    /// <summary>Recomputes the derived views — after a poll, an edit, or a map switch.</summary>
+    private void RefreshProjections()
+    {
+        OnPropertyChanged(nameof(Rooms));
+        OnPropertyChanged(nameof(StreamHops));
+        OnPropertyChanged(nameof(HasStreamPath));
+        OnPropertyChanged(nameof(StreamVerdict));
+    }
+
+    // ------------------------------------------------------------------ undo
+
+    /// <summary>
+    /// One point in time: a map's whole model, serialised, and what the operator was about to do.
+    /// <para>
+    /// Snapshotting the entire map rather than recording inverse operations is the deliberate
+    /// choice here. Inverse operations are smaller and faster and get subtly wrong every time
+    /// somebody adds a field — deleting a device also deletes its connections, re-fans the ports of
+    /// everything it touched, and rewrites the legend, and an "undo delete" that forgets one of
+    /// those leaves a map that looks right and is not. A church map is a few dozen boxes; the whole
+    /// thing serialises in well under a millisecond, and correctness is worth vastly more here than
+    /// the microseconds.
+    /// </para>
+    /// </summary>
+    private readonly record struct UndoStep(string FileName, string Json, string Label);
+
+    private readonly Stack<UndoStep> _undo = new();
+
+    /// <summary>Enough to cover a bad afternoon, bounded so a long session cannot grow forever.</summary>
+    private const int UndoDepth = 60;
+
+    public bool CanUndo => _undo.Count > 0;
+
+    /// <summary>What Ctrl+Z would take back, for the button's tooltip.</summary>
+    public string UndoLabel => _undo.Count > 0 ? $"Undo {_undo.Peek().Label}" : "Nothing to undo";
+
+    /// <summary>
+    /// Records the current state before a change. Every mutating path calls this <em>first</em>;
+    /// the label is what the operator did, phrased so it reads after the word "Undo".
+    /// </summary>
+    private void Checkpoint(string label)
+    {
+        if (Current is not { } map)
+        {
+            return;
+        }
+
+        try
+        {
+            _undo.Push(new UndoStep(
+                map.FileName,
+                JsonSerializer.Serialize(map.Model, ChecklistWriter.WriteOptions),
+                label));
+        }
+        catch (Exception)
+        {
+            // A map that will not serialise is a map that could not have been saved either. Losing
+            // undo is the smaller problem, and blocking the edit over it would be the larger one.
+            return;
+        }
+
+        while (_undo.Count > UndoDepth)
+        {
+            var kept = _undo.ToArray().Take(UndoDepth).Reverse().ToList();
+            _undo.Clear();
+
+            foreach (var step in kept)
+            {
+                _undo.Push(step);
+            }
+        }
+
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(UndoLabel));
+    }
+
+    /// <summary>Throws away the history — after a load, or a switch to a different map.</summary>
+    private void ForgetUndo()
+    {
+        if (_undo.Count == 0)
+        {
+            return;
+        }
+
+        _undo.Clear();
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(UndoLabel));
+    }
+
+    [RelayCommand]
+    private void Undo()
+    {
+        if (_undo.Count == 0 || Current is not { } map)
+        {
+            return;
+        }
+
+        var step = _undo.Pop();
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(UndoLabel));
+
+        if (step.FileName != map.FileName)
+        {
+            // The history belongs to a map that is no longer open. Undoing into it behind the
+            // operator's back would be worse than refusing.
+            Status = "That change was on a different map. Open it to undo there.";
+            return;
+        }
+
+        SystemMap restored;
+
+        try
+        {
+            restored = JsonSerializer.Deserialize<SystemMap>(step.Json, ChecklistLoader.JsonOptions)
+                ?? throw new InvalidOperationException("empty snapshot");
+        }
+        catch (Exception ex)
+        {
+            Status = $"Could not undo: {ex.Message}";
+            return;
+        }
+
+        restored.SourceFile = map.Model.SourceFile;
+
+        ClearSelection();
+        var index = _maps.IndexOf(map);
+        var rebuilt = new SystemMapViewModel(restored, _registry, _types);
+
+        if (index >= 0)
+        {
+            _maps[index] = rebuilt;
+            Maps[index] = rebuilt;
+        }
+
+        Current = rebuilt;
+        RebuildLegend();
+        RollUp();
+        RefreshEditors();
+        Status = $"Undid {step.Label}. Save map to write it to disk.";
+    }
+
     // ------------------------------------------------------------------ editing
 
     [RelayCommand]
@@ -1029,6 +1363,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             return null;
         }
 
+        Checkpoint("adding a device");
+
         var model = new MapDevice
         {
             Id = SystemMapStore.NewId("device"),
@@ -1044,6 +1380,95 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         map.RefreshExtent();
         Select(vm);
         return vm;
+    }
+
+    /// <summary>The note under the editor's caret, if any. Selecting one clears the others.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NoteAttachmentLabel))]
+    private MapNoteViewModel? _selectedNote;
+
+    public MapNoteViewModel? AddNote(double x, double y)
+    {
+        if (Current is not { } map)
+        {
+            return null;
+        }
+
+        Checkpoint("adding a note");
+
+        // A note about the selected device attaches to it, because that is almost always what
+        // somebody means when they select a box and then reach for the note button.
+        var about = SelectedDevice;
+
+        var model = new MapNote
+        {
+            Id = SystemMapStore.NewId("note"),
+            Text = string.Empty,
+            X = Math.Max(0, Math.Round(x)),
+            Y = Math.Max(0, Math.Round(y)),
+            AboutDevice = about?.Id,
+        };
+
+        map.Model.Notes.Add(model);
+        var vm = new MapNoteViewModel(model, about);
+        map.Notes.Add(vm);
+        map.RefreshExtent();
+        SelectNote(vm);
+        Status = about is null
+            ? "Note added. Type into it, and drag it where it belongs."
+            : $"Note added, attached to {about.Label}. It will follow the box.";
+        return vm;
+    }
+
+    /// <summary>What the rail says about where a note is pinned.</summary>
+    public string NoteAttachmentLabel => SelectedNote?.About is { } device
+        ? $"Attached to {device.Label}. It follows the box when you move it."
+        : "Free-standing. Drag it anywhere on the canvas.";
+
+    [RelayCommand]
+    private void ToggleNoteTone()
+    {
+        if (SelectedNote is not { } note)
+        {
+            return;
+        }
+
+        Checkpoint("changing a note");
+        note.Model.Tone = note.IsWarning ? MapNoteTones.Plain : MapNoteTones.Warning;
+
+        // The tone lives on the model, so the view model has to be told the derived flag moved.
+        note.OnToneChanged();
+    }
+
+    [RelayCommand]
+    private void DetachNote()
+    {
+        if (SelectedNote is not { About: not null } note)
+        {
+            return;
+        }
+
+        Checkpoint("detaching a note");
+        note.Model.AboutDevice = null;
+
+        // Rebuilding is how the note loses its live tether without the view model having to
+        // support un-wiring an event it subscribed to in its constructor.
+        if (Current is { } map)
+        {
+            RebuildFromModel(map);
+        }
+    }
+
+    public void SelectNote(MapNoteViewModel note)
+    {
+        ClearSelection();
+
+        foreach (var other in Current?.Notes ?? Enumerable.Empty<MapNoteViewModel>())
+        {
+            other.IsSelected = ReferenceEquals(other, note);
+        }
+
+        SelectedNote = note;
     }
 
     [RelayCommand]
@@ -1097,6 +1522,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             return;
         }
 
+        Checkpoint("drawing a connection");
+
         // Defaults to the last type used on this map — the handoff's rule for the drop picker.
         var lastType = map.Connections.LastOrDefault()?.Type ?? _types.FirstOrDefault()
             ?? MapConnectionTypes.Unknown;
@@ -1128,8 +1555,18 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             return;
         }
 
+        if (SelectedNote is { } note)
+        {
+            Checkpoint("deleting a note");
+            map.Model.Notes.Remove(note.Model);
+            map.Notes.Remove(note);
+            SelectedNote = null;
+            return;
+        }
+
         if (SelectedConnection is { } connection)
         {
+            Checkpoint($"deleting {connection.Title}");
             map.Model.Connections.Remove(connection.Model);
             map.Connections.Remove(connection);
             SelectedConnection = null;
@@ -1140,12 +1577,22 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         if (SelectedDevice is { } device)
         {
+            Checkpoint($"deleting {device.Label}");
+
             foreach (var dangling in map.Connections
                          .Where(c => ReferenceEquals(c.From, device) || ReferenceEquals(c.To, device))
                          .ToList())
             {
                 map.Model.Connections.Remove(dangling.Model);
                 map.Connections.Remove(dangling);
+            }
+
+            foreach (var orphan in map.Notes.Where(n => n.About is not null
+                         && ReferenceEquals(n.About, device)).ToList())
+            {
+                // Detached, not deleted. Somebody wrote those words for a reason, and losing them
+                // silently because a box was removed is how a map stops being trusted.
+                orphan.Model.AboutDevice = null;
             }
 
             map.Model.Devices.Remove(device.Model);
@@ -1225,6 +1672,17 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             Tier = verify is null ? MapTiers.Inferred : MapTiers.Verified,
         };
 
+        // Sockets are attached after the fact so the device list stays a readable table.
+        static MapDevice Port(MapDevice device, params (string Id, string Label, string Side, string? Detail)[] ports)
+        {
+            foreach (var (id, label, side, detail) in ports)
+            {
+                device.Ports.Add(new MapPort { Id = id, Label = label, Side = side, Detail = detail });
+            }
+
+            return device;
+        }
+
         static MapConnection Wire(string from, string to, string type, string? label = null) => new()
         {
             Id = $"{from}--{to}--{type}",
@@ -1234,7 +1692,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         var model = new SystemMap
         {
-            Name = "Signal flow",
+            Name = "Main system",
             Summary = "A worked example of a real church rig. Rename these to your gear, or delete "
                 + "them and start clean. Every box says which room it lives in.",
             Columns =
@@ -1271,16 +1729,27 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
                 Dev("cam-3", "NDI Camera 3", MapDeviceKinds.Camera, srcX, 1400, "Left Sanctuary", "NDI · GIVE IT ITS ADDRESS", "ndi"),
 
                 // ---- stage box and receivers ----
-                Dev("s16", "S16 stage box", MapDeviceKinds.Audio, boxX, 300, "Piano pit",
-                    "16 IN · AES50 TO X32", "aes50", hub: true),
+                Port(
+                    Dev("s16", "S16 stage box", MapDeviceKinds.Audio, boxX, 300, "Piano pit",
+                        "16 IN · AES50 TO X32", "aes50", hub: true),
+                    ("s16-aes", "AES50 A", MapPortSides.Both, "TO THE X32"),
+                    ("s16-iem", "IEM SENDS", MapPortSides.Out, "OUT 1-6")),
                 Dev("receivers", "Mic Receivers", MapDeviceKinds.Audio, boxX, 890, "Sound booth",
                     "6 CHANNELS · RACK", "wl-audio", hub: true),
                 Dev("focusrite", "Focusrite interface", MapDeviceKinds.Audio, boxX, 1130, "Sound booth",
                     "PROPRESENTER AUDIO OUT", "xlr"),
 
                 // ---- the booth ----
-                Dev("x32", "X32", MapDeviceKinds.Audio, deskX, 480, "Sound booth",
-                    "32 IN · THE HUB OF EVERYTHING", "aes50", hub: true),
+                Port(
+                    Dev("x32", "X32", MapDeviceKinds.Audio, deskX, 480, "Sound booth",
+                        "32 IN · THE HUB OF EVERYTHING", "aes50", hub: true),
+                    ("x32-aes", "AES50 A", MapPortSides.Both, "THE SNAKE"),
+                    ("x32-ch1", "CH 1-16", MapPortSides.In, "FROM THE RECEIVERS"),
+                    ("x32-ch25", "CH 25-26", MapPortSides.In, "FROM PROPRESENTER"),
+                    ("x32-main", "MAIN L/R", MapPortSides.Out, "THE HOUSE"),
+                    ("x32-sub", "SUB AUX", MapPortSides.Out, null),
+                    ("x32-net", "ETHERNET", MapPortSides.Both, "TO THE M4250"),
+                    ("x32-snake", "OUT 9-16", MapPortSides.Out, "ANALOG SNAKE TO MEDIA")),
                 Dev("propresenter", "ProPresenter", MapDeviceKinds.Computer, deskX, 1050, "Sound booth",
                     "SLIDES & LYRICS", "cat6", hub: true),
 
@@ -1321,32 +1790,73 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             model.Connections.Add(Wire(id, "receivers", "wl-audio"));
         }
 
-        model.Connections.Add(Wire("receivers", "x32", "xlr", "RECEIVER OUTS"));
-        model.Connections.Add(Wire("propresenter", "focusrite", "cat6", "USB AUDIO"));
-        model.Connections.Add(Wire("focusrite", "x32", "xlr", "XLR INS"));
+        var fromReceivers = Wire("receivers", "x32", "xlr", "RECEIVER OUTS");
+        fromReceivers.ToPort = "x32-ch1";
+        model.Connections.Add(fromReceivers);
 
-        // ---- the digital snake, both directions: inputs up, IEM sends back ----
-        model.Connections.Add(Wire("s16", "x32", "aes50", "AES50 · 16 INPUTS"));
-        model.Connections.Add(Wire("x32", "s16", "aes50", "AES50 · IEM SENDS"));
-        model.Connections.Add(Wire("s16", "iem-tx", "xlr", "IEM FEEDS"));
+        model.Connections.Add(Wire("propresenter", "focusrite", "cat6", "USB AUDIO"));
+
+        var fromFocusrite = Wire("focusrite", "x32", "xlr", "XLR INS");
+        fromFocusrite.ToPort = "x32-ch25";
+        model.Connections.Add(fromFocusrite);
+
+        // ---- the digital snake: one cable, inputs up and IEM sends back down it ----
+        var snake = Wire("s16", "x32", "aes50", "16 INPUTS UP · IEM SENDS BACK");
+        snake.Bidirectional = true;
+        snake.FromPort = "s16-aes";
+        snake.ToPort = "x32-aes";
+        model.Connections.Add(snake);
+        var iemFeed = Wire("s16", "iem-tx", "xlr", "IEM FEEDS");
+        iemFeed.FromPort = "s16-iem";
+        model.Connections.Add(iemFeed);
         model.Connections.Add(Wire("iem-tx", "iems", "wl-audio"));
 
         // ---- house outputs ----
-        model.Connections.Add(Wire("x32", "speakers", "xlr", "MAIN L/R"));
-        model.Connections.Add(Wire("x32", "subs", "xlr", "SUB AUX"));
+        var mains = Wire("x32", "speakers", "xlr", "MAIN L/R");
+        mains.FromPort = "x32-main";
+        model.Connections.Add(mains);
 
-        // ---- network, both ways ----
-        model.Connections.Add(Wire("x32", "m4250", "cat6", "CONTROL & AoIP"));
-        model.Connections.Add(Wire("m4250", "x32", "cat6", "RETURN"));
+        var subs = Wire("x32", "subs", "xlr", "SUB AUX");
+        subs.FromPort = "x32-sub";
+        model.Connections.Add(subs);
+
+        // ---- network: one trunk, talking both ways ----
+        var trunk = Wire("x32", "m4250", "cat6", "CONTROL & AoIP");
+        trunk.Bidirectional = true;
+        trunk.FromPort = "x32-net";
+        model.Connections.Add(trunk);
         model.Connections.Add(Wire("propresenter", "m4250", "cat6"));
 
         // ---- the stream path ----
-        model.Connections.Add(Wire("x32", "x32-compact", "analog-snake", "SNAKE TO MEDIA ROOM"));
+        var toMedia = Wire("x32", "x32-compact", "analog-snake", "SNAKE TO MEDIA ROOM");
+        toMedia.FromPort = "x32-snake";
+        model.Connections.Add(toMedia);
         model.Connections.Add(Wire("x32-compact", "livestream", "xlr", "STREAM MIX"));
         model.Connections.Add(Wire("cam-1", "m4250", "ndi"));
         model.Connections.Add(Wire("cam-2", "m4250", "ndi"));
         model.Connections.Add(Wire("cam-3", "m4250", "ndi"));
         model.Connections.Add(Wire("m4250", "livestream", "ndi", "NDI TO ENCODER"));
+
+        // Notes: the two things a map made of boxes and lines cannot say.
+        model.Notes.Add(new MapNote
+        {
+            Id = "note-snake",
+            AboutDevice = "x32",
+            Tone = MapNoteTones.Warning,
+            Text = "One cable carries the stage inputs up and the IEM mixes back down. "
+                + "Unplug it and the band loses their ears at the same moment you lose the inputs.",
+            X = deskX - 46,
+            Y = 660,
+        });
+
+        model.Notes.Add(new MapNote
+        {
+            Id = "note-example",
+            Text = "This is an example, not your building. Rename each box to your own gear, "
+                + "delete what you do not have, and give the ones that matter a check.",
+            X = srcX,
+            Y = 1500,
+        });
 
         try
         {

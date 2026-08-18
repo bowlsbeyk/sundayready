@@ -55,7 +55,6 @@ public partial class App : Application
                     ShowWalkthrough(desktop, viewModel);
                 }
             }
-
         }
 
         base.OnFrameworkInitializationCompleted();

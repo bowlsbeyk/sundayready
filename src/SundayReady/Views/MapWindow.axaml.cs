@@ -243,4 +243,74 @@ public partial class MapWindow : Window
         var origin = CanvasScroll.Offset;
         workspace.AddDevice(origin.X + 80, origin.Y + 80);
     }
+
+    private void OnAddNoteClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        // Offset from where a new device would land, so pressing both buttons does not stack two
+        // things on one spot.
+        var origin = CanvasScroll.Offset;
+        workspace.AddNote(origin.X + 320, origin.Y + 80);
+    }
+
+    // ---------------------------------------------------------------- notes
+
+    private MapNoteViewModel? _draggingNote;
+    private Avalonia.Point _noteOffset;
+
+    /// <summary>
+    /// Notes drag from their border but not from their text, because the text is a live editor and
+    /// stealing the pointer from it would make a note impossible to type into.
+    /// </summary>
+    private void OnNotePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control { DataContext: MapNoteViewModel note } control
+            || Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        workspace.SelectNote(note);
+
+        if (!workspace.IsEditing || e.Source is TextBox)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var position = e.GetPosition(GraphSurface);
+        _draggingNote = note;
+        _noteOffset = new Avalonia.Point(position.X - note.X, position.Y - note.Y);
+        e.Pointer.Capture(control);
+        e.Handled = true;
+    }
+
+    private void OnNoteMoved(object? sender, PointerEventArgs e)
+    {
+        if (_draggingNote is not { } note)
+        {
+            return;
+        }
+
+        var position = e.GetPosition(GraphSurface);
+        note.X = Math.Max(0, position.X - _noteOffset.X);
+        note.Y = Math.Max(0, position.Y - _noteOffset.Y);
+    }
+
+    private void OnNoteReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_draggingNote is null)
+        {
+            return;
+        }
+
+        e.Pointer.Capture(null);
+        _draggingNote.Commit();
+        _draggingNote = null;
+        Workspace?.Current?.RefreshExtent();
+    }
 }

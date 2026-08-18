@@ -449,13 +449,40 @@ Maps are shared. They live in a `maps` folder beside the techdesk snapshots (`sy
 human-readable), so every machine sees the same building. With no share configured they fall back
 to a local folder, like everything else.
 
+**Three views of one map.** The switcher at the top gives you the same devices three ways, because
+the question changes with the hour. **Signal flow** is what feeds what. **Building** groups the same
+boxes by the room they live in, faults first — the answer to "where do I walk to", which a
+signal-flow diagram is structurally bad at. **Stream path** is the chain out of the building,
+hop by hop, with one sentence saying where it stops. Nothing is entered twice; a device's room and
+its wires already say all of it.
+
 **The workflow.** Open MAP → first run offers *create an empty map* or *start from a worked
 example* — a real church rig with a stage box, wireless receivers, a digital snake and a console
-carrying nine connections, so you can see the shape before renaming it to your own gear.
-**Edit layout** → **Add device**, then **drag a box's middle to move it and drag from either end
-to wire it**. A box with many connections fans them across its edge so each stays followable. Selecting anything while editing opens its editor in the
-rail: label, the mono sub-line, kind, and a **verifier** — same kinds as the checklist. Wires take
-a type, a label, a cable length and a verifier of their own. **Apply changes**, then **Save map**.
+carrying seven runs across seven named sockets, so you can see the shape before renaming it to your
+own gear. **Edit layout** → **Add device**, then **drag a box's middle to move it and drag from
+either end to wire it**. Click a wire to select it. **Delete** removes whatever is selected and
+**Ctrl+Z** takes it back — including a deleted device's wires, all of them, together. Selecting
+anything while editing opens its editor in the rail: label, the mono sub-line, kind, and a
+**verifier** — same kinds as the checklist. Wires take a type, a label, a cable length and a
+verifier of their own. **Apply changes**, then **Save map**.
+
+**Runs that go both ways.** A snake carrying stage inputs up and IEM mixes back down is one cable,
+not two, and ticking **carries both ways on one cable** draws it as one — flow drifting in both
+directions at once. It is a topology claim too: a two-way run is treated as broken from either end,
+because losing that cable really does cost you both directions.
+
+**Ports.** A device can declare its sockets — `AES50 A`, `CH 25-26`, `MAIN L/R` — and a run can name
+the one it lands on. The map then anchors wires to real sockets instead of spreading them evenly,
+so the diagram says *the stage box arrives on AES50 A* rather than *something arrives somewhere on
+the left*. Two runs sharing one socket stay one point and the tick widens, because two cables in one
+jack is a fact worth seeing. Ports are entirely optional: skip them and a busy box still fans its
+wires along the edge so each stays followable.
+
+**Notes.** **Add note** pins one to the canvas, for the things boxes and lines cannot say — the run
+that goes through the ceiling, the spare cable in the drawer under the amp, the XLR that needs a
+wiggle. Select a box first and the note attaches to it and follows it around. Notes can be marked as
+warnings, and that is as loud as they get: a note never affects whether the system reads green,
+because the moment it could, notes start getting written to move the verdict.
 
 Every device carries a **tier** saying how the app knows its state, and the map refuses to lie
 about it: *verified* (we check it — the only tier that can hold Ready to go), *reported* (a

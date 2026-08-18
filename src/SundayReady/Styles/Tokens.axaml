@@ -73,6 +73,17 @@
     <SolidColorBrush x:Key="OkFillBrush" Color="#1A4ec27f" />
 
     <!--
+        Notes. Warm and paper-ish so a note never reads as a device: on a map made of cool greys
+        and saturated signal colours, the one warm surface is unmistakably "somebody wrote this".
+        A warning note is amber-tinted, and that is as loud as it is allowed to get — a note is
+        never a health signal, so it must not borrow the red the alarm pattern owns.
+    -->
+    <SolidColorBrush x:Key="NoteFillBrush" Color="#211f1a" />
+    <SolidColorBrush x:Key="NoteEdgeBrush" Color="#40403a" />
+    <SolidColorBrush x:Key="NoteWarnFillBrush" Color="#2b2418" />
+    <SolidColorBrush x:Key="NoteWarnEdgeBrush" Color="#7a5f28" />
+
+    <!--
         Techdesk tints. The station cards and the wall board fill a whole header or tile with a
         status colour rather than just outlining a row, so they need the same hues one step up
         in alpha, plus the lighter status text the handoff specifies on those fills.
