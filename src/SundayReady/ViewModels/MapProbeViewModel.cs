@@ -383,7 +383,13 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
 /// the tick grows so you can see it.
 /// </para>
 /// </summary>
-public readonly record struct MapPortAnchor(string PortId, string Label, double Slot, int Wires)
+public readonly record struct MapPortAnchor(
+    string PortId,
+    string Label,
+    double Slot,
+    int Wires,
+    string Side,
+    bool RightSide)
 {
     /// <summary>Pixels down the box, matching <see cref="MapConnectionViewModel"/>'s edge maths.</summary>
     public double Offset => 10 + (Slot * (MapDeviceViewModel.BoxHeight - 20));
@@ -391,7 +397,29 @@ public readonly record struct MapPortAnchor(string PortId, string Label, double 
     /// <summary>Top edge of the tick, for a Canvas that positions by corner.</summary>
     public double Top => Offset - 5;
 
+    /// <summary>Top of the click target, which is deliberately larger than the mark it covers.</summary>
+    public double HitTop => Offset - 11;
+
     public bool IsShared => Wires > 1;
+
+    /// <summary>Nothing plugged in. Drawn hollow, and still clickable — that is the point.</summary>
+    public bool IsVacant => Wires == 0;
+
+    /// <summary>Can a run start here? An input-only socket cannot.</summary>
+    public bool CanSend => MapPortSides.AcceptsOut(Side);
+
+    /// <summary>Can a run land here?</summary>
+    public bool CanReceive => MapPortSides.AcceptsIn(Side);
+
+    /// <summary>Both directions are genuinely open, so the operator has to say which.</summary>
+    public bool IsAmbiguous => Side == MapPortSides.Both;
+
+    public string Tooltip => Wires switch
+    {
+        0 => $"{Label} — nothing plugged in. Click to wire it.",
+        1 => Label,
+        _ => $"{Label} — {Wires} runs share this socket",
+    };
 }
 
 public sealed partial class MapConnectionViewModel : MapProbeViewModel

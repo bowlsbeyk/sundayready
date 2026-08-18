@@ -471,12 +471,19 @@ not two, and ticking **carries both ways on one cable** draws it as one — flow
 directions at once. It is a topology claim too: a two-way run is treated as broken from either end,
 because losing that cable really does cost you both directions.
 
-**Ports.** A device can declare its sockets — `AES50 A`, `CH 25-26`, `MAIN L/R` — and a run can name
-the one it lands on. The map then anchors wires to real sockets instead of spreading them evenly,
-so the diagram says *the stage box arrives on AES50 A* rather than *something arrives somewhere on
-the left*. Two runs sharing one socket stay one point and the tick widens, because two cables in one
-jack is a fact worth seeing. Ports are entirely optional: skip them and a busy box still fans its
-wires along the edge so each stays followable.
+**Ports.** Select a device while editing and the rail carries a **PORTS** list: add sockets, name
+them (`AES50 A`, `CH 25-26`, `MAIN L/R`), say whether each is an in, an out or carries both ways,
+and drag them into the order they sit down the edge of the box. Renaming a socket never breaks the
+runs landing on it; removing one lets its runs float back onto the edge rather than deleting cable
+that still exists in the building.
+
+Named sockets appear as ticks on the box — filled when something is plugged in, hollow when not.
+**Click a socket to wire it.** An output can only send and an input can only receive, so for those
+the click just arms the run and you click the far end to finish; only a socket that genuinely
+carries both ways asks which direction you meant. Two runs sharing one socket stay one point and the
+tick widens, because two cables in one jack is a fact worth seeing rather than a drawing to tidy
+away. Ports are entirely optional throughout: skip them and a busy box still fans its wires along
+the edge so each stays followable.
 
 **Notes.** **Add note** pins one to the canvas, for the things boxes and lines cannot say — the run
 that goes through the ceiling, the spare cable in the drawer under the amp, the XLR that needs a

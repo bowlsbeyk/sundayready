@@ -65,8 +65,26 @@ public sealed partial class SystemMapViewModel : ObservableObject
     {
         foreach (var device in Devices)
         {
-            AssignEdge(device, rightSide: true);
-            AssignEdge(device, rightSide: false);
+            // Which sockets are carrying anything, anywhere on this box. Worked out once and for
+            // both edges, because a both-ways socket in use on the left is not a free socket on
+            // the right — drawing it as one would advertise a jack that is already occupied.
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var connection in Connections)
+            {
+                if (ReferenceEquals(connection.From, device) && connection.Model.FromPort is { } f)
+                {
+                    used.Add(f);
+                }
+
+                if (ReferenceEquals(connection.To, device) && connection.Model.ToPort is { } t)
+                {
+                    used.Add(t);
+                }
+            }
+
+            AssignEdge(device, rightSide: true, used);
+            AssignEdge(device, rightSide: false, used);
         }
 
         foreach (var connection in Connections)
@@ -89,7 +107,7 @@ public sealed partial class SystemMapViewModel : ObservableObject
     /// unnamed falls below, sorted by where its far end sits so the fan does not cross itself.
     /// </para>
     /// </summary>
-    private void AssignEdge(MapDeviceViewModel device, bool rightSide)
+    private void AssignEdge(MapDeviceViewModel device, bool rightSide, ISet<string> usedPorts)
     {
         var ends = new List<(MapConnectionViewModel Wire, bool FromEnd, string? PortId, double FarY)>();
 
@@ -108,12 +126,6 @@ public sealed partial class SystemMapViewModel : ObservableObject
             }
         }
 
-        if (ends.Count == 0)
-        {
-            device.SetPortAnchors(rightSide, Array.Empty<MapPortAnchor>());
-            return;
-        }
-
         var declared = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < device.Model.Ports.Count; i++)
         {
@@ -122,6 +134,21 @@ public sealed partial class SystemMapViewModel : ObservableObject
 
         string KeyFor(string? portId) =>
             portId is { Length: > 0 } id && declared.ContainsKey(id) ? "port:" + id : null!;
+
+        // Declared ports hold a slot on their edge whether or not anything is plugged in. Without
+        // this an empty socket would have nowhere to be drawn — and you cannot click a socket to
+        // wire it if it is invisible until something is already wired to it. It also keeps ports
+        // from jumping about the moment a wire is added or removed.
+        var vacant = device.Model.Ports
+            .Where(p => !usedPorts.Contains(p.Id))
+            .Where(p => rightSide ? MapPortSides.AcceptsOut(p.Side) : p.Side == MapPortSides.In)
+            .ToList();
+
+        if (ends.Count == 0 && vacant.Count == 0)
+        {
+            device.SetPortAnchors(rightSide, Array.Empty<MapPortAnchor>());
+            return;
+        }
 
         var groups = ends
             .GroupBy(e => KeyFor(e.PortId) ?? "wire:" + e.Wire.Model.Id + (e.FromEnd ? ":a" : ":b"))
@@ -134,6 +161,13 @@ public sealed partial class SystemMapViewModel : ObservableObject
                     : declared[g.First().PortId!],
                 FarY = g.Average(e => e.FarY),
             })
+            .Concat(vacant.Select(p => new
+            {
+                Ends = new List<(MapConnectionViewModel Wire, bool FromEnd, string? PortId, double FarY)>(),
+                PortId = (string?)p.Id,
+                Order = (int?)declared[p.Id],
+                FarY = 0d,
+            }))
             .OrderBy(g => g.Order is null ? 1 : 0)
             .ThenBy(g => g.Order ?? 0)
             .ThenBy(g => g.FarY)
@@ -160,7 +194,13 @@ public sealed partial class SystemMapViewModel : ObservableObject
             if (groups[i].PortId is { } portId)
             {
                 var spec = device.Model.Ports.FirstOrDefault(p => p.Id == portId);
-                anchors.Add(new MapPortAnchor(portId, spec?.Label ?? portId, slot, groups[i].Ends.Count));
+                anchors.Add(new MapPortAnchor(
+                    portId,
+                    spec?.Label ?? portId,
+                    slot,
+                    groups[i].Ends.Count,
+                    spec?.Side ?? MapPortSides.Both,
+                    rightSide));
             }
         }
 
@@ -425,8 +465,16 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     public string MapsFolder => _store.Directory;
 
     public string ModeLabel => IsWiring
-        ? $"Wiring from {WireFrom?.Label} — drop on the device it feeds"
-        : IsEditing ? "Editing — drag a box's middle to move it, drag from either end to wire it" : string.Empty;
+        ? _wireMode switch
+        {
+            WireModes.To => $"Wiring into {WireFrom?.Label} — click what feeds it",
+            WireModes.Both => $"Wiring {WireFrom?.Label} both ways — click the other end",
+            _ => $"Wiring from {WireFrom?.Label} — click where it lands",
+        }
+        : IsEditing
+            ? "Editing — drag a box's middle to move it, drag from either end to wire it, "
+                + "or click a socket to wire that socket"
+            : string.Empty;
 
     public void Start()
     {
@@ -640,8 +688,29 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         if (DeviceEditor is { } deviceEditor)
         {
+            // Which sockets are about to disappear has to be worked out before Apply overwrites
+            // the list — afterwards there is nothing left to compare against.
+            var dropped = deviceEditor.RemovedPortIds(deviceEditor.Model);
             deviceEditor.Apply();
             reselectDevice = deviceEditor.Model.Id;
+
+            if (dropped.Count > 0)
+            {
+                // A run anchored to a socket that no longer exists is not deleted — the cable is
+                // still there in the building. It just goes back to floating on the edge.
+                foreach (var connection in map.Model.Connections)
+                {
+                    if (connection.FromPort is { } f && dropped.Contains(f))
+                    {
+                        connection.FromPort = null;
+                    }
+
+                    if (connection.ToPort is { } t && dropped.Contains(t))
+                    {
+                        connection.ToPort = null;
+                    }
+                }
+            }
         }
         else if (ConnectionEditor is { } connectionEditor)
         {
@@ -1481,7 +1550,78 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>Starts a wire from a specific device — the drag gesture's entry point.</summary>
-    public void BeginWireFrom(MapDeviceViewModel device) => WireFrom = device;
+    public void BeginWireFrom(MapDeviceViewModel device)
+    {
+        WireFrom = device;
+        _wirePort = null;
+        _wireMode = WireModes.From;
+    }
+
+    /// <summary>How the armed wire relates to the socket it started at.</summary>
+    public static class WireModes
+    {
+        /// <summary>The armed end is the source: signal leaves here.</summary>
+        public const string From = "from";
+
+        /// <summary>The armed end is the destination: we are wiring backwards into it.</summary>
+        public const string To = "to";
+
+        /// <summary>One cable, both directions.</summary>
+        public const string Both = "both";
+    }
+
+    private string? _wirePort;
+    private string _wireMode = WireModes.From;
+
+    /// <summary>
+    /// Arms a run at a specific socket.
+    /// <para>
+    /// The direction usually needs no asking: an output can only send and an input can only
+    /// receive, so the port's own side answers it. Only a socket that genuinely carries both ways —
+    /// an AES50 jack, an ethernet port — has to put the question to a human, and the menu on the
+    /// canvas offers exactly the choices that socket allows and no others.
+    /// </para>
+    /// </summary>
+    public void BeginPortWire(MapDeviceViewModel device, string portId, string mode)
+    {
+        WireFrom = device;
+        _wirePort = portId;
+        _wireMode = mode;
+
+        var port = device.Model.Ports.FirstOrDefault(p => p.Id == portId);
+        var name = port?.Label ?? "that socket";
+
+        Status = mode switch
+        {
+            WireModes.To => $"Wiring into {name} — now click what feeds it.",
+            WireModes.Both => $"Wiring {name} both ways — now click the socket at the other end.",
+            _ => $"Wiring from {name} — now click where it lands.",
+        };
+    }
+
+    /// <summary>Completes an armed run at a socket, or anywhere on a box when none is named.</summary>
+    public void FinishWireAtPort(MapDeviceViewModel device, string? portId)
+    {
+        if (WireFrom is not { } armed)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(armed, device))
+        {
+            Status = "A run has to go somewhere else.";
+            return;
+        }
+
+        var backwards = _wireMode == WireModes.To;
+
+        CompleteWire(
+            backwards ? device : armed,
+            backwards ? armed : device,
+            backwards ? portId : _wirePort,
+            backwards ? _wirePort : portId,
+            _wireMode == WireModes.Both);
+    }
 
     /// <summary>
     /// Finishes a drag-wire onto whatever is under the pointer. Public because the drag lives in
@@ -1489,13 +1629,13 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     /// </summary>
     public void FinishWire(MapDeviceViewModel? target)
     {
-        if (WireFrom is { } from && target is not null)
+        if (WireFrom is not null && target is not null)
         {
-            CompleteWire(from, target);
+            FinishWireAtPort(target, null);
             return;
         }
 
-        WireFrom = null;
+        CancelWire();
     }
 
     /// <summary>The device whose box contains a canvas point, if any.</summary>
@@ -1505,20 +1645,38 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             && point.Y >= d.Y && point.Y <= d.Y + MapDeviceViewModel.BoxHeight);
 
     [RelayCommand]
-    private void CancelWire() => WireFrom = null;
-
-    private void CompleteWire(MapDeviceViewModel from, MapDeviceViewModel to)
+    private void CancelWire()
     {
         WireFrom = null;
+        _wirePort = null;
+        _wireMode = WireModes.From;
+    }
+
+    private void CompleteWire(
+        MapDeviceViewModel from,
+        MapDeviceViewModel to,
+        string? fromPort = null,
+        string? toPort = null,
+        bool bidirectional = false)
+    {
+        WireFrom = null;
+        var armedPort = _wirePort;
+        _wirePort = null;
+        _wireMode = WireModes.From;
 
         if (Current is not { } map || ReferenceEquals(from, to))
         {
             return;
         }
 
-        if (map.Connections.Any(c => ReferenceEquals(c.From, from) && ReferenceEquals(c.To, to)))
+        // Same pair, same sockets is a duplicate. Same pair on *different* sockets is not — a desk
+        // fed from two outputs of one box is ordinary, and refusing it would be wrong.
+        if (map.Connections.Any(c => ReferenceEquals(c.From, from) && ReferenceEquals(c.To, to)
+                 && c.Model.FromPort == fromPort && c.Model.ToPort == toPort))
         {
-            Status = $"{from.Label} already feeds {to.Label}.";
+            Status = fromPort is null && toPort is null
+                ? $"{from.Label} already feeds {to.Label}."
+                : $"That run from {from.Label} to {to.Label} is already on the map.";
             return;
         }
 
@@ -1534,6 +1692,9 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             From = from.Id,
             To = to.Id,
             Type = lastType.Id,
+            FromPort = Named(from, fromPort),
+            ToPort = Named(to, toPort),
+            Bidirectional = bidirectional,
         };
         model.FlowSeed = SystemMapStore.StableHash(model.Id);
 
@@ -1544,8 +1705,18 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         map.RefreshPorts();
         RebuildLegend();
         Select(vm);
-        Status = $"Wired {from.Label} → {to.Label} as {lastType.Name}. Change the type in the rail.";
+
+        var route = vm.HasPortRoute ? $" · {vm.PortRoute}" : string.Empty;
+        var arrow = bidirectional ? "↔" : "→";
+        Status = $"Wired {from.Label} {arrow} {to.Label} as {lastType.Name}{route}. "
+            + "Change the type in the rail.";
+
+        _ = armedPort;
     }
+
+    /// <summary>A socket id, but only if that device really has it.</summary>
+    private static string? Named(MapDeviceViewModel device, string? portId) =>
+        portId is { Length: > 0 } id && device.Model.Ports.Any(p => p.Id == id) ? id : null;
 
     [RelayCommand]
     private void DeleteSelected()

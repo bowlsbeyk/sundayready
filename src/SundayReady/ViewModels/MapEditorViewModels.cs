@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SundayReady.Models;
 using SundayReady.Services;
 
@@ -207,6 +208,11 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
         _dominantType = model.DominantType ?? "(none)";
         _linksTo = model.LinksTo ?? NoLink;
         _checkSteps = string.Join(Environment.NewLine, model.CheckSteps);
+
+        foreach (var port in model.Ports)
+        {
+            Ports.Add(new MapPortEditorViewModel(port));
+        }
     }
 
     public MapDevice Model { get; }
@@ -220,6 +226,58 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
     public ObservableCollection<string> LinkTargets { get; } = new();
 
     /// <summary>Writes every field back onto the model. The workspace rebuilds after this.</summary>
+    /// <summary>
+    /// The device's sockets, in the order they will sit down its edge. Optional throughout — a map
+    /// is useful the moment two boxes are joined, and demanding a port list first would make the
+    /// first five minutes miserable.
+    /// </summary>
+    public ObservableCollection<MapPortEditorViewModel> Ports { get; } = new();
+
+    public bool HasPorts => Ports.Count > 0;
+
+    [RelayCommand]
+    private void AddPort()
+    {
+        Ports.Add(new MapPortEditorViewModel(null)
+        {
+            Label = $"Port {Ports.Count + 1}",
+        });
+
+        OnPropertyChanged(nameof(HasPorts));
+    }
+
+    [RelayCommand]
+    private void RemovePort(MapPortEditorViewModel? port)
+    {
+        if (port is not null && Ports.Remove(port))
+        {
+            OnPropertyChanged(nameof(HasPorts));
+        }
+    }
+
+    /// <summary>Order is meaningful — it is the order sockets sit down the box's edge.</summary>
+    [RelayCommand]
+    private void MovePortUp(MapPortEditorViewModel? port)
+    {
+        var index = port is null ? -1 : Ports.IndexOf(port);
+
+        if (index > 0)
+        {
+            Ports.Move(index, index - 1);
+        }
+    }
+
+    [RelayCommand]
+    private void MovePortDown(MapPortEditorViewModel? port)
+    {
+        var index = port is null ? -1 : Ports.IndexOf(port);
+
+        if (index >= 0 && index < Ports.Count - 1)
+        {
+            Ports.Move(index, index + 1);
+        }
+    }
+
     public void Apply()
     {
         Model.Label = string.IsNullOrWhiteSpace(Label) ? Model.Label : Label.Trim();
@@ -237,15 +295,76 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
             .Where(l => l.Length > 0)
             .ToList();
 
+        // A port with no name is a row somebody started and abandoned. Keeping it would put an
+        // unlabelled tick on the box, which is worse than no tick at all.
+        Model.Ports = Ports
+            .Where(p => !string.IsNullOrWhiteSpace(p.Label))
+            .Select(p => p.ToModel())
+            .ToList();
+
         // Tier follows the same honesty rule as loading: claiming "verified" with no check to
         // back it would let a guess wear the one tier that can hold the gate.
         Model.Tier = Tier == MapTiers.Verified && Model.Verify is null
             ? MapTiers.Inferred
             : Tier;
     }
+
+    /// <summary>
+    /// Ports the operator deleted here, so the map can drop the runs still pointing at them rather
+    /// than leaving connections anchored to sockets that no longer exist.
+    /// </summary>
+    public IReadOnlyList<string> RemovedPortIds(MapDevice before) => before.Ports
+        .Select(p => p.Id)
+        .Where(id => Ports.All(p => p.Id != id || string.IsNullOrWhiteSpace(p.Label)))
+        .ToList();
 }
 
 /// <summary>Everything about one connection the editor can change.</summary>
+/// <summary>
+/// One row in a device's port list.
+/// <para>
+/// The id is the load-bearing field and the one nobody types. Connections point at ports by id, so
+/// renaming <c>OUT 1</c> to <c>MAIN L/R</c> has to keep every run that lands there — which it does,
+/// because the row carries the original id forward. A port added here gets a fresh one.
+/// </para>
+/// </summary>
+public sealed partial class MapPortEditorViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _label;
+
+    [ObservableProperty]
+    private string _side;
+
+    [ObservableProperty]
+    private string _detail;
+
+    public MapPortEditorViewModel(MapPort? model)
+    {
+        Id = model?.Id ?? SystemMapStore.NewId("port");
+        _label = model?.Label ?? string.Empty;
+        _side = model?.Side ?? MapPortSides.In;
+        _detail = model?.Detail ?? string.Empty;
+        Type = model?.Type;
+    }
+
+    public string Id { get; }
+
+    /// <summary>Carried through untouched — the rail has no picker for it yet.</summary>
+    public string? Type { get; }
+
+    public IReadOnlyList<string> Sides { get; } = MapPortSides.All;
+
+    public MapPort ToModel() => new()
+    {
+        Id = Id,
+        Label = Label.Trim(),
+        Side = Sides.Contains(Side) ? Side : MapPortSides.In,
+        Detail = string.IsNullOrWhiteSpace(Detail) ? null : Detail.Trim(),
+        Type = Type,
+    };
+}
+
 public sealed partial class MapConnectionEditorViewModel : MapVerifyEditorViewModel
 {
     [ObservableProperty]

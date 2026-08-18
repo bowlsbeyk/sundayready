@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using SundayReady.ViewModels;
 
@@ -255,6 +256,84 @@ public partial class MapWindow : Window
         // things on one spot.
         var origin = CanvasScroll.Offset;
         workspace.AddNote(origin.X + 320, origin.Y + 80);
+    }
+
+    // ---------------------------------------------------------------- ports
+
+    /// <summary>
+    /// A click on a socket. While a run is armed this lands it; otherwise it starts one.
+    /// <para>
+    /// The direction menu only appears when the socket genuinely leaves it open. An output can only
+    /// send and an input can only receive, so for those the click just arms — asking a question the
+    /// data already answers is how a two-click gesture becomes a four-click one.
+    /// </para>
+    /// </summary>
+    private void OnPortPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Control { DataContext: MapPortAnchor anchor } control
+            || Workspace is not { IsEditing: true } workspace)
+        {
+            return;
+        }
+
+        if (control.FindLogicalAncestorOfType<ItemsControl>()?.DataContext
+            is not MapDeviceViewModel device)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        if (workspace.IsWiring)
+        {
+            workspace.FinishWireAtPort(device, anchor.PortId);
+            return;
+        }
+
+        workspace.Select(device);
+
+        var choices = new List<(string Label, string Mode)>();
+
+        if (anchor.CanSend)
+        {
+            choices.Add(("Connect from here  →", MapWorkspaceViewModel.WireModes.From));
+        }
+
+        if (anchor.CanReceive)
+        {
+            choices.Add(("←  Connect to here", MapWorkspaceViewModel.WireModes.To));
+        }
+
+        if (anchor.IsAmbiguous)
+        {
+            choices.Add(("Connect both ways  ↔", MapWorkspaceViewModel.WireModes.Both));
+        }
+
+        if (choices.Count == 0)
+        {
+            return;
+        }
+
+        if (choices.Count == 1)
+        {
+            workspace.BeginPortWire(device, anchor.PortId, choices[0].Mode);
+            return;
+        }
+
+        var menu = new ContextMenu
+        {
+            ItemsSource = choices
+                .Select(choice =>
+                {
+                    var item = new MenuItem { Header = choice.Label };
+                    item.Click += (_, _) =>
+                        workspace.BeginPortWire(device, anchor.PortId, choice.Mode);
+                    return item;
+                })
+                .ToList(),
+        };
+
+        menu.Open(control);
     }
 
     // ---------------------------------------------------------------- notes
