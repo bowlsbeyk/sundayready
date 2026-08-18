@@ -234,6 +234,17 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     [ObservableProperty]
     private string? _categoryFilter;
 
+    /// <summary>Editable fields for the selected device, present only while editing.</summary>
+    [ObservableProperty]
+    private MapDeviceEditorViewModel? _deviceEditor;
+
+    [ObservableProperty]
+    private MapConnectionEditorViewModel? _connectionEditor;
+
+    /// <summary>The empty state's map-name box.</summary>
+    [ObservableProperty]
+    private string _newMapName = string.Empty;
+
     /// <summary>Wall displays run for hours; a slow booth PC can turn the motion off entirely.</summary>
     [ObservableProperty]
     private bool _freezeWires;
@@ -407,6 +418,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         SelectedConnection = null;
         SelectedDevice = device;
+        RefreshEditors();
     }
 
     /// <summary>Selects a wire, surfacing it in the rail. Unrelated wires dim rather than hide.</summary>
@@ -424,6 +436,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         SelectedDevice = null;
         SelectedConnection = connection;
+        RefreshEditors();
     }
 
     public void ClearSelection()
@@ -440,6 +453,93 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         SelectedDevice = null;
         SelectedConnection = null;
+        RefreshEditors();
+    }
+
+    private void RefreshEditors()
+    {
+        DeviceEditor = IsEditing && SelectedDevice is { } device
+            ? new MapDeviceEditorViewModel(device.Model, _registry, _types, MapFiles)
+            : null;
+
+        ConnectionEditor = IsEditing && SelectedConnection is { } connection
+            ? new MapConnectionEditorViewModel(connection.Model, _registry, _types)
+            : null;
+    }
+
+    /// <summary>
+    /// Commits the open editor to the model and rebuilds the map's view models from it.
+    /// A rebuild rather than in-place mutation, deliberately: tier and verify are constructor
+    /// facts on the probe view models, and half-mutated live state is how maps start lying.
+    /// </summary>
+    [RelayCommand]
+    private void ApplyEditor()
+    {
+        if (Current is not { } map)
+        {
+            return;
+        }
+
+        string? reselectDevice = null;
+        string? reselectConnection = null;
+
+        if (DeviceEditor is { } deviceEditor)
+        {
+            deviceEditor.Apply();
+            reselectDevice = deviceEditor.Model.Id;
+        }
+        else if (ConnectionEditor is { } connectionEditor)
+        {
+            connectionEditor.Apply();
+            reselectConnection = connectionEditor.Model.Id;
+        }
+        else
+        {
+            return;
+        }
+
+        var rebuilt = RebuildFromModel(map);
+
+        if (reselectDevice is not null)
+        {
+            var again = rebuilt.Devices.FirstOrDefault(d => d.Id == reselectDevice);
+            if (again is not null)
+            {
+                Select(again);
+            }
+        }
+        else if (reselectConnection is not null)
+        {
+            var again = rebuilt.Connections.FirstOrDefault(c => c.Model.Id == reselectConnection);
+            if (again is not null)
+            {
+                Select(again);
+            }
+        }
+
+        Status = "Applied. Save map writes it to disk.";
+    }
+
+    /// <summary>Swaps a map's view models for fresh ones built from its (edited) model.</summary>
+    private SystemMapViewModel RebuildFromModel(SystemMapViewModel old)
+    {
+        var rebuilt = new SystemMapViewModel(old.Model, _registry, _types);
+        var index = _maps.IndexOf(old);
+
+        if (index >= 0)
+        {
+            _maps[index] = rebuilt;
+            Maps[index] = rebuilt;
+        }
+
+        if (ReferenceEquals(Current, old))
+        {
+            Current = rebuilt;
+        }
+
+        RebuildLegend();
+        RollUp();
+        return rebuilt;
     }
 
     /// <summary>Legend tap: isolate one type; tap again to clear. Others drop to ~15%.</summary>
@@ -708,6 +808,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         {
             ClearSelection();
         }
+
+        RefreshEditors();
     }
 
     public MapDeviceViewModel? AddDevice(double x, double y)
@@ -844,6 +946,83 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         {
             Status = $"Could not save: {ex.Message}";
         }
+    }
+
+    /// <summary>The empty state's Create button.</summary>
+    [RelayCommand]
+    private void CreateFirstMap()
+    {
+        var name = string.IsNullOrWhiteSpace(NewMapName) ? "System map" : NewMapName.Trim();
+        var created = CreateMap(name);
+        if (created is not null)
+        {
+            IsEditing = true;
+            NewMapName = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// The empty state's other button: a three-box example that shows what wires, verifiers and
+    /// the hollow tier look like, generically enough to describe nobody's building.
+    /// </summary>
+    [RelayCommand]
+    private void CreateExampleMap()
+    {
+        var model = new SystemMap
+        {
+            Name = "System map",
+            Summary = "An example to start from. Rename these boxes to your real gear, or delete them.",
+            Columns =
+            {
+                new MapColumn { Label = "SOURCES", X = 16 },
+                new MapColumn { Label = "BOOTH", X = 420 },
+                new MapColumn { Label = "OUT", X = 824 },
+            },
+            Devices =
+            {
+                new MapDevice
+                {
+                    Id = "camera-1", Label = "A camera", Kind = MapDeviceKinds.Camera,
+                    Detail = "GIVE IT YOUR CAMERA'S ADDRESS", X = 16, Y = 80,
+                    Verify = new VerifySpec { Kind = "hostReachable", Host = "10.0.1.21" },
+                },
+                new MapDevice
+                {
+                    Id = "switcher", Label = "The switcher", Kind = MapDeviceKinds.Computer,
+                    Hub = true, Detail = "VMIX / OBS / ATEM - THIS PC", X = 420, Y = 80,
+                    Verify = new VerifySpec
+                    {
+                        Kind = "httpContains",
+                        Url = "http://127.0.0.1:8088/api",
+                        Contains = "<vmix>",
+                    },
+                },
+                new MapDevice
+                {
+                    Id = "stream", Label = "The stream", Kind = MapDeviceKinds.Cloud,
+                    Tier = MapTiers.Inferred, OffCampus = true,
+                    Detail = "HOLLOW - NOTHING CHECKS THIS YET", X = 824, Y = 80,
+                },
+            },
+            Connections =
+            {
+                new MapConnection { Id = "camera-1--switcher", From = "camera-1", To = "switcher", Type = "ndi" },
+                new MapConnection { Id = "switcher--stream", From = "switcher", To = "stream", Type = "cat6", Label = "RTMP" },
+            },
+        };
+
+        try
+        {
+            _store.Save(model, SystemMapStore.DefaultFileName);
+        }
+        catch (Exception ex)
+        {
+            Status = $"Could not create the example: {ex.Message}";
+            return;
+        }
+
+        Load();
+        IsEditing = true;
     }
 
     public SystemMapViewModel? CreateMap(string name)

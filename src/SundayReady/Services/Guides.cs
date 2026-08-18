@@ -214,6 +214,26 @@ public static class Guides
 
         new TopicSection("SETTING A STATION UP", new[]
         {
+            new Topic("The system map",
+                "MAP in the top bar opens a live picture of the building: your gear as boxes, the "
+                + "wires between them drawn in the signal's colour, moving while the signal is "
+                + "believed to be arriving. Boxes and wires can each carry the same checks as "
+                + "checklist items \u2014 which is the part a checklist cannot do: a camera that is "
+                + "powered and a switcher that is running still tell you nothing about whether the "
+                + "camera reaches the switcher. The one red pulsing wire is the thing that actually "
+                + "broke; paths it starves go faint and still instead. Maps are shared \u2014 every "
+                + "station reads the same folder as the techdesk \u2014 so the building is drawn once."),
+
+            new Topic("Editing the map",
+                "Press Edit layout. Add device drops a box; drag boxes where they make sense; "
+                + "select a box then Draw connection and click what it feeds. Selecting anything "
+                + "while editing opens its editor in the rail: name, the mono sub-line, how the app "
+                + "knows its state, and a verifier \u2014 the same kinds the checklist uses. A box can "
+                + "also open another map, which is how one tidy overview drills into the messy "
+                + "details. Apply changes updates the live map; Save map writes the file. Nothing "
+                + "on a map can hold Ready to go unless it is verified and on campus \u2014 a hollow "
+                + "box is a guess, and the app never lets a guess look like a check."),
+
             new Topic("The setup walkthrough",
                 "A machine that has never run SundayReady opens a short walkthrough instead of an empty "
                 + "list: name the station, say when the services are, and pick or create a first checklist. "

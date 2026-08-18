@@ -102,6 +102,15 @@
             <Setter Property="Background" Value="{StaticResource Overlay04Brush}" />
         </Style>
 
+        <Style Selector="TextBlock.fieldLabel">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+            <Setter Property="Margin" Value="0,0,0,5" />
+        </Style>
+
         <Style Selector="TextBlock.failText">
             <Setter Property="Foreground" Value="{StaticResource FailTextBrush}" />
         </Style>
@@ -315,6 +324,33 @@
                 <Button Classes="secondary" Content="◂ Back" VerticalAlignment="Top"
                         HorizontalAlignment="Left" Margin="26,14,0,0"
                         IsVisible="{Binding CanGoBack}" Command="{Binding BackCommand}" />
+
+                <!-- Nothing drawn yet: say so and offer the two ways in. -->
+                <Border VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="560"
+                        Background="{StaticResource PanelRaisedBrush}"
+                        BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1"
+                        CornerRadius="10" Padding="30,26" IsVisible="{Binding IsEmpty}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="No map of this building yet" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock FontSize="14" LineHeight="21" TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="A map is your gear and the wires between them, drawn live. Boxes can be checked the same way checklist items are — and so can the wires, which is the part a checklist cannot do: it tells you where a path broke, not just that something did." />
+                        <StackPanel Spacing="7">
+                            <TextBlock Classes="fieldLabel" Text="NAME THE FIRST MAP" />
+                            <TextBox Classes="field" FontSize="15" Watermark="System map"
+                                     Text="{Binding NewMapName, Mode=TwoWay}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button Classes="primary" Content="Create an empty map" Padding="18,10"
+                                    Command="{Binding CreateFirstMapCommand}" />
+                            <Button Classes="secondary" Content="Start from a small example" Padding="18,10"
+                                    Command="{Binding CreateExampleMapCommand}" />
+                        </StackPanel>
+                        <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextDisabledBrush}"
+                                   Text="{Binding MapsFolder, StringFormat='MAPS ARE SHARED · EVERY STATION READS {0}'}" />
+                    </StackPanel>
+                </Border>
             </Panel>
 
             <!-- Right rail -->
@@ -367,8 +403,15 @@
                                            VerticalAlignment="Center" />
                             </Grid>
 
-                            <!-- Selected wire -->
-                            <StackPanel Spacing="10" IsVisible="{Binding HasSelectedConnection}">
+                            <!-- Selected wire (read-only, while not editing) -->
+                            <StackPanel Spacing="10">
+                                <StackPanel.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="HasSelectedConnection" />
+                                        <Binding Path="ConnectionEditor"
+                                                 Converter="{x:Static ObjectConverters.IsNull}" />
+                                    </MultiBinding>
+                                </StackPanel.IsVisible>
                                 <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
                                 <TextBlock Classes="microLabel" Text="SELECTED LINK" />
                                 <TextBlock Text="{Binding SelectedConnection.Title, FallbackValue=''}"
@@ -409,9 +452,16 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <!-- Selected device -->
-                            <StackPanel Spacing="10"
-                                        IsVisible="{Binding SelectedDevice, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <!-- Selected device (read-only, while not editing) -->
+                            <StackPanel Spacing="10">
+                                <StackPanel.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="SelectedDevice"
+                                                 Converter="{x:Static ObjectConverters.IsNotNull}" />
+                                        <Binding Path="DeviceEditor"
+                                                 Converter="{x:Static ObjectConverters.IsNull}" />
+                                    </MultiBinding>
+                                </StackPanel.IsVisible>
                                 <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
                                 <TextBlock Classes="microLabel" Text="SELECTED DEVICE" />
                                 <TextBlock Text="{Binding SelectedDevice.Label, FallbackValue=''}"
@@ -450,6 +500,215 @@
                                             IsVisible="{Binding IsEditing}"
                                             Command="{Binding DeleteSelectedCommand}" />
                                 </StackPanel>
+                            </StackPanel>
+
+                            <!-- Device editor: how a box gets its name, tier and check. -->
+                            <StackPanel Spacing="11"
+                                        IsVisible="{Binding DeviceEditor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                <TextBlock Classes="microLabel" Text="EDIT DEVICE" />
+                                <StackPanel Spacing="11" DataContext="{Binding DeviceEditor}">
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="LABEL" />
+                                        <TextBox Classes="field" FontSize="14"
+                                                 Text="{Binding Label, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="SUB-LINE (TRANSPORT · ADDRESS)" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Detail, Mode=TwoWay}"
+                                                 Watermark="NDI · 10.0.1.21" />
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,10,*">
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Classes="fieldLabel" Text="KIND" />
+                                            <ComboBox ItemsSource="{Binding Kinds}"
+                                                      SelectedItem="{Binding Kind, Mode=TwoWay}"
+                                                      HorizontalAlignment="Stretch" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Classes="fieldLabel" Text="ACCENT TYPE" />
+                                            <ComboBox ItemsSource="{Binding DominantTypes}"
+                                                      SelectedItem="{Binding DominantType, Mode=TwoWay}"
+                                                      HorizontalAlignment="Stretch" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="HOW THE APP KNOWS ITS STATE" />
+                                        <ComboBox ItemsSource="{Binding Tiers}"
+                                                  SelectedItem="{Binding Tier, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch" />
+                                        <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0"
+                                                   Foreground="{StaticResource TextFaintBrush}"
+                                                   Text="verified needs a check below and can hold Ready to go · reported believes a third-party API · inferred is drawn hollow · human becomes somebody's job" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Spacing="16">
+                                        <CheckBox Content="Hub" FontSize="13"
+                                                  IsChecked="{Binding Hub, Mode=TwoWay}"
+                                                  ToolTip.Tip="The PCs and consoles everything converges on. Brighter surface, same size." />
+                                        <CheckBox Content="Off campus" FontSize="13"
+                                                  IsChecked="{Binding OffCampus, Mode=TwoWay}"
+                                                  ToolTip.Tip="Beyond the property line. Can never block Ready to go, whatever its tier." />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="OPENS SUB-MAP" />
+                                        <ComboBox ItemsSource="{Binding LinkTargets}"
+                                                  SelectedItem="{Binding LinksTo, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="WHERE IT PHYSICALLY IS" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 Text="{Binding Location, Mode=TwoWay}"
+                                                 Watermark="Grey box on the shelf behind the booth" />
+                                    </StackPanel>
+
+                                    <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                    <TextBlock Classes="fieldLabel" Text="VERIFIER — SAME KINDS AS THE CHECKLIST" />
+                                    <ComboBox ItemsSource="{Binding VerifyKinds}"
+                                              SelectedItem="{Binding VerifyKind, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch" />
+                                    <TextBlock FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextFaintBrush}"
+                                               Text="{Binding GuideText}"
+                                               IsVisible="{Binding HasGuide}" />
+                                    <StackPanel IsVisible="{Binding ShowUrl}">
+                                        <TextBlock Classes="fieldLabel" Text="URL" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Url, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowContains}">
+                                        <TextBlock Classes="fieldLabel" Text="BODY MUST CONTAIN" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 Text="{Binding Contains, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowHost}">
+                                        <TextBlock Classes="fieldLabel" Text="HOST" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Host, Mode=TwoWay}"
+                                                 Watermark="cam3.local or 10.0.1.23" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowPort}">
+                                        <TextBlock Classes="fieldLabel" Text="TCP PORT (BLANK = PING)" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Port, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowProcessName}">
+                                        <TextBlock Classes="fieldLabel" Text="PROCESS NAME" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding ProcessName, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowNameContains}">
+                                        <TextBlock Classes="fieldLabel" Text="NAME CONTAINS" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 Text="{Binding NameContains, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowPath}">
+                                        <TextBlock Classes="fieldLabel" Text="PATH" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Path, Mode=TwoWay}" />
+                                    </StackPanel>
+
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="WHAT TO CHECK WHEN IT FAILS (ONE PER LINE)" />
+                                        <TextBox Classes="field" FontSize="13" AcceptsReturn="True"
+                                                 MinHeight="64" TextWrapping="Wrap"
+                                                 Text="{Binding CheckSteps, Mode=TwoWay}"
+                                                 Watermark="Is the PoE injector lit? Say where yours is." />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Classes="primary" Content="Apply changes" Padding="16,9"
+                                        Command="{Binding ApplyEditorCommand}" />
+                            </StackPanel>
+
+                            <!-- Connection editor -->
+                            <StackPanel Spacing="11"
+                                        IsVisible="{Binding ConnectionEditor, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                <TextBlock Classes="microLabel" Text="EDIT CONNECTION" />
+                                <StackPanel Spacing="11" DataContext="{Binding ConnectionEditor}">
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="SIGNAL TYPE" />
+                                        <ComboBox ItemsSource="{Binding TypeIds}"
+                                                  SelectedItem="{Binding Type, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Classes="fieldLabel" Text="LABEL (PORTS, UNIVERSE, …)" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 Text="{Binding Label, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,10,Auto">
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Classes="fieldLabel" Text="CABLE LENGTH FT" />
+                                            <TextBox Classes="field" FontSize="13"
+                                                     FontFamily="{StaticResource MonoFont}"
+                                                     Text="{Binding LengthFt, Mode=TwoWay}" />
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="2" Content="Standby" FontSize="13"
+                                                  VerticalAlignment="Bottom" Margin="0,0,0,6"
+                                                  IsChecked="{Binding Standby, Mode=TwoWay}"
+                                                  ToolTip.Tip="A path that exists but is not carrying anything by design. Drawn grey and still." />
+                                    </Grid>
+
+                                    <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                    <TextBlock Classes="fieldLabel" Text="DOES THE SIGNAL ACTUALLY ARRIVE?" />
+                                    <ComboBox ItemsSource="{Binding VerifyKinds}"
+                                              SelectedItem="{Binding VerifyKind, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch" />
+                                    <TextBlock FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextFaintBrush}"
+                                               Text="{Binding GuideText}"
+                                               IsVisible="{Binding HasGuide}" />
+                                    <StackPanel IsVisible="{Binding ShowUrl}">
+                                        <TextBlock Classes="fieldLabel" Text="URL" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Url, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowContains}">
+                                        <TextBlock Classes="fieldLabel" Text="BODY MUST CONTAIN" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 Text="{Binding Contains, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowHost}">
+                                        <TextBlock Classes="fieldLabel" Text="HOST" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Host, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowPort}">
+                                        <TextBlock Classes="fieldLabel" Text="TCP PORT (BLANK = PING)" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Port, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowProcessName}">
+                                        <TextBlock Classes="fieldLabel" Text="PROCESS NAME" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding ProcessName, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowNameContains}">
+                                        <TextBlock Classes="fieldLabel" Text="NAME CONTAINS" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 Text="{Binding NameContains, Mode=TwoWay}" />
+                                    </StackPanel>
+                                    <StackPanel IsVisible="{Binding ShowPath}">
+                                        <TextBlock Classes="fieldLabel" Text="PATH" />
+                                        <TextBox Classes="field" FontSize="13"
+                                                 FontFamily="{StaticResource MonoFont}"
+                                                 Text="{Binding Path, Mode=TwoWay}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Classes="primary" Content="Apply changes" Padding="16,9"
+                                        Command="{Binding ApplyEditorCommand}" />
                             </StackPanel>
 
                             <TextBlock Classes="mono" FontSize="11" TextWrapping="Wrap"

@@ -50,6 +50,7 @@ equipment is. Nothing here is affiliated with or endorsed by any of the software
   [cameras and devices](#checking-cameras-and-other-devices), [NDI](#ndi-sources)
 - [`station.json`](#stationjson) · [when the list starts again](#when-the-checklist-starts-again)
 - [Where things live](#where-things-live)
+- [The system map](#the-system-map) *(branch)*
 - [The techdesk](#the-techdesk)
 - [Live viewer counts](#live-viewer-counts) — [YouTube](#youtube), [Facebook](#facebook)
 - [Updating](#updating) · [release channels](#release-channels) · [cutting a release](#cutting-a-release)
@@ -432,6 +433,38 @@ replaces is the whole `.app`, so content inside the bundle would not survive one
 instead, seeded from the shipped samples the first time the app runs.
 
 ---
+
+## The system map
+
+> On the `system-map` branch, not yet in a release.
+
+**MAP** in the top bar opens a live diagram of the building: devices as boxes, the wires between
+them drawn in the signal's colour — NDI blue, XLR gold, Dante teal — animated while the signal is
+believed to be arriving. Both boxes **and wires** can carry the same verifiers as checklist items,
+which is the point: a camera that is powered and a switcher that is running still tell you nothing
+about whether the camera *reaches* the switcher. The one red pulsing wire is the thing that broke;
+everything it starves goes faint and still, so the map answers "where" and not just "whether".
+
+Maps are shared. They live in a `maps` folder beside the techdesk snapshots (`system-map.json`,
+human-readable), so every machine sees the same building. With no share configured they fall back
+to a local folder, like everything else.
+
+**The workflow.** Open MAP → first run offers *create an empty map* or *start from a small
+example*. **Edit layout** → **Add device**, drag it into place, select a box then **Draw
+connection** and click what it feeds. Selecting anything while editing opens its editor in the
+rail: label, the mono sub-line, kind, and a **verifier** — same kinds as the checklist. Wires take
+a type, a label, a cable length and a verifier of their own. **Apply changes**, then **Save map**.
+
+Every device carries a **tier** saying how the app knows its state, and the map refuses to lie
+about it: *verified* (we check it — the only tier that can hold Ready to go), *reported* (a
+third-party API tells us; believed, badged, never blocking), *inferred* (drawn hollow — a guess
+must never look checked), *ask a human* (somebody's job). Nothing off campus can ever block a
+volunteer's checklist; that is enforced in the model, not the styling.
+
+A box can link to another map — one tidy overview drilling into per-room detail — and a sub-map's
+verified failures surface on the box that links to it. Still to come from the design handoff: the
+floorplan view with cable routing, the off-campus stream path view, the connection-type editor,
+the device inspector, and the path trace.
 
 ## The techdesk
 
