@@ -379,6 +379,13 @@ public sealed class MapConnectionType
     /// <summary>Wireless draws with no cable stroke at all — radio is not a physical object.</summary>
     public bool Wireless { get; set; }
 
+    /// <summary>
+    /// Runs of this type carry both directions unless the author says otherwise — the handoff's
+    /// rule: direction is inherited from the connection type and overridable per connection.
+    /// Dante is duplex because Dante is always duplex; nobody should have to remember to tick it.
+    /// </summary>
+    public bool DefaultBidirectional { get; set; }
+
     /// <summary>Warn when a run exceeds this. HDMI over Cat6 warns over 50 ft.</summary>
     public int? WarnOverFt { get; set; }
 
@@ -410,8 +417,8 @@ public static class MapConnectionTypes
     {
         new MapConnectionType { Id = "xlr", Name = "XLR analog audio", Colour = "#ffd45e", FlowSeconds = 3.8, Category = "audio", BuiltIn = true },
         new MapConnectionType { Id = "wl-audio", Name = "Wireless audio", Colour = "#ffe9a8", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.6, Wireless = true, Category = "audio", BuiltIn = true },
-        new MapConnectionType { Id = "dante", Name = "Dante / audio over IP", Colour = "#3ce0e8", FlowSeconds = 3.4, Category = "audio", BuiltIn = true },
-        new MapConnectionType { Id = "aes50", Name = "AES50 / digital snake", Colour = "#67f0c8", FlowSeconds = 3.0, Category = "audio", BuiltIn = true },
+        new MapConnectionType { Id = "dante", Name = "Dante / audio over IP", Colour = "#3ce0e8", FlowSeconds = 3.4, Category = "audio", BuiltIn = true, DefaultBidirectional = true },
+        new MapConnectionType { Id = "aes50", Name = "AES50 / digital snake", Colour = "#67f0c8", FlowSeconds = 3.0, Category = "audio", BuiltIn = true, DefaultBidirectional = true },
         new MapConnectionType { Id = "analog-snake", Name = "Analog snake", Colour = "#e0a866", FlowSeconds = 4.2, Category = "audio", BuiltIn = true },
         new MapConnectionType { Id = "ndi", Name = "NDI", Colour = "#6bb6ff", FlowSeconds = 3.2, Category = "video", BuiltIn = true },
         new MapConnectionType { Id = "sdi", Name = "SDI", Colour = "#ef9bf5", FlowSeconds = 3.6, Category = "video", BuiltIn = true },
@@ -419,7 +426,7 @@ public static class MapConnectionTypes
         new MapConnectionType { Id = "dmx", Name = "DMX 512", Colour = "#b795ff", FlowSeconds = 4.4, Category = "lighting", BuiltIn = true },
         new MapConnectionType { Id = "wl-dmx", Name = "Wireless DMX", Colour = "#d4c2ff", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.8, Wireless = true, Category = "lighting", BuiltIn = true },
         new MapConnectionType { Id = "wl-video", Name = "Wireless video", Colour = "#f7b6fb", LineStyle = MapLineStyles.Dashed, StrokeWidth = 2, FlowSeconds = 6.4, Wireless = true, Category = "video", BuiltIn = true },
-        new MapConnectionType { Id = "cat6", Name = "Network · Cat6", Colour = "#8ba3bd", FlowSeconds = 5.0, Category = "network", BuiltIn = true },
+        new MapConnectionType { Id = "cat6", Name = "Network · Cat6", Colour = "#8ba3bd", FlowSeconds = 5.0, Category = "network", BuiltIn = true, DefaultBidirectional = true },
     };
 
     /// <summary>The fallback for a connection whose type is missing or unknown.</summary>

@@ -188,6 +188,9 @@
 
                         <CheckBox Content="Wireless — no cable stroke, drawn dashed and faint"
                                   FontSize="13" IsChecked="{Binding Wireless, Mode=TwoWay}" />
+                        <CheckBox Content="Carries both directions by default"
+                                  FontSize="13" IsChecked="{Binding Duplex, Mode=TwoWay}"
+                                  ToolTip.Tip="New runs of this type start duplex — like Dante, AES50 and network trunks do. Any single run can still be flipped in its editor." />
 
                         <StackPanel>
                             <TextBlock Classes="fieldLabel" Text="WARN OVER (FT, OPTIONAL)" />

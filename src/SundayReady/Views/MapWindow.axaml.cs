@@ -100,14 +100,18 @@ public partial class MapWindow : Window
 
     private void OnNodeMoved(object? sender, PointerEventArgs e)
     {
-        if (_dragging is not { } device)
+        if (_dragging is not { } device || Workspace is not { } workspace)
         {
             return;
         }
 
         var position = e.GetPosition(GraphSurface);
-        device.X = Math.Max(0, position.X - _dragOffset.X);
-        device.Y = Math.Max(0, position.Y - _dragOffset.Y);
+        var (x, y) = workspace.SnapPosition(
+            device,
+            Math.Max(0, position.X - _dragOffset.X),
+            Math.Max(0, position.Y - _dragOffset.Y));
+        device.X = x;
+        device.Y = y;
         _dragMoved = true;
     }
 
@@ -487,8 +491,11 @@ public partial class MapWindow : Window
         }
 
         var position = e.GetPosition(GraphSurface);
-        note.X = Math.Max(0, position.X - _noteOffset.X);
-        note.Y = Math.Max(0, position.Y - _noteOffset.Y);
+        var snap = Workspace?.SnapEnabled == true;
+        var x = Math.Max(0, position.X - _noteOffset.X);
+        var y = Math.Max(0, position.Y - _noteOffset.Y);
+        note.X = snap ? Math.Round(x / 10) * 10 : x;
+        note.Y = snap ? Math.Round(y / 10) * 10 : y;
     }
 
     private void OnNoteReleased(object? sender, PointerReleasedEventArgs e)

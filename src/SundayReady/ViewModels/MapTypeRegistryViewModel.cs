@@ -86,6 +86,10 @@ public sealed partial class MapTypeRegistryViewModel : ObservableObject
     [ObservableProperty]
     private bool _wireless;
 
+    /// <summary>New runs of this type start duplex — Dante, AES50, network trunks.</summary>
+    [ObservableProperty]
+    private bool _duplex;
+
     [ObservableProperty]
     private string _warnOverFt = string.Empty;
 
@@ -176,6 +180,7 @@ public sealed partial class MapTypeRegistryViewModel : ObservableObject
             StrokeWidth = Wireless ? 2 : 2.5,
             FlowSeconds = Math.Clamp(FlowSeconds, 2.0, 8.0),
             Wireless = Wireless,
+            DefaultBidirectional = Duplex,
             WarnOverFt = int.TryParse(WarnOverFt, out var warn) && warn > 0 ? warn : null,
             CreatedBy = Environment.UserName,
             CreatedAt = DateTime.Now.ToString("MMM yyyy").ToUpperInvariant(),

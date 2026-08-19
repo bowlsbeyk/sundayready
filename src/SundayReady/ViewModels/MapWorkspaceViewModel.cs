@@ -195,13 +195,14 @@ public sealed partial class SystemMapViewModel : ObservableObject
 
             // The hover card, preformatted here because this is the one place that has the
             // wire, both its ends, and the port spec in hand at the same time.
-            string? goesTo = null, cardType = null, cardRun = null, cardState = null;
+            string? goesTo = null, cardType = null, cardRun = null, cardState = null, farLabel = null;
             var down = false;
 
             if (portEnds.Count > 0)
             {
                 var wire = portEnds[0].Wire;
                 var far = portEnds[0].FromEnd ? wire.To : wire.From;
+                farLabel = far.Label;
                 var farPort = portEnds[0].FromEnd ? wire.ToPortSpec?.Label : wire.FromPortSpec?.Label;
                 var more = portEnds.Count > 1 ? $"  (+{portEnds.Count - 1} more)" : string.Empty;
 
@@ -222,6 +223,7 @@ public sealed partial class SystemMapViewModel : ObservableObject
                 portEnds.Count > 0 ? portEnds[0].Wire.Type.Colour : null)
             {
                 IsBanked = banked,
+                FarLabel = farLabel,
                 CardGoesTo = goesTo,
                 CardType = cardType,
                 CardRun = cardRun,
@@ -1614,6 +1616,56 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         }
     }
 
+    /// <summary>Snap while dragging: neighbours first, then the grid. Off for freehand purists.</summary>
+    [ObservableProperty]
+    private bool _snapEnabled = true;
+
+    /// <summary>
+    /// Where a dragged box should actually land. Alignment to other boxes wins — when an edge is
+    /// within 8px of another box's same edge it snaps to it, which is what makes columns line up
+    /// by feel instead of by pixel-nudging. With no neighbour in range, a 10px grid quietly
+    /// removes the one-pixel-off wobble that makes hand-laid maps look drunk.
+    /// </summary>
+    public (double X, double Y) SnapPosition(MapDeviceViewModel dragged, double x, double y)
+    {
+        if (!SnapEnabled || Current is not { } map)
+        {
+            return (x, y);
+        }
+
+        const double align = 8;
+        double? bestX = null, bestY = null;
+        double bestDx = align + 1, bestDy = align + 1;
+
+        foreach (var other in map.Devices)
+        {
+            if (ReferenceEquals(other, dragged))
+            {
+                continue;
+            }
+
+            var dx = Math.Abs(other.X - x);
+
+            if (dx <= align && dx < bestDx)
+            {
+                bestDx = dx;
+                bestX = other.X;
+            }
+
+            var dy = Math.Abs(other.Y - y);
+
+            if (dy <= align && dy < bestDy)
+            {
+                bestDy = dy;
+                bestY = other.Y;
+            }
+        }
+
+        return (
+            bestX ?? Math.Round(x / 10) * 10,
+            bestY ?? Math.Round(y / 10) * 10);
+    }
+
     /// <summary>Starts a wire from a specific device — the drag gesture's entry point.</summary>
     public void BeginWireFrom(MapDeviceViewModel device)
     {
@@ -1759,7 +1811,10 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             Type = lastType.Id,
             FromPort = Named(from, fromPort),
             ToPort = Named(to, toPort),
-            Bidirectional = bidirectional,
+
+            // Direction is inherited from the type and overridable per run, per the handoff:
+            // a new AES50 or Dante run is duplex without anyone remembering to tick it.
+            Bidirectional = bidirectional || lastType.DefaultBidirectional,
         };
         model.FlowSeed = SystemMapStore.StableHash(model.Id);
 

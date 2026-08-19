@@ -136,6 +136,9 @@ public abstract partial class MapProbeViewModel : ObservableObject
     }
 }
 
+/// <summary>One line of a node's in-body patch list: chip, text, and whether it is bad news.</summary>
+public sealed record MapPatchRow(string Text, IBrush Chip, bool IsDown);
+
 /// <summary>A device on the map, with the handoff's tier semantics baked in.</summary>
 public sealed partial class MapDeviceViewModel : MapProbeViewModel
 {
@@ -175,9 +178,20 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
             var left = Model.Ports.Count(p => p.Side is MapPortSides.In or MapPortSides.Both);
             var right = Model.Ports.Count(p => MapPortSides.AcceptsOut(p.Side));
             var rows = Math.Max(left, right);
-            return rows == 0
-                ? BoxHeight
-                : Math.Max(BoxHeight, PortFirstTop + EdgeSpan(rows) + 22);
+
+            if (rows == 0)
+            {
+                return BoxHeight;
+            }
+
+            // Room for the in-body patch list too, up to six rows — a two-port stage box that can
+            // only fit "+ 2 MORE" and no actual rows is a list that says nothing. Banked boxes
+            // suppress the list, so they claim no allowance for it.
+            var listRows = Model.Ports.Count > 16 ? 0 : Math.Min(Model.Ports.Count, 6);
+
+            return Math.Max(
+                Math.Max(BoxHeight, PortFirstTop + EdgeSpan(rows) + 22),
+                52 + (listRows * 15) + 24);
         }
     }
 
@@ -331,6 +345,50 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
         }
     }
 
+    /// <summary>
+    /// The in-body patch list, per the handoff's 4a node anatomy: one row per patched socket,
+    /// <c>IN 1 · CAM 1</c>, chip in the run's signal colour, red when the run is down. This is
+    /// where port names are readable on the map itself — the tiles only have room for a number.
+    /// Banked edges contribute no rows (the meta strip and hover cards carry them), and the list
+    /// trims to what the box's height can hold, closing with a <c>+ N MORE</c> line.
+    /// </summary>
+    public IReadOnlyList<MapPatchRow> PatchRows
+    {
+        get
+        {
+            var patched = LeftPortAnchors.Concat(RightPortAnchors)
+                .Where(a => a.Wires > 0 && !a.IsBanked && a.FarLabel is not null)
+                .ToList();
+
+            if (patched.Count == 0)
+            {
+                return Array.Empty<MapPatchRow>();
+            }
+
+            // Header eats ~52px, the meta strip ~22, and each row wants 15.
+            var fits = Math.Max(1, (int)((Height - 74) / 15));
+            var rows = new List<MapPatchRow>();
+
+            foreach (var anchor in patched.Take(patched.Count <= fits ? patched.Count : fits - 1))
+            {
+                var down = anchor.CardStateDown;
+                rows.Add(new MapPatchRow(
+                    $"{anchor.Label} · {anchor.FarLabel}{(down ? " · DOWN" : string.Empty)}",
+                    anchor.FillBrush,
+                    down));
+            }
+
+            if (patched.Count > fits)
+            {
+                rows.Add(new MapPatchRow($"+ {patched.Count - rows.Count} MORE", Brushes.Transparent, false));
+            }
+
+            return rows;
+        }
+    }
+
+    public bool HasPatchRows => PatchRows.Count > 0;
+
     /// <summary>Ports currently carrying something, per edge, for the ticks drawn on the box.</summary>
     public ObservableCollection<MapPortAnchor> RightPortAnchors { get; } = new();
 
@@ -358,6 +416,8 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
         }
 
         OnPropertyChanged(nameof(PortSummary));
+        OnPropertyChanged(nameof(PatchRows));
+        OnPropertyChanged(nameof(HasPatchRows));
     }
 
     public Point Centre => new(X + (BoxWidth / 2), Y + (Height / 2));
@@ -458,6 +518,9 @@ public readonly record struct MapPortAnchor(
 {
     /// <summary>This edge banked: the socket draws as a thin segment instead of a tile.</summary>
     public bool IsBanked { get; init; }
+
+    /// <summary>The far end's plain label, for the in-body patch list. Null when vacant.</summary>
+    public string? FarLabel { get; init; }
 
     /// <summary>Hover card rows, preformatted so the view stays dumb. Null when vacant.</summary>
     public string? CardGoesTo { get; init; }

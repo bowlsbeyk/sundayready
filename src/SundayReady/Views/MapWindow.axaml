@@ -487,6 +487,30 @@
                                             </Panel>
                                         </StackPanel>
 
+                                        <!-- The in-body patch list, per 4a: one row per
+                                             patched socket, chip in the run's colour. This is
+                                             where port names live on the map itself - a 16px
+                                             tile only has room for the number. -->
+                                        <ItemsControl ItemsSource="{Binding PatchRows}"
+                                                      Margin="18,52,26,20" VerticalAlignment="Top"
+                                                      IsHitTestVisible="False"
+                                                      IsVisible="{Binding HasPatchRows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:MapPatchRow">
+                                                    <Grid ColumnDefinitions="Auto,7,*" Height="15">
+                                                        <Border Width="6" Height="6" CornerRadius="2"
+                                                                VerticalAlignment="Center"
+                                                                Background="{Binding Chip}" />
+                                                        <TextBlock Grid.Column="2" Classes="mono" FontSize="10.5"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{StaticResource TextFaintBrush}"
+                                                                   Classes.failText="{Binding IsDown}"
+                                                                   Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
                                         <!-- The meta strip: the port counts in words. On a
                                              banked edge the per-socket labels are gone, and
                                              this line is what replaces them. -->
@@ -1290,11 +1314,14 @@
                                 <Button Classes="chip" Content="Faults only" Margin="0,0,7,7"
                                         Command="{Binding SetCategoryCommand}" CommandParameter="faults" />
                             </WrapPanel>
-                            <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Grid ColumnDefinitions="Auto,11,Auto,*,Auto">
                                 <CheckBox Content="Freeze wires" FontSize="13"
                                           IsChecked="{Binding FreezeWires, Mode=TwoWay}"
                                           ToolTip.Tip="The map stays fully readable with all animation off — for a slow booth PC or a wall display." />
-                                <Button Grid.Column="2" Classes="primary" Content="Save map"
+                                <CheckBox Grid.Column="2" Content="Snap" FontSize="13"
+                                          IsChecked="{Binding SnapEnabled, Mode=TwoWay}"
+                                          ToolTip.Tip="Dragged boxes align to boxes above and beside them, and fall onto a 10px grid otherwise. Off for freehand placement." />
+                                <Button Grid.Column="4" Classes="primary" Content="Save map"
                                         Padding="16,8" IsVisible="{Binding IsEditing}"
                                         Command="{Binding SaveCommand}" />
                             </Grid>

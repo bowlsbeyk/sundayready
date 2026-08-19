@@ -467,10 +467,12 @@ anything while editing opens its editor in the rail: label, the mono sub-line, k
 verifier of their own. **Apply changes**, then **Save map**.
 
 **Runs that go both ways.** A snake carrying stage inputs up and IEM mixes back down is one cable,
-not two, and ticking **carries both ways on one cable** draws it as one — a wider, dimmer cable
-carrying two thin dash trains a few pixels apart, one flowing each way. It is a topology claim too:
-a two-way run is treated as broken from either end, because losing that cable really does cost you
-both directions.
+not two, and it draws as one — a wider, dimmer cable carrying two thin dash trains a few pixels
+apart, one flowing each way. Direction is **inherited from the signal type**: AES50, Dante and
+network runs are born duplex because they always are in real life, and any single run can be
+flipped with **carries both ways on one cable** in its editor. Custom types choose their default in
+the type registry. It is a topology claim too: a two-way run is treated as broken from either end,
+because losing that cable really does cost you both directions.
 
 **Ports.** Select a device while editing and the rail carries a **PORTS** list: add sockets, name
 them (`AES50 A`, `CH 25-26`, `MAIN L/R`), say whether each is an in, an out or carries both ways,
@@ -492,13 +494,20 @@ that still exists in the building.
 Named sockets draw as **16px tiles straddling the box's border** — half in, half out, so a wire
 visibly terminates *in* something rather than touching its edge. A tile is filled in the colour of
 the signal occupying it, with the channel or letter inside (`A`, `1-16`, `L/R`); an empty socket is
-a hollow hole, so a box's spare capacity reads at a glance. Boxes grow taller as they declare more
-sockets. **Click a socket to wire it.** An output can only send and an input can only receive, so for those
+a hollow hole, so a box's spare capacity reads at a glance. Inside the box, a **patch list** names
+each occupied socket and where it goes — `MAIN L/R · Main Speakers` — with a colour chip per run
+and `· DOWN` in red when a run is dead. Boxes grow taller as they declare more sockets.
+**Click a socket to wire it.** An output can only send and an input can only receive, so for those
 the click just arms the run and you click the far end to finish; only a socket that genuinely
 carries both ways asks which direction you meant. Two runs sharing one socket stay one point and the
 tick widens, because two cables in one jack is a fact worth seeing rather than a drawing to tidy
 away. Ports are entirely optional throughout: skip them and a busy box still fans its wires along
 the edge so each stays followable.
+
+**Snapping.** Dragged boxes align to the boxes above and beside them — bring one within a few
+pixels of a neighbour's edge and it clicks into line — and fall onto a quiet 10px grid otherwise,
+so hand-laid maps stop being one pixel off everywhere. The **Snap** toggle in the rail turns it off
+for freehand placement.
 
 **Big gear stays readable.** Past eight sockets an edge stops drawing tiles and collapses into a
 **bank strip** — thin segments, one per socket, coloured by what each carries and faint when free —
