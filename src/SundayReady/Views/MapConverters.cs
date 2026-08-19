@@ -20,4 +20,9 @@ public static class MapConverters
     /// <summary>Isolate-a-signal-type dimming, matching the wire layer's own .22.</summary>
     public static readonly IValueConverter DimOpacity =
         new FuncValueConverter<bool, double>(dimmed => dimmed ? 0.22 : 1.0);
+
+    /// <summary>The zoom factor as a layout transform for the canvas wrapper.</summary>
+    public static readonly IValueConverter ZoomTransform =
+        new FuncValueConverter<double, Avalonia.Media.ITransform>(z =>
+            new Avalonia.Media.ScaleTransform(z <= 0 ? 1 : z, z <= 0 ? 1 : z));
 }

@@ -230,7 +230,9 @@
             <!-- The graph -->
             <Panel Grid.Column="0">
                 <ScrollViewer x:Name="CanvasScroll" HorizontalScrollBarVisibility="Auto"
-                              AllowAutoHide="False" IsVisible="{Binding IsSignalFlow}">
+                              AllowAutoHide="False" IsVisible="{Binding IsSignalFlow}"
+                              PointerWheelChanged="OnCanvasWheel">
+                    <LayoutTransformControl LayoutTransform="{Binding Zoom, Converter={x:Static views:MapConverters.ZoomTransform}}">
                     <Panel x:Name="GraphSurface"
                            Width="{Binding Current.CanvasWidth, FallbackValue=1500}"
                            Height="{Binding Current.CanvasHeight, FallbackValue=900}"
@@ -336,6 +338,13 @@
                                            DoubleTapped="OnNodeDoubleTapped"
                                            Background="Transparent">
                                         <Rectangle Classes="nodeFace" />
+
+                                        <!-- The 3px accent bar: the dominant signal type. Drawn
+                                             right after the face so port tiles sit over it, not
+                                             under it. -->
+                                        <Border Width="3" HorizontalAlignment="Left" Margin="0,10"
+                                                CornerRadius="1.5" Background="{Binding AccentBrush}"
+                                                IsVisible="{Binding HasAccent}" />
 
                                         <!-- Port ticks: a mark where each named socket actually
                                              carries something. Only occupied ports get one — an
@@ -521,11 +530,6 @@
                                                    Text="{Binding PortSummary}"
                                                    IsVisible="{Binding HasPorts}" />
 
-                                        <!-- The 3px accent bar: the dominant signal type. -->
-                                        <Border Width="3" HorizontalAlignment="Left" Margin="0,10"
-                                                CornerRadius="1.5" Background="{Binding AccentBrush}"
-                                                IsVisible="{Binding HasAccent}" />
-
                                         <Grid RowDefinitions="Auto,Auto" Margin="14,11,12,0"
                                               VerticalAlignment="Top">
                                             <Grid Grid.Row="0" ColumnDefinitions="*,8,Auto">
@@ -587,6 +591,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </Panel>
+                    </LayoutTransformControl>
                 </ScrollViewer>
 
                 <!-- Building: the same devices, grouped by where you would walk to. -->
@@ -710,6 +715,23 @@
                         </ItemsControl>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- Zoom, pinned to the viewport. Ctrl+scroll does the same. -->
+                <Border VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,18,14"
+                        Background="#B00c0f13" CornerRadius="6" Padding="5,3"
+                        IsVisible="{Binding IsSignalFlow}">
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <Button Classes="quiet" Content="−" Padding="9,3" FontSize="14"
+                                Command="{Binding ZoomOutCommand}" />
+                        <Button Classes="quiet" Padding="7,3" FontSize="11.5"
+                                Command="{Binding ZoomResetCommand}"
+                                ToolTip.Tip="Back to 100%. Ctrl+scroll also zooms.">
+                            <TextBlock Classes="mono" Text="{Binding ZoomLabel}" />
+                        </Button>
+                        <Button Classes="quiet" Content="+" Padding="9,3" FontSize="14"
+                                Command="{Binding ZoomInCommand}" />
+                    </StackPanel>
+                </Border>
 
                 <!-- Footnote, pinned to the viewport not the canvas. -->
                 <Border VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="26,0,0,14"
@@ -1010,7 +1032,12 @@
                             <StackPanel Spacing="11"
                                         IsVisible="{Binding DeviceEditor, Converter={x:Static ObjectConverters.IsNotNull}}">
                                 <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
-                                <TextBlock Classes="microLabel" Text="EDIT DEVICE" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="microLabel" Text="EDIT DEVICE" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="quiet" Content="Open big editor" Padding="10,4" FontSize="11.5"
+                                            Click="OnBigEditorClick"
+                                            ToolTip.Tip="The same editor in its own window, with a full column for the port list. For anything with more than a few sockets." />
+                                </Grid>
                                 <StackPanel Spacing="11" DataContext="{Binding DeviceEditor}">
                                     <StackPanel>
                                         <TextBlock Classes="fieldLabel" Text="LABEL" />
@@ -1340,29 +1367,28 @@
                                         Padding="16,8" IsVisible="{Binding IsEditing}"
                                         Command="{Binding SaveCommand}" />
                             </Grid>
-                            <Grid ColumnDefinitions="Auto,9,Auto,*">
-                                <Button Classes="quiet" Content="Export…" Padding="13,7" FontSize="12.5"
-                                        Click="OnExportClick"
+                            <WrapPanel>
+                                <Button Classes="quiet" Content="Export map…" Padding="13,7" FontSize="12.5"
+                                        Margin="0,0,9,9" Click="OnExportClick"
                                         ToolTip.Tip="One file carrying this map and its custom signal types — hand it to an integrator, or to another church." />
-                                <Button Grid.Column="2" Classes="quiet" Content="Import…" Padding="13,7" FontSize="12.5"
-                                        Click="OnImportClick"
+                                <Button Classes="quiet" Content="Import map…" Padding="13,7" FontSize="12.5"
+                                        Margin="0,0,9,9" Click="OnImportClick"
                                         ToolTip.Tip="Bring in a map somebody exported. It arrives as a new map — nothing here is overwritten." />
-                            </Grid>
                             <TextBlock FontSize="12" TextWrapping="Wrap"
                                        Foreground="{StaticResource WaitBrush}"
                                        IsVisible="{Binding ShowPortsHint}"
                                        Text="No box on this map declares ports yet, so none are drawn — this map was saved before ports existed. Edit layout → select a box → PORTS (or a template), or press New example to see a rig that uses them." />
-                            <Grid ColumnDefinitions="Auto,9,Auto,9,Auto,*">
                                 <Button Classes="quiet" Content="New example" Padding="13,7" FontSize="12.5"
+                                        Margin="0,0,9,9"
                                         Command="{Binding CreateExampleMapCommand}"
                                         ToolTip.Tip="Creates a fresh copy of the worked example rig as a NEW map — ports, notes, duplex snake and all. Nothing you have is touched." />
-                                <Button Grid.Column="2" Classes="quiet" Content="Export templates…" Padding="13,7" FontSize="12.5"
-                                        Click="OnExportTemplatesClick"
+                                <Button Classes="quiet" Content="Export templates…" Padding="13,7" FontSize="12.5"
+                                        Margin="0,0,9,9" Click="OnExportTemplatesClick"
                                         ToolTip.Tip="Your template library as one file — post it, and every church with the same gear stops typing port lists." />
-                                <Button Grid.Column="4" Classes="quiet" Content="Import templates…" Padding="13,7" FontSize="12.5"
-                                        Click="OnImportTemplatesClick"
+                                <Button Classes="quiet" Content="Import templates…" Padding="13,7" FontSize="12.5"
+                                        Margin="0,0,9,9" Click="OnImportTemplatesClick"
                                         ToolTip.Tip="Bring in templates the community made. Ones you already have are skipped, never replaced." />
-                            </Grid>
+                            </WrapPanel>
                         </StackPanel>
                     </Border>
                 </Grid>

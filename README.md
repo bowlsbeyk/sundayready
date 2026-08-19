@@ -482,12 +482,23 @@ typed. Templates are additive and never overwrite a name or a kind you already c
 catalogue covers the consoles, stage boxes, switches and interfaces that actually turn up in church
 A/V closets.
 
+**Zoom.** The pill at the bottom-right (or **Ctrl+scroll**) zooms the canvas from 40% to 200% —
+port tiles that are specks on a 1080p booth monitor become clickable at 130%. Layout-aware, so the
+scrollbars stay honest.
+
+**The big device editor.** **Open big editor** in the rail opens the same editor in its own
+window — identity on the left, the port list in a full column on the right. It is the rail's
+editor with room, not a second one, so nothing can drift between them.
+
 **Community templates.** The catalogue is not closed. Type a device's ports once and press
 **Save as template** — it lands in your church's shared library and every station's picker offers
 it. **Export templates…** writes the library to one file; **Import templates…** brings in a file
 somebody else posted. Import never overwrites: templates whose names you already have are skipped,
-so pulling in a community pack can only ever add. This is the loop that means the second church
-with a Yamaha TF1 never types its port list — somebody already did. Renaming a socket never breaks the
+so pulling in a community pack can only ever add. Templates also live as **plain files on disk**:
+drop JSONs into `maps/templates/` — organised however you like, `Yamaha/TF3/standard.json` works
+well — and the picker simply has them. One broken file costs itself, never the folder, and a file
+naming a built-in cannot shadow it. This is the loop that means the second church with a Yamaha
+TF1 never types its port list — somebody already did. Renaming a socket never breaks the
 runs landing on it; removing one lets its runs float back onto the edge rather than deleting cable
 that still exists in the building.
 

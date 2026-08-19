@@ -264,6 +264,45 @@ public partial class MapWindow : Window
         workspace.AddNote(origin.X + 320, origin.Y + 80);
     }
 
+    /// <summary>
+    /// The handoff's 4d device editor: the SAME editor view model in its own window, so the
+    /// port list gets a full column instead of a 340px strip. Apply routes through the
+    /// workspace exactly as the rail's button does.
+    /// </summary>
+    private void OnBigEditorClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { DeviceEditor: { } editor } workspace)
+        {
+            return;
+        }
+
+        new DeviceEditorWindow
+        {
+            DataContext = editor,
+            ApplyRequested = () => workspace.ApplyEditorCommand.Execute(null),
+        }.Show(this);
+    }
+
+    /// <summary>Ctrl+scroll zooms; plain scroll keeps scrolling. The universal map gesture.</summary>
+    private void OnCanvasWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (Workspace is not { } workspace || !e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            return;
+        }
+
+        if (e.Delta.Y > 0)
+        {
+            workspace.ZoomInCommand.Execute(null);
+        }
+        else if (e.Delta.Y < 0)
+        {
+            workspace.ZoomOutCommand.Execute(null);
+        }
+
+        e.Handled = true;
+    }
+
     // ---------------------------------------------------------------- import / export
 
     /// <summary>

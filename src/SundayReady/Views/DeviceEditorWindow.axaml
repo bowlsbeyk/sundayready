@@ -1,0 +1,174 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SundayReady.ViewModels"
+        x:Class="SundayReady.Views.DeviceEditorWindow"
+        x:DataType="vm:MapDeviceEditorViewModel"
+        Title="Edit device"
+        Icon="/Assets/logo.png"
+        Width="880" Height="760"
+        MinWidth="760" MinHeight="560"
+        Background="{StaticResource RailBgBrush}"
+        WindowStartupLocation="CenterOwner">
+
+    <!-- The handoff's 4d: the device on its own, with room. The rail's editor works but a
+         48-row port list in a 340px strip is an exercise in scrolling; here identity sits on
+         the left, the port list gets a full column, and Apply is never off-screen. Same view
+         model as the rail — this window is space, not a second editor. -->
+    <Grid RowDefinitions="Auto,*,Auto" Margin="26,22">
+
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+            <TextBlock Text="{Binding Label}" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Classes="mono" FontSize="11" LetterSpacing="0.8"
+                       Foreground="{StaticResource TextFainterBrush}"
+                       Text="THE SAME EDITOR AS THE RAIL, WITH ROOM · APPLY CHANGES WRITES BACK TO THE MAP" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,26,*">
+
+            <!-- Identity -->
+            <ScrollViewer Grid.Column="0">
+                <StackPanel Spacing="12" Margin="0,0,6,0">
+                    <StackPanel>
+                        <TextBlock Classes="fieldLabel" Text="LABEL" />
+                        <TextBox Classes="field" FontSize="15" Text="{Binding Label, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="fieldLabel" Text="SUB-LINE (TRANSPORT · ADDRESS)" />
+                        <TextBox Classes="field" FontSize="13" Text="{Binding Detail, Mode=TwoWay}" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,10,*">
+                        <StackPanel>
+                            <TextBlock Classes="fieldLabel" Text="KIND" />
+                            <ComboBox ItemsSource="{Binding Kinds}" SelectedItem="{Binding Kind, Mode=TwoWay}"
+                                      HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="fieldLabel" Text="ACCENT TYPE" />
+                            <ComboBox ItemsSource="{Binding DominantTypes}" SelectedItem="{Binding DominantType, Mode=TwoWay}"
+                                      HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel>
+                        <TextBlock Classes="fieldLabel" Text="HOW THE APP KNOWS ITS STATE" />
+                        <ComboBox ItemsSource="{Binding Tiers}" SelectedItem="{Binding Tier, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="18">
+                        <CheckBox Content="Hub" IsChecked="{Binding Hub, Mode=TwoWay}" FontSize="13" />
+                        <CheckBox Content="Off campus" IsChecked="{Binding OffCampus, Mode=TwoWay}" FontSize="13" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="fieldLabel" Text="WHERE IT PHYSICALLY IS" />
+                        <TextBox Classes="field" FontSize="13" Text="{Binding Location, Mode=TwoWay}"
+                                 Watermark="Grey box on the shelf behind the booth" />
+                    </StackPanel>
+
+                    <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                    <TextBlock Classes="fieldLabel" Text="VERIFIER — SAME KINDS AS THE CHECKLIST" />
+                    <ComboBox ItemsSource="{Binding VerifyKinds}" SelectedItem="{Binding VerifyKind, Mode=TwoWay}"
+                              HorizontalAlignment="Stretch" />
+                    <TextBlock FontSize="12" TextWrapping="Wrap"
+                               Foreground="{StaticResource TextFaintBrush}"
+                               Text="{Binding GuideText}" IsVisible="{Binding HasGuide}" />
+                    <StackPanel IsVisible="{Binding ShowUrl}">
+                        <TextBlock Classes="fieldLabel" Text="URL" />
+                        <TextBox Classes="field" FontSize="13" FontFamily="{StaticResource MonoFont}"
+                                 Text="{Binding Url, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding ShowContains}">
+                        <TextBlock Classes="fieldLabel" Text="BODY MUST CONTAIN" />
+                        <TextBox Classes="field" FontSize="13" Text="{Binding Contains, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding ShowHost}">
+                        <TextBlock Classes="fieldLabel" Text="HOST" />
+                        <TextBox Classes="field" FontSize="13" FontFamily="{StaticResource MonoFont}"
+                                 Text="{Binding Host, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding ShowPort}">
+                        <TextBlock Classes="fieldLabel" Text="TCP PORT (BLANK = PING)" />
+                        <TextBox Classes="field" FontSize="13" FontFamily="{StaticResource MonoFont}"
+                                 Text="{Binding Port, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding ShowProcessName}">
+                        <TextBlock Classes="fieldLabel" Text="PROCESS NAME" />
+                        <TextBox Classes="field" FontSize="13" FontFamily="{StaticResource MonoFont}"
+                                 Text="{Binding ProcessName, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding ShowNameContains}">
+                        <TextBlock Classes="fieldLabel" Text="NAME CONTAINS" />
+                        <TextBox Classes="field" FontSize="13" Text="{Binding NameContains, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel IsVisible="{Binding ShowPath}">
+                        <TextBlock Classes="fieldLabel" Text="PATH" />
+                        <TextBox Classes="field" FontSize="13" FontFamily="{StaticResource MonoFont}"
+                                 Text="{Binding Path, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="fieldLabel" Text="WHAT TO CHECK WHEN IT FAILS (ONE PER LINE)" />
+                        <TextBox Classes="field" FontSize="13" AcceptsReturn="True" MinHeight="70"
+                                 Text="{Binding CheckSteps, Mode=TwoWay}" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Ports, with the room the rail never had -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*">
+                <TextBlock Grid.Row="0" Classes="fieldLabel" Text="START FROM A TEMPLATE" />
+                <Grid Grid.Row="1" ColumnDefinitions="*,9,Auto" Margin="0,0,0,10">
+                    <ComboBox ItemsSource="{Binding Templates}" SelectedItem="{Binding Template, Mode=TwoWay}"
+                              HorizontalAlignment="Stretch" FontSize="13" />
+                    <Button Grid.Column="2" Classes="quiet" Content="Add its ports" Padding="11,6" FontSize="12"
+                            Command="{Binding ApplyTemplateCommand}" />
+                </Grid>
+                <StackPanel Grid.Row="2" Spacing="8" Margin="0,0,0,8">
+                    <TextBlock Classes="mono" FontSize="10.5" LetterSpacing="0.6"
+                               Foreground="{StaticResource OkBrush}"
+                               Text="{Binding TemplateReport}"
+                               IsVisible="{Binding TemplateReport, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="fieldLabel" Text="PORTS" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="quiet" Content="Add port" Padding="11,5" FontSize="12"
+                                Command="{Binding AddPortCommand}" />
+                    </Grid>
+                </StackPanel>
+                <ScrollViewer Grid.Row="3">
+                    <ItemsControl ItemsSource="{Binding Ports}" Margin="0,0,6,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:MapPortEditorViewModel">
+                                <Grid ColumnDefinitions="*,7,110,7,*,7,Auto,Auto,Auto" Margin="0,0,0,6">
+                                    <TextBox Classes="field" FontSize="13" Watermark="AES50 A"
+                                             Text="{Binding Label, Mode=TwoWay}" />
+                                    <ComboBox Grid.Column="2" ItemsSource="{Binding Sides}"
+                                              SelectedItem="{Binding Side, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch" FontSize="12" />
+                                    <TextBox Grid.Column="4" Classes="field" FontSize="12"
+                                             Watermark="detail (optional)"
+                                             Text="{Binding Detail, Mode=TwoWay}" />
+                                    <Button Grid.Column="6" Classes="quiet" Content="&#8593;" Padding="8,4" FontSize="12"
+                                            Command="{Binding $parent[ItemsControl].((vm:MapDeviceEditorViewModel)DataContext).MovePortUpCommand}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Grid.Column="7" Classes="quiet" Content="&#8595;" Padding="8,4" FontSize="12"
+                                            Command="{Binding $parent[ItemsControl].((vm:MapDeviceEditorViewModel)DataContext).MovePortDownCommand}"
+                                            CommandParameter="{Binding}" />
+                                    <Button Grid.Column="8" Classes="danger" Content="&#215;" Padding="9,4" FontSize="13"
+                                            Command="{Binding $parent[ItemsControl].((vm:MapDeviceEditorViewModel)DataContext).RemovePortCommand}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,9,Auto" Margin="0,18,0,0">
+            <TextBlock Classes="mono" FontSize="11" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextFainterBrush}"
+                       Text="NOTHING CHANGES ON THE MAP UNTIL APPLY" />
+            <Button Grid.Column="1" Classes="quiet" Content="Close without applying" Padding="15,9"
+                    Click="OnCloseClick" />
+            <Button Grid.Column="3" Classes="primary" Content="Apply changes" Padding="18,9"
+                    Click="OnApplyClick" />
+        </Grid>
+    </Grid>
+</Window>

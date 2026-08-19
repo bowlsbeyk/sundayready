@@ -123,6 +123,48 @@ public sealed class SystemMapStore
         return new List<DeviceTemplate>();
     }
 
+    /// <summary>The drop-a-file-in template tree: <c>maps/templates/&lt;maker&gt;/&lt;model&gt;/*.json</c>.</summary>
+    public string TemplatesDirectory => PathFor("templates");
+
+    /// <summary>
+    /// Every template in the folder tree, however deep. This is the filesystem face of the
+    /// community library: a church organises it as manufacturer/model folders, drops in files
+    /// from forums or future releases, and the picker simply has them. Each file parses on its
+    /// own, so one bad file costs itself and nothing else.
+    /// </summary>
+    public IReadOnlyList<DeviceTemplate> LoadTemplateFolder()
+    {
+        var found = new List<DeviceTemplate>();
+
+        try
+        {
+            if (!System.IO.Directory.Exists(TemplatesDirectory))
+            {
+                return found;
+            }
+
+            foreach (var file in System.IO.Directory
+                         .EnumerateFiles(TemplatesDirectory, "*.json", SearchOption.AllDirectories)
+                         .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    found.AddRange(DeviceTemplateReader.Parse(File.ReadAllText(file)));
+                }
+                catch (Exception)
+                {
+                    // This file loses; the folder keeps working.
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // An unreadable share must not take the maps down.
+        }
+
+        return found;
+    }
+
     public void SaveTemplates(IEnumerable<DeviceTemplate> templates)
     {
         System.IO.Directory.CreateDirectory(_directory);

@@ -49,6 +49,44 @@ public sealed class DeviceTemplateExport
     public List<DeviceTemplate> Templates { get; set; } = new();
 }
 
+/// <summary>Reads template JSON in any of the three shapes people actually write.</summary>
+public static class DeviceTemplateReader
+{
+    /// <summary>
+    /// Bundle, bare array, or a single template — each attempt insulated, because an
+    /// array-shaped file makes the bundle parse throw and that must not take the fallbacks
+    /// down with it. Returns an empty list rather than throwing: a community folder with one
+    /// bad file in it should lose that file, not the folder.
+    /// </summary>
+    public static List<DeviceTemplate> Parse(string json)
+    {
+        static T? Try<T>(string text) where T : class
+        {
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<T>(text, ChecklistLoader.JsonOptions);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        var bundle = Try<DeviceTemplateExport>(json);
+
+        var list = bundle is { Templates.Count: > 0 }
+            ? bundle.Templates
+            : Try<List<DeviceTemplate>>(json)
+                ?? (Try<DeviceTemplate>(json) is { Ports.Count: > 0 } one
+                    ? new List<DeviceTemplate> { one }
+                    : new List<DeviceTemplate>());
+
+        return list
+            .Where(t => !string.IsNullOrWhiteSpace(t.Name) && t.Ports.Count > 0)
+            .ToList();
+    }
+}
+
 /// <summary>
 /// The built-in catalogue. Curated for the gear that actually turns up in church A/V closets, and
 /// deliberately small: a template that is wrong for your unit is worse than typing, so these stay

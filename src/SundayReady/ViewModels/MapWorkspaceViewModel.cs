@@ -442,9 +442,32 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
     private IReadOnlyList<DeviceTemplate> _customTemplates = Array.Empty<DeviceTemplate>();
 
-    /// <summary>Built-ins first, then the church's own library — the editor's picker order.</summary>
-    public IReadOnlyList<DeviceTemplate> AllTemplates =>
-        DeviceTemplates.BuiltIn.Concat(_customTemplates).ToList();
+    private IReadOnlyList<DeviceTemplate> _folderTemplates = Array.Empty<DeviceTemplate>();
+
+    /// <summary>
+    /// Built-ins, then the saved library, then the folder tree — first name wins, so a folder
+    /// file can never silently shadow something already in the picker.
+    /// </summary>
+    public IReadOnlyList<DeviceTemplate> AllTemplates
+    {
+        get
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var all = new List<DeviceTemplate>();
+
+            foreach (var template in DeviceTemplates.BuiltIn
+                         .Concat(_customTemplates)
+                         .Concat(_folderTemplates))
+            {
+                if (seen.Add(template.Name))
+                {
+                    all.Add(template);
+                }
+            }
+
+            return all;
+        }
+    }
     private DispatcherTimer? _timer;
     private bool _polling;
     private bool _disposed;
@@ -562,6 +585,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
 
         _types = _store.LoadTypes();
         _customTemplates = _store.LoadTemplates();
+        _folderTemplates = _store.LoadTemplateFolder();
         _maps.Clear();
         Maps.Clear();
         MapFiles.Clear();
@@ -1641,6 +1665,26 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     public bool ShowPortsHint => Current is { } map
         && map.Devices.Count > 0
         && map.Devices.All(d => d.Model.Ports.Count == 0);
+
+    /// <summary>
+    /// Canvas zoom. A 29-device rig at 100% turns port tiles into specks on a 1080p booth
+    /// monitor; zooming is what makes them clickable there. Layout-transformed rather than
+    /// render-transformed, so the scrollbars stay honest.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ZoomLabel))]
+    private double _zoom = 1.0;
+
+    public string ZoomLabel => $"{Zoom:P0}";
+
+    [RelayCommand]
+    private void ZoomIn() => Zoom = Math.Min(2.0, Math.Round(Zoom * 1.15, 2));
+
+    [RelayCommand]
+    private void ZoomOut() => Zoom = Math.Max(0.4, Math.Round(Zoom / 1.15, 2));
+
+    [RelayCommand]
+    private void ZoomReset() => Zoom = 1.0;
 
     /// <summary>Snap while dragging: neighbours first, then the grid. Off for freehand purists.</summary>
     [ObservableProperty]
