@@ -15,17 +15,38 @@ public sealed record DeviceTemplatePort(string Label, string Side, string? Detai
 /// </summary>
 public sealed class DeviceTemplate
 {
-    public required string Id { get; init; }
+    public string Id { get; set; } = string.Empty;
 
-    public required string Name { get; init; }
+    public string Name { get; set; } = string.Empty;
 
-    public string Kind { get; init; } = MapDeviceKinds.Device;
+    public string Kind { get; set; } = MapDeviceKinds.Device;
 
-    public string? DominantType { get; init; }
+    public string? DominantType { get; set; }
 
-    public bool Hub { get; init; }
+    public bool Hub { get; set; }
 
-    public required IReadOnlyList<DeviceTemplatePort> Ports { get; init; }
+    public List<DeviceTemplatePort> Ports { get; set; } = new();
+}
+
+/// <summary>
+/// What a template share file carries: one or more templates, and who made them.
+/// <para>
+/// This is the community format. Somebody with a Yamaha desk types its port list once, saves it
+/// as a template, exports this file, and posts it — and every church with the same desk imports
+/// it instead of typing. Import never overwrites: a template whose name is already known is
+/// skipped, because "your import replaced my template" is how sharing stops.
+/// </para>
+/// </summary>
+public sealed class DeviceTemplateExport
+{
+    public string Format { get; set; } = "sundayready-templates";
+
+    public int Version { get; set; } = 1;
+
+    /// <summary>Free text about who made it — a name, a church, a forum handle.</summary>
+    public string? ExportedBy { get; set; }
+
+    public List<DeviceTemplate> Templates { get; set; } = new();
 }
 
 /// <summary>
@@ -45,7 +66,7 @@ public static class DeviceTemplates
         }
     }
 
-    private static IReadOnlyList<DeviceTemplatePort> Build(params IEnumerable<DeviceTemplatePort>[] groups) =>
+    private static List<DeviceTemplatePort> Build(params IEnumerable<DeviceTemplatePort>[] groups) =>
         groups.SelectMany(g => g).ToList();
 
     public static IReadOnlyList<DeviceTemplate> BuiltIn { get; } = new[]
@@ -158,7 +179,7 @@ public static class DeviceTemplates
             Name = "Presentation PC (ProPresenter / slides)",
             Kind = MapDeviceKinds.Computer,
             DominantType = "cat6",
-            Ports = new[]
+            Ports = new List<DeviceTemplatePort>
             {
                 new DeviceTemplatePort("NDI OUT", MapPortSides.Out, Type: "ndi"),
                 new DeviceTemplatePort("HDMI OUT", MapPortSides.Out, Type: "hdmi"),

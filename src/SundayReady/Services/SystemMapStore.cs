@@ -95,6 +95,42 @@ public sealed class SystemMapStore
         return types;
     }
 
+    public const string TemplatesFileName = "device-templates.json";
+
+    /// <summary>
+    /// The church's own template library — community imports and save-as-template both land
+    /// here. Lives beside the maps so every station shares one library, same as the types.
+    /// </summary>
+    public IReadOnlyList<DeviceTemplate> LoadTemplates()
+    {
+        try
+        {
+            var path = PathFor(TemplatesFileName);
+
+            if (File.Exists(path))
+            {
+                return JsonSerializer.Deserialize<List<DeviceTemplate>>(
+                        File.ReadAllText(path), ChecklistLoader.JsonOptions)
+                    ?.Where(t => !string.IsNullOrWhiteSpace(t.Name) && t.Ports.Count > 0)
+                    .ToList() ?? new List<DeviceTemplate>();
+            }
+        }
+        catch (Exception)
+        {
+            // A broken library file must not take the maps down; the built-ins still work.
+        }
+
+        return new List<DeviceTemplate>();
+    }
+
+    public void SaveTemplates(IEnumerable<DeviceTemplate> templates)
+    {
+        System.IO.Directory.CreateDirectory(_directory);
+        File.WriteAllText(
+            PathFor(TemplatesFileName),
+            JsonSerializer.Serialize(templates.ToList(), ChecklistWriter.WriteOptions));
+    }
+
     public void SaveTypes(IEnumerable<MapConnectionType> customTypes)
     {
         System.IO.Directory.CreateDirectory(_directory);

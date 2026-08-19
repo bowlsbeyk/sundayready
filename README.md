@@ -478,7 +478,14 @@ and drag them into the order they sit down the edge of the box. Better: **start 
 pick *Behringer X32* and 51 correctly-named sockets land in one click, editable like anything you
 typed. Templates are additive and never overwrite a name or a kind you already chose; the built-in
 catalogue covers the consoles, stage boxes, switches and interfaces that actually turn up in church
-A/V closets. Renaming a socket never breaks the
+A/V closets.
+
+**Community templates.** The catalogue is not closed. Type a device's ports once and press
+**Save as template** — it lands in your church's shared library and every station's picker offers
+it. **Export templates…** writes the library to one file; **Import templates…** brings in a file
+somebody else posted. Import never overwrites: templates whose names you already have are skipped,
+so pulling in a community pack can only ever add. This is the loop that means the second church
+with a Yamaha TF1 never types its port list — somebody already did. Renaming a socket never breaks the
 runs landing on it; removing one lets its runs float back onto the edge rather than deleting cable
 that still exists in the building.
 

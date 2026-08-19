@@ -437,6 +437,12 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     private readonly Stack<SystemMapViewModel> _back = new();
 
     private IReadOnlyList<MapConnectionType> _types = MapConnectionTypes.BuiltIn;
+
+    private IReadOnlyList<DeviceTemplate> _customTemplates = Array.Empty<DeviceTemplate>();
+
+    /// <summary>Built-ins first, then the church's own library — the editor's picker order.</summary>
+    public IReadOnlyList<DeviceTemplate> AllTemplates =>
+        DeviceTemplates.BuiltIn.Concat(_customTemplates).ToList();
     private DispatcherTimer? _timer;
     private bool _polling;
     private bool _disposed;
@@ -553,6 +559,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         var openFile = Current?.FileName;
 
         _types = _store.LoadTypes();
+        _customTemplates = _store.LoadTemplates();
         _maps.Clear();
         Maps.Clear();
         MapFiles.Clear();
@@ -717,7 +724,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     private void RefreshEditors()
     {
         DeviceEditor = IsEditing && SelectedDevice is { } device
-            ? new MapDeviceEditorViewModel(device.Model, _registry, _types, MapFiles)
+            ? new MapDeviceEditorViewModel(device.Model, _registry, _types, MapFiles, AllTemplates)
             : null;
 
         ConnectionEditor = IsEditing && SelectedConnection is { } connection
@@ -1831,6 +1838,188 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             map.RefreshPorts();
             RebuildLegend();
         }
+    }
+
+    /// <summary>
+    /// Turns the selected device's editor state into a library template, so a port list typed
+    /// once — or imported once — never has to be typed again. Skips silently-similar names
+    /// by suffixing rather than refusing: two Yamahas with different port counts are both real.
+    /// </summary>
+    [RelayCommand]
+    private void SaveAsTemplate()
+    {
+        if (DeviceEditor is not { } editor)
+        {
+            return;
+        }
+
+        var template = editor.ToTemplate();
+
+        if (template.Ports.Count == 0)
+        {
+            Status = "Give the device some ports first — a template with none saves nobody typing.";
+            return;
+        }
+
+        var taken = AllTemplates.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (taken.Contains(template.Name))
+        {
+            var n = 2;
+            while (taken.Contains($"{template.Name} ({n})"))
+            {
+                n++;
+            }
+
+            template.Name = $"{template.Name} ({n})";
+        }
+
+        try
+        {
+            _store.SaveTemplates(_customTemplates.Append(template));
+        }
+        catch (Exception ex)
+        {
+            Status = $"Could not save the template: {ex.Message}";
+            return;
+        }
+
+        _customTemplates = _store.LoadTemplates();
+
+        // NOT RefreshEditors(): that rebuilds the editor from the model, and the port rows the
+        // operator just typed live only in the editor until Apply - a rebuild here would eat
+        // exactly the work they just asked to keep.
+        editor.OfferTemplate(template);
+
+        Status = $"Saved \"{template.Name}\" to the template library "
+            + $"({template.Ports.Count} ports). Every station sees it.";
+    }
+
+    /// <summary>
+    /// Writes the church's own template library to one file — the community share. Returns an
+    /// error sentence, or null on success.
+    /// </summary>
+    public string? ExportTemplates(string path)
+    {
+        if (_customTemplates.Count == 0)
+        {
+            return "The library is empty. Save a device as a template first — built-ins ship "
+                + "with the app, so there is nothing of yours to share yet.";
+        }
+
+        try
+        {
+            var bundle = new DeviceTemplateExport
+            {
+                Templates = _customTemplates.ToList(),
+                ExportedBy = Environment.UserName,
+            };
+
+            File.WriteAllText(path, JsonSerializer.Serialize(bundle, ChecklistWriter.WriteOptions));
+            Status = $"Exported {_customTemplates.Count} template{(_customTemplates.Count == 1 ? "" : "s")} "
+                + $"to {Path.GetFileName(path)}.";
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"Could not export: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Brings community templates in. Never overwrites: a template whose name is already known —
+    /// built-in or library — is skipped, and the status says how many came in versus how many
+    /// were already here.
+    /// </summary>
+    public string? ImportTemplates(string path)
+    {
+        string text;
+
+        try
+        {
+            text = File.ReadAllText(path);
+        }
+        catch (Exception ex)
+        {
+            return $"Could not read that file: {ex.Message}";
+        }
+
+        // Three shapes, most-specific first, each attempt insulated: an array-shaped file makes
+        // the bundle deserialize throw, and that must fall through to the list attempt rather
+        // than fail the whole import.
+        static T? Try<T>(string json) where T : class
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(json, ChecklistLoader.JsonOptions);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        var bundle = Try<DeviceTemplateExport>(text);
+
+        if (bundle is null || bundle.Templates.Count == 0)
+        {
+            if (Try<List<DeviceTemplate>>(text) is { Count: > 0 } list)
+            {
+                bundle = new DeviceTemplateExport { Templates = list };
+            }
+            else if (Try<DeviceTemplate>(text) is { Ports.Count: > 0 } one)
+            {
+                bundle = new DeviceTemplateExport { Templates = { one } };
+            }
+        }
+
+        var incoming = bundle?.Templates
+            .Where(t => !string.IsNullOrWhiteSpace(t.Name) && t.Ports.Count > 0)
+            .ToList();
+
+        if (incoming is not { Count: > 0 })
+        {
+            return "That file does not contain any device templates.";
+        }
+
+        var known = AllTemplates.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var fresh = new List<DeviceTemplate>();
+
+        foreach (var template in incoming)
+        {
+            if (known.Add(template.Name))
+            {
+                if (string.IsNullOrWhiteSpace(template.Id))
+                {
+                    template.Id = SystemMapStore.NewId(template.Name);
+                }
+
+                fresh.Add(template);
+            }
+        }
+
+        if (fresh.Count == 0)
+        {
+            Status = "Every template in that file is already here. Nothing was changed.";
+            return null;
+        }
+
+        try
+        {
+            _store.SaveTemplates(_customTemplates.Concat(fresh));
+        }
+        catch (Exception ex)
+        {
+            return $"Could not import: {ex.Message}";
+        }
+
+        _customTemplates = _store.LoadTemplates();
+        RefreshEditors();
+
+        var skipped = incoming.Count - fresh.Count;
+        Status = $"Imported {fresh.Count} template{(fresh.Count == 1 ? "" : "s")}"
+            + (skipped > 0 ? $" ({skipped} already here, left alone)." : ".");
+        return null;
     }
 
     /// <summary>

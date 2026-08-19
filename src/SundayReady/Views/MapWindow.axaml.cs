@@ -319,6 +319,56 @@ public partial class MapWindow : Window
         }
     }
 
+    private async void OnExportTemplatesClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { } workspace || StorageProvider is not { } storage)
+        {
+            return;
+        }
+
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export template library",
+            SuggestedFileName = "device-templates.sundayready.json",
+            FileTypeChoices = new[]
+            {
+                new FilePickerFileType("SundayReady templates")
+                {
+                    Patterns = new[] { "*.sundayready.json", "*.json" },
+                },
+            },
+        });
+
+        if (file?.TryGetLocalPath() is { } path && workspace.ExportTemplates(path) is { } error)
+        {
+            workspace.Status = error;
+        }
+    }
+
+    private async void OnImportTemplatesClick(object? sender, RoutedEventArgs e)
+    {
+        if (Workspace is not { } workspace || StorageProvider is not { } storage)
+        {
+            return;
+        }
+
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Import templates",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("SundayReady templates") { Patterns = new[] { "*.json" } },
+            },
+        });
+
+        if (files.Count == 1 && files[0].TryGetLocalPath() is { } path
+            && workspace.ImportTemplates(path) is { } error)
+        {
+            workspace.Status = error;
+        }
+    }
+
     // ---------------------------------------------------------------- ports
 
     /// <summary>

@@ -171,10 +171,12 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
         MapDevice model,
         VerifierRegistry registry,
         IEnumerable<MapConnectionType> types,
-        IEnumerable<string> mapFiles)
+        IEnumerable<string> mapFiles,
+        IEnumerable<DeviceTemplate>? templates = null)
         : base(model.Verify, registry)
     {
         Model = model;
+        _templates = (templates ?? DeviceTemplates.BuiltIn).ToList();
 
         foreach (var kind in MapDeviceKinds.All)
         {
@@ -215,11 +217,45 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
         }
 
         Templates.Add(NoTemplate);
-        foreach (var template in DeviceTemplates.BuiltIn)
+        foreach (var template in _templates)
         {
             Templates.Add(template.Name);
         }
     }
+
+    private readonly List<DeviceTemplate> _templates;
+
+    /// <summary>
+    /// Adds a just-saved template to this live editor's picker without rebuilding the editor —
+    /// a rebuild would re-read the model and eat any port rows not yet applied.
+    /// </summary>
+    public void OfferTemplate(DeviceTemplate template)
+    {
+        _templates.Add(template);
+        Templates.Add(template.Name);
+    }
+
+    /// <summary>
+    /// This editor's state as a shareable template — the community exporter's raw material.
+    /// The name comes from the device's label because that is what the operator called the
+    /// thing; the id is fresh so two people templating the same desk never collide.
+    /// </summary>
+    public DeviceTemplate ToTemplate() => new()
+    {
+        Id = SystemMapStore.NewId(Label),
+        Name = string.IsNullOrWhiteSpace(Label) ? "Untitled device" : Label.Trim(),
+        Kind = Kind,
+        DominantType = DominantType == "(none)" ? null : DominantType,
+        Hub = Hub,
+        Ports = Ports
+            .Where(p => !string.IsNullOrWhiteSpace(p.Label))
+            .Select(p => new DeviceTemplatePort(
+                p.Label.Trim(), p.Side, BlankDetail(p.Detail), p.Type))
+            .ToList(),
+    };
+
+    private static string? BlankDetail(string detail) =>
+        string.IsNullOrWhiteSpace(detail) ? null : detail.Trim();
 
     public const string NoTemplate = "(pick a template)";
 
@@ -241,7 +277,7 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
     [RelayCommand]
     private void ApplyTemplate()
     {
-        var template = DeviceTemplates.BuiltIn.FirstOrDefault(t => t.Name == Template);
+        var template = _templates.FirstOrDefault(t => t.Name == Template);
 
         if (template is null)
         {

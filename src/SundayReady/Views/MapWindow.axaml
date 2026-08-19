@@ -1045,12 +1045,17 @@
                                                Text="{Binding TemplateReport}"
                                                IsVisible="{Binding TemplateReport, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
 
-                                    <Grid ColumnDefinitions="*,Auto">
+                                    <Grid ColumnDefinitions="*,Auto,7,Auto">
                                         <TextBlock Classes="fieldLabel" Text="PORTS" VerticalAlignment="Center" />
                                         <Button Grid.Column="1" Classes="quiet" Content="Add port"
                                                 Padding="11,5" FontSize="12"
                                                 Command="{Binding AddPortCommand}"
                                                 ToolTip.Tip="A named socket on this box. Runs can land on it, and you can click it on the map to wire it." />
+                                        <Button Grid.Column="3" Classes="quiet" Content="Save as template"
+                                                Padding="11,5" FontSize="12"
+                                                IsVisible="{Binding HasPorts}"
+                                                Command="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).SaveAsTemplateCommand}"
+                                                ToolTip.Tip="Puts this device's ports, kind and accent into the template library, so the next one of these is one click. Export the library to share it with other churches." />
                                     </Grid>
                                     <TextBlock FontSize="12" TextWrapping="Wrap"
                                                Foreground="{StaticResource TextFaintBrush}"
@@ -1300,6 +1305,14 @@
                                 <Button Grid.Column="2" Classes="quiet" Content="Import…" Padding="13,7" FontSize="12.5"
                                         Click="OnImportClick"
                                         ToolTip.Tip="Bring in a map somebody exported. It arrives as a new map — nothing here is overwritten." />
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,9,Auto,*">
+                                <Button Classes="quiet" Content="Export templates…" Padding="13,7" FontSize="12.5"
+                                        Click="OnExportTemplatesClick"
+                                        ToolTip.Tip="Your template library as one file — post it, and every church with the same gear stops typing port lists." />
+                                <Button Grid.Column="2" Classes="quiet" Content="Import templates…" Padding="13,7" FontSize="12.5"
+                                        Click="OnImportTemplatesClick"
+                                        ToolTip.Tip="Bring in templates the community made. Ones you already have are skipped, never replaced." />
                             </Grid>
                         </StackPanel>
                     </Border>
