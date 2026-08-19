@@ -1530,6 +1530,56 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         RefreshEditors();
     }
 
+    /// <summary>
+    /// An editor for a component that does not exist yet — the component editor opened with
+    /// nothing selected. The device is real but unattached: shape it, pick from the library,
+    /// and it only joins the map when Apply says so. Closing the window walks away clean.
+    /// </summary>
+    public MapDeviceEditorViewModel CreateDetachedEditor() => new(
+        new MapDevice
+        {
+            Id = SystemMapStore.NewId("device"),
+            Label = "New device",
+            Tier = MapTiers.Inferred,
+        },
+        _registry,
+        _types,
+        MapFiles,
+        AllTemplates);
+
+    /// <summary>Lands a detached editor's component on the map, as one undoable step.</summary>
+    public void AddDeviceFromEditor(MapDeviceEditorViewModel editor, double x, double y)
+    {
+        if (Current is not { } map)
+        {
+            return;
+        }
+
+        Checkpoint("adding a device");
+        editor.Apply();
+
+        var model = editor.Model;
+        model.X = Math.Max(0, Math.Round(x));
+        model.Y = Math.Max(0, Math.Round(y));
+
+        if (string.IsNullOrWhiteSpace(model.Label))
+        {
+            model.Label = "New device";
+        }
+
+        map.Model.Devices.Add(model);
+
+        var rebuilt = RebuildFromModel(map);
+        IsEditing = true;
+
+        if (rebuilt.Devices.FirstOrDefault(d => d.Model.Id == model.Id) is { } vm)
+        {
+            Select(vm);
+        }
+
+        Status = $"Added {model.Label} to the map. Drag it where it belongs.";
+    }
+
     public MapDeviceViewModel? AddDevice(double x, double y)
     {
         if (Current is not { } map)

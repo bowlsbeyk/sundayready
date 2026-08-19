@@ -276,9 +276,20 @@ public partial class MapWindow : Window
             return;
         }
 
+        // No selection is not an error — it is the create-a-component gesture, exactly like a
+        // CAD package: open the editor empty, shape the part (or load one from the library),
+        // and Apply places it on the map. A selected box edits that box, as before.
         if (workspace.SelectedDevice is not { } device)
         {
-            workspace.Status = "Click a box first — then the component editor opens it.";
+            var detached = workspace.CreateDetachedEditor();
+            var origin = CanvasScroll.Offset;
+
+            new DeviceEditorWindow
+            {
+                DataContext = detached,
+                ApplyRequested = () => workspace.AddDeviceFromEditor(
+                    detached, origin.X + 120, origin.Y + 120),
+            }.Show(this);
             return;
         }
 
