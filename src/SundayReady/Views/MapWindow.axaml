@@ -852,7 +852,7 @@
                                                 Click="OnLegendRowClick">
                                             <Grid ColumnDefinitions="40,12,*,Auto">
                                                 <!-- A live key, not a static swatch. -->
-                                                <views:WireSample Grid.Column="0" Width="40" Height="12"
+                                                <views:WireSample Grid.Column="0" Width="40" Height="12" Frozen="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).FreezeWires}"
                                                                   Type="{Binding Type}" />
                                                 <TextBlock Grid.Column="2" Text="{Binding Name}"
                                                            FontSize="13" FontWeight="Medium"
@@ -873,7 +873,7 @@
 
                             <Grid ColumnDefinitions="40,12,*" Margin="8,4,8,0"
                                   IsVisible="{Binding Current.HasLinksDown, FallbackValue=False}">
-                                <views:WireSample Grid.Column="0" Width="40" Height="12"
+                                <views:WireSample Grid.Column="0" Width="40" Height="12" Frozen="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).FreezeWires}"
                                                   IsFailSample="True" />
                                 <TextBlock Grid.Column="2" Text="Link down" FontSize="13"
                                            FontWeight="Medium"

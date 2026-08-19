@@ -42,6 +42,9 @@ public abstract partial class MapProbeViewModel : ObservableObject
         }
     }
 
+    /// <summary>When the last attempt completed, pass or fail. Drives the poll blip; not persisted.</summary>
+    public DateTime? LastPolledAt { get; private set; }
+
     public VerifySpec? Verify { get; }
 
     public IVerifier? Verifier { get; }
@@ -98,6 +101,7 @@ public abstract partial class MapProbeViewModel : ObservableObject
         }
 
         LastResult = outcome.Result;
+        LastPolledAt = DateTime.UtcNow;
 
         if (outcome.Passed)
         {
@@ -792,6 +796,152 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
             : (EdgePoint(From, false, FromOffset), EdgePoint(To, true, ToOffset));
     }
 
+    /// <summary>The bézier's fixed points, shared by every geometry this wire builds.</summary>
+    private (Point Start, Point C1, Point C2, Point End) CurvePoints()
+    {
+        var (start, end) = Ports();
+        var reach = Math.Max(52, Math.Abs(end.X - start.X) * 0.45);
+        return (start, new Point(start.X + reach, start.Y), new Point(end.X - reach, end.Y), end);
+    }
+
+    private const int FlattenSamples = 24;
+
+    private Point[]? _flat;
+    private double _flatLength;
+    private Geometry? _offsetPlus;
+    private Geometry? _offsetMinus;
+
+    /// <summary>The curve as ~24 points. Cached; invalidated with the geometry.</summary>
+    private Point[] Flatten()
+    {
+        if (_flat is not null)
+        {
+            return _flat;
+        }
+
+        var (p0, p1, p2, p3) = CurvePoints();
+        var points = new Point[FlattenSamples + 1];
+        _flatLength = 0;
+
+        for (var i = 0; i <= FlattenSamples; i++)
+        {
+            var t = (double)i / FlattenSamples;
+            var u = 1 - t;
+            points[i] = new Point(
+                (u * u * u * p0.X) + (3 * u * u * t * p1.X) + (3 * u * t * t * p2.X) + (t * t * t * p3.X),
+                (u * u * u * p0.Y) + (3 * u * u * t * p1.Y) + (3 * u * t * t * p2.Y) + (t * t * t * p3.Y));
+
+            if (i > 0)
+            {
+                var dx = points[i].X - points[i - 1].X;
+                var dy = points[i].Y - points[i - 1].Y;
+                _flatLength += Math.Sqrt((dx * dx) + (dy * dy));
+            }
+        }
+
+        _flat = points;
+        return points;
+    }
+
+    /// <summary>Approximate path length, for animations that travel the whole run once.</summary>
+    public double PathLength
+    {
+        get
+        {
+            Flatten();
+            return _flatLength;
+        }
+    }
+
+    /// <summary>
+    /// The wire's path shifted along its own normal, for the duplex pattern's two trains.
+    /// <para>
+    /// Offsetting the geometry rather than translating the drawing context is what keeps the two
+    /// trains a constant distance apart on a steep curve — a vertical translate slides them along
+    /// the path instead of across it, and mid-way through a tall S-bend they merged into exactly
+    /// the counter-moving-dashes-on-one-line effect the handoff forbids. Flatten-and-offset is
+    /// used instead of offsetting the bézier analytically because it is stable on any curvature
+    /// and will work unchanged when the floorplan feeds in orthogonal runs.
+    /// </para>
+    /// </summary>
+    public Geometry OffsetGeometry(double offset)
+    {
+        if (offset > 0 && _offsetPlus is not null)
+        {
+            return _offsetPlus;
+        }
+
+        if (offset < 0 && _offsetMinus is not null)
+        {
+            return _offsetMinus;
+        }
+
+        var shifted = OffsetPoints(offset);
+        var geometry = new StreamGeometry();
+
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(shifted[0], isFilled: false);
+
+            for (var i = 1; i <= FlattenSamples; i++)
+            {
+                context.LineTo(shifted[i]);
+            }
+
+            context.EndFigure(false);
+        }
+
+        if (offset > 0)
+        {
+            _offsetPlus = geometry;
+        }
+        else
+        {
+            _offsetMinus = geometry;
+        }
+
+        return geometry;
+    }
+
+    /// <summary>
+    /// The offset polyline itself, geometry-free. Public because the maths is the part worth
+    /// testing, and building an Avalonia StreamGeometry needs a render platform a headless
+    /// test does not have.
+    /// </summary>
+    public Point[] OffsetPoints(double offset)
+    {
+        var points = Flatten();
+        var shifted = new Point[FlattenSamples + 1];
+
+        for (var i = 0; i <= FlattenSamples; i++)
+        {
+            // Tangent from neighbours: forward difference at the ends, central inside.
+            var a = points[Math.Max(0, i - 1)];
+            var b = points[Math.Min(FlattenSamples, i + 1)];
+            var tx = b.X - a.X;
+            var ty = b.Y - a.Y;
+            var mag = Math.Sqrt((tx * tx) + (ty * ty));
+
+            if (mag < 0.0001)
+            {
+                mag = 1;
+            }
+
+            shifted[i] = new Point(
+                points[i].X + (-ty / mag * offset),
+                points[i].Y + (tx / mag * offset));
+        }
+
+        return shifted;
+    }
+
+    private void InvalidateFlattened()
+    {
+        _flat = null;
+        _offsetPlus = null;
+        _offsetMinus = null;
+    }
+
     /// <summary>
     /// The handoff's curve: cubic bézier with horizontal control points, so wires converging on
     /// a hub read as a patch panel. Same-device loops bow out to the left on purpose.
@@ -834,6 +984,7 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
     /// <summary>Tells the view the curve moved - after a re-fan, or an endpoint moving.</summary>
     public void RefreshGeometry()
     {
+        InvalidateFlattened();
         OnPropertyChanged(nameof(Geometry));
         OnPropertyChanged(nameof(Midpoint));
     }
@@ -844,6 +995,7 @@ public sealed partial class MapConnectionViewModel : MapProbeViewModel
             or nameof(MapDeviceViewModel.Y)
             or nameof(MapDeviceViewModel.Centre))
         {
+            InvalidateFlattened();
             OnPropertyChanged(nameof(Geometry));
             OnPropertyChanged(nameof(Midpoint));
         }

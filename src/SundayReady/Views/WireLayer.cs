@@ -110,6 +110,66 @@ public sealed class WireLayer : Control
 
     private void Draw(DrawingContext context, MapConnectionViewModel wire, double now)
     {
+        DrawCore(context, wire, now);
+        DrawPollBlip(context, wire);
+    }
+
+    /// <summary>
+    /// The request/response pattern from the handoff's 5a: when a wire's own verifier runs, a
+    /// short blue dash travels out and a green (or red) one comes back. An overlay, not a
+    /// FlowState — it rides on top of live flow and even on top of the red alarm, because a
+    /// failing wire that is still being retried should visibly still be checked.
+    /// </summary>
+    private void DrawPollBlip(DrawingContext context, MapConnectionViewModel wire)
+    {
+        if (Frozen || wire.LastPolledAt is not { } polled)
+        {
+            return;
+        }
+
+        var age = (DateTime.UtcNow - polled).TotalSeconds;
+        var length = wire.PathLength;
+
+        if (age is < 0 or >= 1.0 || length < 30)
+        {
+            return;
+        }
+
+        // Out on the request, back on the answer.
+        double t;
+        Color colour;
+
+        if (age < 0.5)
+        {
+            t = age / 0.5;
+            colour = Color.Parse("#5aa9ff");
+        }
+        else
+        {
+            t = 1 - ((age - 0.5) / 0.5);
+            colour = wire.IsOk ? Color.Parse("#4ade9a") : Color.Parse("#ff6b52");
+        }
+
+        // Fade the first and last 60ms so the blip never pops in or out.
+        var fade = Math.Clamp(Math.Min(age / 0.06, (1.0 - age) / 0.06), 0, 1);
+
+        const double width = 3;
+        const double dashOn = 14;
+        var blip = Color.FromArgb((byte)(255 * 0.95 * fade), colour.R, colour.G, colour.B);
+
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(blip), width)
+        {
+            // One dash and a gap longer than the path: a single traveller, same technique as
+            // the flow train.
+            DashStyle = new DashStyle(
+                new[] { dashOn / width, (length * 2) / width },
+                -(t * (length - dashOn)) / width),
+            LineCap = PenLineCap.Round,
+        }, wire.Geometry);
+    }
+
+    private void DrawCore(DrawingContext context, MapConnectionViewModel wire, double now)
+    {
         var geometry = wire.Geometry;
         var type = wire.Type;
         var colour = Color.TryParse(type.Colour, out var parsed) ? parsed : Colors.Gray;
@@ -124,18 +184,7 @@ public sealed class WireLayer : Control
         {
             case "down":
             {
-                // The reserved alarm: red dashes pulsing in place, opacity .3 → .95 → .3 over
-                // 1.7s. It reads as an alarm precisely because it is the one thing not flowing.
-                var pulse = Frozen ? 0.95 : 0.3 + (0.65 * Half(now, 1.7));
-                var fail = Color.FromArgb((byte)(255 * 0.42 * dim), 0xff, 0x6b, 0x52);
-                var failPulse = Color.FromArgb((byte)(255 * pulse * dim), 0xff, 0x6b, 0x52);
-
-                context.DrawGeometry(null, new Pen(new SolidColorBrush(fail), 2.5), geometry);
-                context.DrawGeometry(null, new Pen(new SolidColorBrush(failPulse), selected ? 3.5 : 3)
-                {
-                    DashStyle = new DashStyle(new double[] { 7 / 3.0, 7 / 3.0 }, 0),
-                    LineCap = PenLineCap.Round,
-                }, geometry);
+                WireStrokes.FailPulse(context, geometry, now, Frozen, dim, selected);
                 return;
             }
 
@@ -163,6 +212,20 @@ public sealed class WireLayer : Control
             }
         }
 
+        // An unknown type is "no information", and no information must not be confusable with
+        // a wireless link: dotted and deliberately still, because the map cannot claim signal
+        // is flowing over a run whose nature it does not know.
+        if (type.Id == "unknown")
+        {
+            var grey = Color.FromArgb((byte)(255 * 0.55 * dim), colour.R, colour.G, colour.B);
+            context.DrawGeometry(null, new Pen(new SolidColorBrush(grey), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
+            {
+                DashStyle = new DashStyle(new double[] { 1 / type.StrokeWidth, 3 / type.StrokeWidth }, 0),
+                LineCap = PenLineCap.Round,
+            }, geometry);
+            return;
+        }
+
         // live —
         var phase = Frozen ? 0 : now / wire.FlowSeconds;
 
@@ -170,20 +233,18 @@ public sealed class WireLayer : Control
         {
             // No cable stroke at all: radio is present but not a physical object. Slower and
             // fainter than wired, drifting further per cycle.
-            var wl = Color.FromArgb((byte)(255 * 0.80 * dim), colour.R, colour.G, colour.B);
             var offset = -(phase * 128) / type.StrokeWidth;
 
             if (wire.IsBidirectional)
             {
-                DrawDuplexTrains(context, geometry, wl, type.StrokeWidth, 8, offset);
+                DrawDuplexTrains(context, wire, colour, 0.80 * dim, type.StrokeWidth, 8, offset);
                 return;
             }
 
-            context.DrawGeometry(null, new Pen(new SolidColorBrush(wl), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
-            {
-                DashStyle = new DashStyle(new double[] { 8 / type.StrokeWidth, 8 / type.StrokeWidth }, offset),
-                LineCap = PenLineCap.Round,
-            }, geometry);
+            WireStrokes.Train(
+                context, geometry, colour,
+                selected ? type.StrokeWidth + 1 : type.StrokeWidth,
+                8, 8, offset, 0.80 * dim);
             return;
         }
 
@@ -193,26 +254,19 @@ public sealed class WireLayer : Control
         var cableWidth = wire.IsBidirectional
             ? Math.Max(3.5, type.StrokeWidth + 1)
             : selected ? type.StrokeWidth + 1 : type.StrokeWidth;
-        var cable = Color.FromArgb((byte)(255 * cableOpacity * dim), colour.R, colour.G, colour.B);
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(cable), cableWidth), geometry);
-
-        var signal = Color.FromArgb((byte)(255 * 1.00 * dim), colour.R, colour.G, colour.B);
+        WireStrokes.Cable(context, geometry, colour, cableWidth, cableOpacity * dim);
 
         if (wire.IsBidirectional)
         {
-            DrawDuplexTrains(context, geometry, signal, 2, 2, -(phase * 64) / 2);
+            DrawDuplexTrains(context, wire, colour, 1.00 * dim, 2, 2, -(phase * 64) / 2);
             return;
         }
 
-        // 2. The signal — dash "2 18" drifting -64 per cycle. Avalonia's dash units are
-        //    multiples of stroke width, so the handoff's pixel values divide by it.
-        var signalOffset = -(phase * 64) / type.StrokeWidth;
-
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(signal), selected ? type.StrokeWidth + 1 : type.StrokeWidth)
-        {
-            DashStyle = new DashStyle(new double[] { 2 / type.StrokeWidth, 18 / type.StrokeWidth }, signalOffset),
-            LineCap = PenLineCap.Round,
-        }, geometry);
+        // 2. The signal — dash "2 18" drifting -64 per cycle.
+        WireStrokes.Train(
+            context, geometry, colour,
+            selected ? type.StrokeWidth + 1 : type.StrokeWidth,
+            2, 18, -(phase * 64) / type.StrokeWidth, 1.00 * dim);
     }
 
     /// <summary>
@@ -228,40 +282,24 @@ public sealed class WireLayer : Control
     /// </summary>
     private static void DrawDuplexTrains(
         DrawingContext context,
-        Geometry geometry,
+        MapConnectionViewModel wire,
         Color colour,
+        double opacity,
         double strokeWidth,
         double dashOn,
         double offset)
     {
-        var brush = new SolidColorBrush(colour);
         var gap = dashOn == 2 ? 18d : dashOn;
 
-        using (context.PushTransform(Matrix.CreateTranslation(0, -3)))
-        {
-            context.DrawGeometry(null, new Pen(brush, strokeWidth)
-            {
-                DashStyle = new DashStyle(new[] { dashOn / strokeWidth, gap / strokeWidth }, offset),
-                LineCap = PenLineCap.Round,
-            }, geometry);
-        }
-
-        using (context.PushTransform(Matrix.CreateTranslation(0, 3)))
-        {
-            context.DrawGeometry(null, new Pen(brush, strokeWidth)
-            {
-                DashStyle = new DashStyle(new[] { dashOn / strokeWidth, gap / strokeWidth }, -offset),
-                LineCap = PenLineCap.Round,
-            }, geometry);
-        }
+        // Each train rides a copy of the path shifted along its own NORMAL. The previous
+        // vertical context-translate held only where the curve ran horizontal; through the
+        // middle of a tall S-bend it slid the trains along the path instead of across it and
+        // they merged into what read as a fault. The offset geometries are cached on the wire
+        // and rebuilt only on layout change, so nothing here allocates geometry per frame.
+        WireStrokes.Train(context, wire.OffsetGeometry(-3), colour, strokeWidth, dashOn, gap, offset, opacity);
+        WireStrokes.Train(context, wire.OffsetGeometry(3), colour, strokeWidth, dashOn, gap, -offset, opacity);
     }
 
-    /// <summary>A 0→1→0 triangle wave with the given period — the fail pulse.</summary>
-    private static double Half(double now, double period)
-    {
-        var t = now % period / period;
-        return t < 0.5 ? t * 2 : (1 - t) * 2;
-    }
 }
 
 /// <summary>
@@ -275,6 +313,9 @@ public sealed class WireSample : Control
 
     public static readonly StyledProperty<bool> IsFailSampleProperty =
         AvaloniaProperty.Register<WireSample, bool>(nameof(IsFailSample));
+
+    public static readonly StyledProperty<bool> FrozenProperty =
+        AvaloniaProperty.Register<WireSample, bool>(nameof(Frozen));
 
     private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     private System.IDisposable? _frameTimer;
@@ -291,13 +332,27 @@ public sealed class WireSample : Control
         set => SetValue(IsFailSampleProperty, value);
     }
 
+    /// <summary>
+    /// Follows the map's freeze setting. A frozen map with an animating legend defeats the
+    /// setting on exactly the slow booth PCs it exists for.
+    /// </summary>
+    public bool Frozen
+    {
+        get => GetValue(FrozenProperty);
+        set => SetValue(FrozenProperty, value);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         _frameTimer = Avalonia.Threading.DispatcherTimer.Run(
             () =>
             {
-                InvalidateVisual();
+                if (!Frozen)
+                {
+                    InvalidateVisual();
+                }
+
                 return true;
             },
             TimeSpan.FromMilliseconds(60));
@@ -314,16 +369,13 @@ public sealed class WireSample : Control
     {
         var y = Bounds.Height / 2;
         var line = new LineGeometry(new Point(1, y), new Point(Bounds.Width - 1, y));
-        var now = _clock.Elapsed.TotalSeconds;
+        var now = Frozen ? 0 : _clock.Elapsed.TotalSeconds;
 
+        // The same strokes the map draws, via the same helpers - the legend is a key, not an
+        // approximation of one.
         if (IsFailSample)
         {
-            var pulse = 0.3 + (0.65 * (now % 1.7 / 1.7 < 0.5 ? now % 1.7 / 1.7 * 2 : (1 - (now % 1.7 / 1.7)) * 2));
-            context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * pulse), 0xff, 0x6b, 0x52)), 3)
-            {
-                DashStyle = new DashStyle(new double[] { 7 / 3.0, 7 / 3.0 }, 0),
-                LineCap = PenLineCap.Round,
-            }, line);
+            WireStrokes.FailPulse(context, line, now, Frozen);
             return;
         }
 
@@ -334,19 +386,13 @@ public sealed class WireSample : Control
 
         if (type.Wireless)
         {
-            context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.80), colour.R, colour.G, colour.B)), type.StrokeWidth)
-            {
-                DashStyle = new DashStyle(new double[] { 8 / type.StrokeWidth, 8 / type.StrokeWidth }, -(now / 6.6 * 128) / type.StrokeWidth),
-                LineCap = PenLineCap.Round,
-            }, line);
+            WireStrokes.Train(context, line, colour, type.StrokeWidth,
+                8, 8, -(now / 6.6 * 128) / type.StrokeWidth, 0.80);
             return;
         }
 
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 0.36), colour.R, colour.G, colour.B)), type.StrokeWidth), line);
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(255 * 1.00), colour.R, colour.G, colour.B)), type.StrokeWidth)
-        {
-            DashStyle = new DashStyle(new double[] { 2 / type.StrokeWidth, 18 / type.StrokeWidth }, -(now / type.FlowSeconds * 64) / type.StrokeWidth),
-            LineCap = PenLineCap.Round,
-        }, line);
+        WireStrokes.Cable(context, line, colour, type.StrokeWidth, 0.36);
+        WireStrokes.Train(context, line, colour, type.StrokeWidth,
+            2, 18, -(now / type.FlowSeconds * 64) / type.StrokeWidth, 1.00);
     }
 }

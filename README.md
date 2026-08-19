@@ -314,7 +314,7 @@ you: it is what you would tell a volunteer over the phone.
 | `internetReachable` | `host` (optional) | Host answers ICMP, or TCP/443 if ping is blocked |
 | `hostReachable` | `host`, `port` (optional) | A device answers — ping with no port, TCP connect with one |
 | `ndiSourcePresent` | `nameContains` | An NDI source with that text in its name is on the network |
-| `audioDevicePresent` | `nameContains` | **Not implemented yet** — always fails |
+| `audioDevicePresent` | `nameContains` | An active audio device whose name contains the text is present — "is the Focusrite actually plugged in" |
 
 `maxAttempts` (default 10) is how many failed polls to absorb as "still starting" before the item
 goes red. Polling runs every 5 seconds. A verifier that was passing and starts failing **un-ticks**
