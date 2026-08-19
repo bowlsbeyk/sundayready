@@ -151,6 +151,20 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
     public const double PortFirstTop = 26;
 
     /// <summary>
+    /// The pitch once an edge banks. The handoff's rule: anything over eight ports collapses
+    /// into a bar of thin segments, because a 32-channel console drawn as individual holes
+    /// would swamp the map.
+    /// </summary>
+    public const double BankPitch = 6;
+
+    /// <summary>How many ports before an edge stops drawing tiles and banks instead.</summary>
+    public const int BankThreshold = 8;
+
+    /// <summary>The vertical room one edge's ports need.</summary>
+    public static double EdgeSpan(int rows) =>
+        rows == 0 ? 0 : rows <= BankThreshold ? rows * PortPitch : rows * BankPitch;
+
+    /// <summary>
     /// This box's height. The base 64 when it declares no ports; otherwise it grows so every
     /// socket gets its 22px of edge — the handoff sizes nodes by content, not by rank.
     /// </summary>
@@ -161,7 +175,9 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
             var left = Model.Ports.Count(p => p.Side is MapPortSides.In or MapPortSides.Both);
             var right = Model.Ports.Count(p => MapPortSides.AcceptsOut(p.Side));
             var rows = Math.Max(left, right);
-            return rows == 0 ? BoxHeight : Math.Max(BoxHeight, PortFirstTop + (rows * PortPitch) + 8);
+            return rows == 0
+                ? BoxHeight
+                : Math.Max(BoxHeight, PortFirstTop + EdgeSpan(rows) + 22);
         }
     }
 
@@ -290,6 +306,31 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
 
     public bool HasPorts => Model.Ports.Count > 0;
 
+    /// <summary>
+    /// The node's meta strip: <c>24 PORTS · 14 PATCHED · 10 FREE</c>. Counts in words because a
+    /// banked edge has given up per-socket labels, and this line is what replaces them.
+    /// </summary>
+    public string PortSummary
+    {
+        get
+        {
+            var total = Model.Ports.Count;
+
+            if (total == 0)
+            {
+                return string.Empty;
+            }
+
+            var patched = LeftPortAnchors.Concat(RightPortAnchors)
+                .Where(a => a.Wires > 0)
+                .Select(a => a.PortId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            return $"{total} PORTS · {patched} PATCHED · {total - patched} FREE";
+        }
+    }
+
     /// <summary>Ports currently carrying something, per edge, for the ticks drawn on the box.</summary>
     public ObservableCollection<MapPortAnchor> RightPortAnchors { get; } = new();
 
@@ -315,6 +356,8 @@ public sealed partial class MapDeviceViewModel : MapProbeViewModel
         {
             target.Add(anchor);
         }
+
+        OnPropertyChanged(nameof(PortSummary));
     }
 
     public Point Centre => new(X + (BoxWidth / 2), Y + (Height / 2));
@@ -413,8 +456,36 @@ public readonly record struct MapPortAnchor(
     bool RightSide,
     string? Colour)
 {
-    /// <summary>Top of the 22px hit panel the tile sits in. The tile itself is centred.</summary>
-    public double Top => Offset - 11;
+    /// <summary>This edge banked: the socket draws as a thin segment instead of a tile.</summary>
+    public bool IsBanked { get; init; }
+
+    /// <summary>Hover card rows, preformatted so the view stays dumb. Null when vacant.</summary>
+    public string? CardGoesTo { get; init; }
+
+    public string? CardType { get; init; }
+
+    public string? CardRun { get; init; }
+
+    public string? CardState { get; init; }
+
+    /// <summary>The one row allowed to go red: this socket's run is actually down.</summary>
+    public bool CardStateDown { get; init; }
+
+    /// <summary>The click target's height — a full tile row, or a bank segment's sliver.</summary>
+    public double HitHeight => IsBanked ? MapDeviceViewModel.BankPitch : MapDeviceViewModel.PortPitch;
+
+    /// <summary>Top of the hit panel. The mark inside is centred.</summary>
+    public double Top => Offset - (HitHeight / 2);
+
+    /// <summary>The visible mark's size: 16×16 tile, or a 12×4 segment once the edge banks.</summary>
+    public double TileWidth => IsBanked ? 12 : 16;
+
+    public double TileHeight => IsBanked ? 4 : 16;
+
+    public Avalonia.CornerRadius TileCorner => new(IsBanked ? 1 : 4);
+
+    /// <summary>Only full tiles carry a label; a 4px segment cannot.</summary>
+    public bool ShowLabel => !IsVacant && !IsBanked;
 
     public bool IsShared => Wires > 1;
 
@@ -431,13 +502,28 @@ public readonly record struct MapPortAnchor(
     public bool IsAmbiguous => Side == MapPortSides.Both;
 
     /// <summary>
-    /// The tile's fill: the occupying run's signal colour, per the handoff — port colour comes
-    /// from the connection in the hole, so a filled tile tells you what it carries before you
-    /// read anything. Vacant tiles get the canvas colour and read as holes.
+    /// The tile's paint, all decided here rather than split with styles — a local binding on the
+    /// control outranks any style setter, which is exactly how the vacant treatment silently
+    /// never applied. Patched: the occupying run's signal colour, so a filled tile tells you what
+    /// it carries before you read anything. Vacant tile: a canvas-dark hole with a faint ring.
+    /// Vacant bank segment: faint white fill, because a 4px dark sliver disappears entirely and a
+    /// bank you cannot see is capacity you forget you have.
     /// </summary>
-    public IBrush FillBrush => !IsVacant && Colour is { } hex && Color.TryParse(hex, out var c)
-        ? new SolidColorBrush(c)
-        : new SolidColorBrush(Color.Parse("#0b0d10"));
+    public IBrush FillBrush =>
+        !IsVacant && Colour is { } hex && Color.TryParse(hex, out var c)
+            ? new SolidColorBrush(c)
+            : IsBanked
+                ? new SolidColorBrush(Color.FromArgb(0x2A, 0xFF, 0xFF, 0xFF))
+                : new SolidColorBrush(Color.Parse("#0b0d10"));
+
+    /// <summary>Patched tiles get the dark keyline; vacant tiles a faint ring; segments none.</summary>
+    public IBrush TileBorderBrush => IsBanked
+        ? Brushes.Transparent
+        : IsVacant
+            ? new SolidColorBrush(Color.FromArgb(0x42, 0xFF, 0xFF, 0xFF))
+            : new SolidColorBrush(Color.Parse("#0b0d10"));
+
+    public double TileBorderThickness => IsBanked ? 0 : IsVacant ? 1.5 : 1;
 
     /// <summary>
     /// What fits inside a 16px tile: the channel or number, not the whole silkscreen. The
@@ -472,9 +558,10 @@ public readonly record struct MapPortAnchor(
         }
     }
 
+    /// <summary>The hover card's headline. The rows underneath are the Card* fields.</summary>
     public string Tooltip => Wires switch
     {
-        0 => $"{Label} — nothing plugged in. Click to wire it.",
+        0 => Label,
         1 => Label,
         _ => $"{Label} — {Wires} runs share this socket",
     };

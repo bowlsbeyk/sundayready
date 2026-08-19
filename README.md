@@ -474,7 +474,11 @@ both directions.
 
 **Ports.** Select a device while editing and the rail carries a **PORTS** list: add sockets, name
 them (`AES50 A`, `CH 25-26`, `MAIN L/R`), say whether each is an in, an out or carries both ways,
-and drag them into the order they sit down the edge of the box. Renaming a socket never breaks the
+and drag them into the order they sit down the edge of the box. Better: **start from a template** —
+pick *Behringer X32* and 51 correctly-named sockets land in one click, editable like anything you
+typed. Templates are additive and never overwrite a name or a kind you already chose; the built-in
+catalogue covers the consoles, stage boxes, switches and interfaces that actually turn up in church
+A/V closets. Renaming a socket never breaks the
 runs landing on it; removing one lets its runs float back onto the edge rather than deleting cable
 that still exists in the building.
 
@@ -488,6 +492,13 @@ carries both ways asks which direction you meant. Two runs sharing one socket st
 tick widens, because two cables in one jack is a fact worth seeing rather than a drawing to tidy
 away. Ports are entirely optional throughout: skip them and a busy box still fans its wires along
 the edge so each stays followable.
+
+**Big gear stays readable.** Past eight sockets an edge stops drawing tiles and collapses into a
+**bank strip** — thin segments, one per socket, coloured by what each carries and faint when free —
+so a 32-channel console is a slim comb instead of a wall of holes. The box's footer counts what the
+segments can no longer label: `51 PORTS · 1 PATCHED · 50 FREE`. **Hover any socket** for the full
+story: its name, where it goes and on which far socket, the signal type, the run label, and whether
+it is alive — without opening anything.
 
 **Export and import.** The rail's **Export…** writes the open map and any custom signal types it
 uses into one JSON file — the hand-off format for integrators. An installer wires the building,

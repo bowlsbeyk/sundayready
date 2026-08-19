@@ -39,14 +39,6 @@
             <Setter Property="Opacity" Value="0.55" />
         </Style>
 
-        <!-- An empty socket: a hollow hole in the canvas colour, no label. Spare capacity
-             should be readable at a glance without opening anything. -->
-        <Style Selector="Border.vacant">
-            <Setter Property="Background" Value="#0b0d10" />
-            <Setter Property="BorderBrush" Value="#38FFFFFF" />
-            <Setter Property="BorderThickness" Value="1.5" />
-        </Style>
-
         <!-- Notes: a bare text field that only looks like a field once you are editing. -->
         <Style Selector="TextBox.noteText">
             <Setter Property="Background" Value="Transparent" />
@@ -373,19 +365,46 @@
                                                 </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="vm:MapPortAnchor">
-                                                        <Panel Width="28" Height="22" Background="Transparent"
-                                                               PointerPressed="OnPortPressed"
-                                                               ToolTip.Tip="{Binding Tooltip}">
-                                                            <Border Width="16" Height="16" CornerRadius="4"
+                                                        <Panel Width="28" Height="{Binding HitHeight}"
+                                                               Background="Transparent"
+                                                               PointerPressed="OnPortPressed">
+                                                            <!-- The hover card: which hole, what is
+                                                                 in it, where it goes, and whether it
+                                                                 is alive - without opening anything. -->
+                                                            <ToolTip.Tip>
+                                                                <StackPanel Spacing="4" MaxWidth="300">
+                                                                    <TextBlock FontSize="13" FontWeight="SemiBold"
+                                                                               Text="{Binding Tooltip}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardGoesTo}"
+                                                                               IsVisible="{Binding CardGoesTo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardType}"
+                                                                               IsVisible="{Binding CardType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardRun}"
+                                                                               IsVisible="{Binding CardRun, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardState}"
+                                                                               Classes.failText="{Binding CardStateDown}"
+                                                                               IsVisible="{Binding CardState, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock FontSize="11.5"
+                                                                               Foreground="{StaticResource TextFaintBrush}"
+                                                                               Text="Nothing plugged in. Click to wire it."
+                                                                               IsVisible="{Binding IsVacant}" />
+                                                                </StackPanel>
+                                                            </ToolTip.Tip>
+                                                            <Border Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                                                                    CornerRadius="{Binding TileCorner}"
                                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                    BorderThickness="1" BorderBrush="#0b0d10"
-                                                                    Background="{Binding FillBrush}"
-                                                                    Classes.vacant="{Binding IsVacant}">
+                                                                    BorderThickness="{Binding TileBorderThickness}"
+                                                                    BorderBrush="{Binding TileBorderBrush}"
+                                                                    Background="{Binding FillBrush}">
                                                                 <TextBlock Classes="mono" FontSize="7.5" FontWeight="Bold"
                                                                            Foreground="#0b0d10"
                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                            Text="{Binding ShortLabel}"
-                                                                           IsVisible="{Binding !IsVacant}" />
+                                                                           IsVisible="{Binding ShowLabel}" />
                                                             </Border>
                                                         </Panel>
                                                     </DataTemplate>
@@ -406,19 +425,46 @@
                                                 </ItemsControl.Styles>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="vm:MapPortAnchor">
-                                                        <Panel Width="28" Height="22" Background="Transparent"
-                                                               PointerPressed="OnPortPressed"
-                                                               ToolTip.Tip="{Binding Tooltip}">
-                                                            <Border Width="16" Height="16" CornerRadius="4"
+                                                        <Panel Width="28" Height="{Binding HitHeight}"
+                                                               Background="Transparent"
+                                                               PointerPressed="OnPortPressed">
+                                                            <!-- The hover card: which hole, what is
+                                                                 in it, where it goes, and whether it
+                                                                 is alive - without opening anything. -->
+                                                            <ToolTip.Tip>
+                                                                <StackPanel Spacing="4" MaxWidth="300">
+                                                                    <TextBlock FontSize="13" FontWeight="SemiBold"
+                                                                               Text="{Binding Tooltip}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardGoesTo}"
+                                                                               IsVisible="{Binding CardGoesTo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardType}"
+                                                                               IsVisible="{Binding CardType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardRun}"
+                                                                               IsVisible="{Binding CardRun, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock Classes="mono" FontSize="11"
+                                                                               Text="{Binding CardState}"
+                                                                               Classes.failText="{Binding CardStateDown}"
+                                                                               IsVisible="{Binding CardState, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                    <TextBlock FontSize="11.5"
+                                                                               Foreground="{StaticResource TextFaintBrush}"
+                                                                               Text="Nothing plugged in. Click to wire it."
+                                                                               IsVisible="{Binding IsVacant}" />
+                                                                </StackPanel>
+                                                            </ToolTip.Tip>
+                                                            <Border Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                                                                    CornerRadius="{Binding TileCorner}"
                                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                    BorderThickness="1" BorderBrush="#0b0d10"
-                                                                    Background="{Binding FillBrush}"
-                                                                    Classes.vacant="{Binding IsVacant}">
+                                                                    BorderThickness="{Binding TileBorderThickness}"
+                                                                    BorderBrush="{Binding TileBorderBrush}"
+                                                                    Background="{Binding FillBrush}">
                                                                 <TextBlock Classes="mono" FontSize="7.5" FontWeight="Bold"
                                                                            Foreground="#0b0d10"
                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                            Text="{Binding ShortLabel}"
-                                                                           IsVisible="{Binding !IsVacant}" />
+                                                                           IsVisible="{Binding ShowLabel}" />
                                                             </Border>
                                                         </Panel>
                                                     </DataTemplate>
@@ -428,14 +474,28 @@
 
                                         <!-- Wire handles. Visible only while editing, because
                                              they are an affordance, not decoration. -->
-                                        <Border Width="16" HorizontalAlignment="Left" Margin="11,7"
-                                                Background="{StaticResource Overlay06Brush}"
-                                                IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
-                                                IsHitTestVisible="False" />
-                                        <Border Width="16" HorizontalAlignment="Right" Margin="11,7"
-                                                Background="{StaticResource Overlay06Brush}"
-                                                IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
-                                                IsHitTestVisible="False" />
+                                        <StackPanel IsVisible="{Binding !HasPorts}">
+                                            <Panel>
+                                                <Border Width="16" Height="50" HorizontalAlignment="Left" Margin="11,7"
+                                                        Background="{StaticResource Overlay06Brush}"
+                                                        IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
+                                                        IsHitTestVisible="False" />
+                                                <Border Width="16" Height="50" HorizontalAlignment="Right" Margin="11,7"
+                                                        Background="{StaticResource Overlay06Brush}"
+                                                        IsVisible="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}"
+                                                        IsHitTestVisible="False" />
+                                            </Panel>
+                                        </StackPanel>
+
+                                        <!-- The meta strip: the port counts in words. On a
+                                             banked edge the per-socket labels are gone, and
+                                             this line is what replaces them. -->
+                                        <TextBlock Classes="mono" FontSize="9.5" LetterSpacing="1"
+                                                   Foreground="{StaticResource TextFainterBrush}"
+                                                   VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                                                   Margin="18,0,0,7"
+                                                   Text="{Binding PortSummary}"
+                                                   IsVisible="{Binding HasPorts}" />
 
                                         <!-- The 3px accent bar: the dominant signal type. -->
                                         <Border Width="3" HorizontalAlignment="Left" Margin="0,10"
@@ -970,6 +1030,21 @@
                                     </StackPanel>
 
                                     <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                    <TextBlock Classes="fieldLabel" Text="START FROM A TEMPLATE" />
+                                    <Grid ColumnDefinitions="*,9,Auto">
+                                        <ComboBox ItemsSource="{Binding Templates}"
+                                                  SelectedItem="{Binding Template, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch" FontSize="13" />
+                                        <Button Grid.Column="2" Classes="quiet" Content="Add its ports"
+                                                Padding="11,6" FontSize="12"
+                                                Command="{Binding ApplyTemplateCommand}"
+                                                ToolTip.Tip="Adds the template's sockets to the list below. Nothing you already typed is touched, and every added row stays editable." />
+                                    </Grid>
+                                    <TextBlock Classes="mono" FontSize="10.5" LetterSpacing="0.6"
+                                               Foreground="{StaticResource OkBrush}"
+                                               Text="{Binding TemplateReport}"
+                                               IsVisible="{Binding TemplateReport, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Classes="fieldLabel" Text="PORTS" VerticalAlignment="Center" />
                                         <Button Grid.Column="1" Classes="quiet" Content="Add port"

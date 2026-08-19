@@ -213,6 +213,83 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
         {
             Ports.Add(new MapPortEditorViewModel(port));
         }
+
+        Templates.Add(NoTemplate);
+        foreach (var template in DeviceTemplates.BuiltIn)
+        {
+            Templates.Add(template.Name);
+        }
+    }
+
+    public const string NoTemplate = "(pick a template)";
+
+    [ObservableProperty]
+    private string _template = NoTemplate;
+
+    [ObservableProperty]
+    private string _templateReport = string.Empty;
+
+    public ObservableCollection<string> Templates { get; } = new();
+
+    /// <summary>
+    /// Adds a template's sockets to the port list — the handoff's "editable, never typed from
+    /// scratch". Additive and idempotent: ports whose label is already on the list are skipped,
+    /// so applying twice, or applying on top of hand-typed rows, never duplicates or destroys.
+    /// Kind, accent and hub only fill in when they are still at their defaults — the template
+    /// must never overwrite something the operator already chose.
+    /// </summary>
+    [RelayCommand]
+    private void ApplyTemplate()
+    {
+        var template = DeviceTemplates.BuiltIn.FirstOrDefault(t => t.Name == Template);
+
+        if (template is null)
+        {
+            return;
+        }
+
+        var existing = new HashSet<string>(
+            Ports.Select(p => p.Label.Trim()), StringComparer.OrdinalIgnoreCase);
+        var added = 0;
+
+        foreach (var port in template.Ports)
+        {
+            if (existing.Contains(port.Label))
+            {
+                continue;
+            }
+
+            Ports.Add(new MapPortEditorViewModel(new MapPort
+            {
+                Id = SystemMapStore.NewId("port"),
+                Label = port.Label,
+                Side = port.Side,
+                Detail = port.Detail,
+                Type = port.Type,
+            }));
+            added++;
+        }
+
+        if (Kind == MapDeviceKinds.Device)
+        {
+            Kind = template.Kind;
+        }
+
+        if (DominantType == "(none)" && template.DominantType is { } dominant
+            && DominantTypes.Contains(dominant))
+        {
+            DominantType = dominant;
+        }
+
+        if (template.Hub)
+        {
+            Hub = true;
+        }
+
+        TemplateReport = added == 0
+            ? "EVERY PORT IT DEFINES IS ALREADY ON THE LIST"
+            : $"{added} PORTS ADDED · EDIT OR REMOVE ANY OF THEM";
+        OnPropertyChanged(nameof(HasPorts));
     }
 
     public MapDevice Model { get; }

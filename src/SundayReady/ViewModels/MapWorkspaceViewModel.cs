@@ -166,11 +166,14 @@ public sealed partial class SystemMapViewModel : ObservableObject
         var anchors = new List<MapPortAnchor>();
         var offsets = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
+        // Past eight sockets the edge banks: thin segments at a tight pitch instead of tiles,
+        // per the handoff — a 32-channel console drawn as individual holes swamps the map.
+        var banked = edgePortIds.Count > MapDeviceViewModel.BankThreshold;
+        var pitch = banked ? MapDeviceViewModel.BankPitch : MapDeviceViewModel.PortPitch;
+
         for (var i = 0; i < edgePortIds.Count; i++)
         {
-            // Tile centres: first tile's top at 26, 16 tall, 22 pitch.
-            offsets[edgePortIds[i]] = MapDeviceViewModel.PortFirstTop
-                + (i * MapDeviceViewModel.PortPitch) + 8;
+            offsets[edgePortIds[i]] = MapDeviceViewModel.PortFirstTop + (i * pitch) + (banked ? 3 : 8);
         }
 
         foreach (var portId in edgePortIds)
@@ -190,6 +193,25 @@ public sealed partial class SystemMapViewModel : ObservableObject
                 }
             }
 
+            // The hover card, preformatted here because this is the one place that has the
+            // wire, both its ends, and the port spec in hand at the same time.
+            string? goesTo = null, cardType = null, cardRun = null, cardState = null;
+            var down = false;
+
+            if (portEnds.Count > 0)
+            {
+                var wire = portEnds[0].Wire;
+                var far = portEnds[0].FromEnd ? wire.To : wire.From;
+                var farPort = portEnds[0].FromEnd ? wire.ToPortSpec?.Label : wire.FromPortSpec?.Label;
+                var more = portEnds.Count > 1 ? $"  (+{portEnds.Count - 1} more)" : string.Empty;
+
+                goesTo = $"GOES TO  {far.Label}{(farPort is null ? "" : " · " + farPort)}{more}";
+                cardType = $"TYPE     {wire.Type.Name}";
+                cardRun = wire.Label is { Length: > 0 } run ? $"LABEL    {run}" : null;
+                cardState = $"STATE    {wire.FlowState}";
+                down = portEnds.Any(e => e.Wire.IsDown);
+            }
+
             anchors.Add(new MapPortAnchor(
                 spec.Id,
                 spec.Label,
@@ -197,7 +219,15 @@ public sealed partial class SystemMapViewModel : ObservableObject
                 portEnds.Count,
                 spec.Side,
                 rightSide,
-                portEnds.Count > 0 ? portEnds[0].Wire.Type.Colour : null));
+                portEnds.Count > 0 ? portEnds[0].Wire.Type.Colour : null)
+            {
+                IsBanked = banked,
+                CardGoesTo = goesTo,
+                CardType = cardType,
+                CardRun = cardRun,
+                CardState = cardState,
+                CardStateDown = down,
+            });
         }
 
         device.SetPortAnchors(rightSide, anchors);
@@ -216,7 +246,7 @@ public sealed partial class SystemMapViewModel : ObservableObject
 
         var top = edgePortIds.Count == 0
             ? 10
-            : MapDeviceViewModel.PortFirstTop + (edgePortIds.Count * MapDeviceViewModel.PortPitch) + 4;
+            : MapDeviceViewModel.PortFirstTop + MapDeviceViewModel.EdgeSpan(edgePortIds.Count) + 4;
         var bottom = device.Height - 10;
 
         if (bottom <= top)
