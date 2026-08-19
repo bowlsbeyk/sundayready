@@ -128,6 +128,15 @@ public abstract partial class MapVerifyEditorViewModel : ObservableObject
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
+/// <summary>One socket in the component editor's live preview, positioned as the map will.</summary>
+public sealed record MapPreviewPort(string ShortLabel, string FullLabel, double Top, bool RightSide, bool IsBanked)
+{
+    public double TileSize => IsBanked ? 5 : 18;
+
+    /// <summary>Canvas.Left inside a 262-wide preview box: straddling the edge, like the map.</summary>
+    public double Left => RightSide ? 262 - (TileSize / 2) : -(TileSize / 2);
+}
+
 /// <summary>
 /// Everything about one device the editor can change. Fields here, applied to the model in one
 /// go — the probe view models are deliberately immutable about tier and verify, so an apply
@@ -224,6 +233,136 @@ public sealed partial class MapDeviceEditorViewModel : MapVerifyEditorViewModel
     }
 
     private readonly List<DeviceTemplate> _templates;
+
+    /// <summary>
+    /// The component alone, rendered as the map will render it — the DipTrace idea: you are not
+    /// editing rows in a form, you are shaping the thing you will later click on. Tiles sit at
+    /// the true pitch on the true edges with the true compressed labels, so what you see here is
+    /// exactly what lands on the canvas at Apply.
+    /// </summary>
+    public IReadOnlyList<MapPreviewPort> PreviewPorts
+    {
+        get
+        {
+            var named = Ports.Where(p => !string.IsNullOrWhiteSpace(p.Label)).ToList();
+            var lefts = named.Where(p => p.Side == MapPortSides.In).ToList();
+            var rights = named.Where(p => MapPortSides.AcceptsOut(p.Side)).ToList();
+            var result = new List<MapPreviewPort>();
+
+            void Edge(List<MapPortEditorViewModel> edge, bool rightSide)
+            {
+                var banked = edge.Count > MapDeviceViewModel.BankThreshold;
+                var pitch = banked ? MapDeviceViewModel.BankPitch : MapDeviceViewModel.PortPitch;
+
+                for (var i = 0; i < edge.Count; i++)
+                {
+                    result.Add(new MapPreviewPort(
+                        MapPortAnchor.Shorten(edge[i].Label),
+                        edge[i].Label,
+                        MapDeviceViewModel.PortFirstTop + (i * pitch) + (banked ? 3 : 8) - 11,
+                        rightSide,
+                        banked));
+                }
+            }
+
+            Edge(lefts, false);
+            Edge(rights, true);
+            return result;
+        }
+    }
+
+    /// <summary>The preview box's height — the same maths the map uses.</summary>
+    public double PreviewHeight
+    {
+        get
+        {
+            var named = Ports.Count(p => !string.IsNullOrWhiteSpace(p.Label));
+            var lefts = Ports.Count(p => !string.IsNullOrWhiteSpace(p.Label) && p.Side is MapPortSides.In or MapPortSides.Both);
+            var rights = Ports.Count(p => !string.IsNullOrWhiteSpace(p.Label) && MapPortSides.AcceptsOut(p.Side));
+            var rows = Math.Max(lefts, rights);
+
+            if (rows == 0)
+            {
+                return MapDeviceViewModel.BoxHeight;
+            }
+
+            var listRows = named > 16 ? 0 : Math.Min(named, 6);
+
+            return Math.Max(
+                Math.Max(MapDeviceViewModel.BoxHeight,
+                    MapDeviceViewModel.PortFirstTop + MapDeviceViewModel.EdgeSpan(rows) + 22),
+                52 + (listRows * 15) + 24);
+        }
+    }
+
+    /// <summary>The preview's meta strip. Everything is FREE here: nothing is wired yet.</summary>
+    public string PreviewSummary
+    {
+        get
+        {
+            var count = Ports.Count(p => !string.IsNullOrWhiteSpace(p.Label));
+            return count == 0 ? string.Empty : $"{count} PORTS";
+        }
+    }
+
+    /// <summary>Tells the view the rendering changed. Called by the window on any edit.</summary>
+    public void RefreshPreview()
+    {
+        OnPropertyChanged(nameof(PreviewPorts));
+        OnPropertyChanged(nameof(PreviewHeight));
+        OnPropertyChanged(nameof(PreviewSummary));
+    }
+
+    /// <summary>The library pane's rows — every template the picker knows, by name.</summary>
+    public IReadOnlyList<string> Library => _templates.Select(t => t.Name).ToList();
+
+    /// <summary>
+    /// Loads a library entry wholesale: the port list is REPLACED, kind, accent and hub follow.
+    /// This is the pick-a-component gesture, distinct from the additive "Add its ports" — and it
+    /// is safe to be decisive here because nothing touches the map until Apply, and Close
+    /// without applying walks away from all of it.
+    /// </summary>
+    public void LoadFromLibrary(string? name)
+    {
+        var template = _templates.FirstOrDefault(t => t.Name == name);
+
+        if (template is null)
+        {
+            return;
+        }
+
+        Ports.Clear();
+
+        foreach (var port in template.Ports)
+        {
+            Ports.Add(new MapPortEditorViewModel(new MapPort
+            {
+                Id = SystemMapStore.NewId("port"),
+                Label = port.Label,
+                Side = port.Side,
+                Detail = port.Detail,
+                Type = port.Type,
+            }));
+        }
+
+        Kind = template.Kind;
+
+        if (template.DominantType is { } dominant && DominantTypes.Contains(dominant))
+        {
+            DominantType = dominant;
+        }
+
+        Hub = template.Hub;
+
+        if (string.IsNullOrWhiteSpace(Label) || Label == "New device")
+        {
+            Label = template.Name;
+        }
+
+        TemplateReport = $"LOADED {template.Name.ToUpperInvariant()} · {template.Ports.Count} PORTS · REPLACED THE LIST";
+        OnPropertyChanged(nameof(HasPorts));
+        RefreshPreview();
+    }
 
     /// <summary>
     /// Adds a just-saved template to this live editor's picker without rebuilding the editor —

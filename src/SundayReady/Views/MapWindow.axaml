@@ -67,20 +67,32 @@
             <Setter Property="Fill" Value="{StaticResource NodeHubBrush}" />
             <Setter Property="Stroke" Value="{StaticResource BorderHubBrush}" />
         </Style>
-        <!-- Inferred: faint fill, dashed border. "Probably fine" must never look "checked". -->
+        <!-- Inferred: solid but darker than a checked box, dashed border. "Probably fine"
+             must never look "checked" - the dashed border and hollow dot carry that now. The
+             old 2%-white fill let every wire show straight through the box, which read as a
+             rendering glitch rather than a tier. -->
         <Style Selector="Panel.inferred Rectangle.nodeFace">
-            <Setter Property="Fill" Value="{StaticResource Overlay02Brush}" />
+            <Setter Property="Fill" Value="#141820" />
             <Setter Property="Stroke" Value="#2BFFFFFF" />
             <Setter Property="StrokeDashArray" Value="3,3" />
         </Style>
+        <!-- Fail: the same red, precomposited onto the canvas dark so the box stays opaque. -->
         <Style Selector="Panel.fail Rectangle.nodeFace">
-            <Setter Property="Fill" Value="{StaticResource FailFillBrush}" />
+            <Setter Property="Fill" Value="#2E1B1A" />
             <Setter Property="Stroke" Value="{StaticResource FailBorderBrush}" />
         </Style>
         <Style Selector="Panel.picked Rectangle.nodeFace">
             <Setter Property="Stroke" Value="{StaticResource ActionBrush}" />
             <Setter Property="StrokeThickness" Value="1.5" />
             <Setter Property="StrokeDashArray" Value="" />
+        </Style>
+        <!-- Hover lifts the face, so the box under the pointer is unmistakably the solid
+             thing and the wires around it recede. -->
+        <Style Selector="Panel:pointerover Rectangle.nodeFace">
+            <Setter Property="Fill" Value="#242b36" />
+        </Style>
+        <Style Selector="Panel.inferred:pointerover Rectangle.nodeFace">
+            <Setter Property="Fill" Value="{StaticResource PanelRaisedBrush}" />
         </Style>
 
         <Style Selector="TextBlock.nodeTitle">
@@ -209,6 +221,9 @@
                     <Button Classes="quiet" Content="Draw connection"
                             Command="{Binding BeginWireCommand}"
                             ToolTip.Tip="Arms a wire from the selected box. You can also just drag from either end of a box." />
+                    <Button Classes="quiet" Content="Component editor"
+                            Click="OnBigEditorClick"
+                            ToolTip.Tip="Opens the selected device in its own editor — library, live preview, and the full port list. Select a box first." />
                     <Button Classes="quiet" Content="Undo"
                             Command="{Binding UndoCommand}"
                             IsEnabled="{Binding CanUndo}"
@@ -409,7 +424,7 @@
                                                                     BorderThickness="{Binding TileBorderThickness}"
                                                                     BorderBrush="{Binding TileBorderBrush}"
                                                                     Background="{Binding FillBrush}">
-                                                                <TextBlock Classes="mono" FontSize="7.5" FontWeight="Bold"
+                                                                <TextBlock Classes="mono" FontSize="8.5" FontWeight="Bold"
                                                                            Foreground="#0b0d10"
                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                            Text="{Binding ShortLabel}"
@@ -469,7 +484,7 @@
                                                                     BorderThickness="{Binding TileBorderThickness}"
                                                                     BorderBrush="{Binding TileBorderBrush}"
                                                                     Background="{Binding FillBrush}">
-                                                                <TextBlock Classes="mono" FontSize="7.5" FontWeight="Bold"
+                                                                <TextBlock Classes="mono" FontSize="8.5" FontWeight="Bold"
                                                                            Foreground="#0b0d10"
                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                            Text="{Binding ShortLabel}"
@@ -1034,22 +1049,15 @@
                                 <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Classes="microLabel" Text="EDIT DEVICE" VerticalAlignment="Center" />
-                                    <Button Grid.Column="1" Classes="quiet" Content="Open big editor" Padding="10,4" FontSize="11.5"
+                                    <Button Grid.Column="1" Classes="primary" Content="Component editor…" Padding="11,5" FontSize="11.5"
                                             Click="OnBigEditorClick"
-                                            ToolTip.Tip="The same editor in its own window, with a full column for the port list. For anything with more than a few sockets." />
+                                            ToolTip.Tip="The device on its own: template library on the left, a live rendering of how it will look on the map, and every field with room to breathe." />
                                 </Grid>
                                 <StackPanel Spacing="11" DataContext="{Binding DeviceEditor}">
                                     <StackPanel>
                                         <TextBlock Classes="fieldLabel" Text="LABEL" />
                                         <TextBox Classes="field" FontSize="14"
                                                  Text="{Binding Label, Mode=TwoWay}" />
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Classes="fieldLabel" Text="SUB-LINE (TRANSPORT · ADDRESS)" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 FontFamily="{StaticResource MonoFont}"
-                                                 Text="{Binding Detail, Mode=TwoWay}"
-                                                 Watermark="NDI · 10.0.1.21" />
                                     </StackPanel>
                                     <Grid ColumnDefinitions="*,10,*">
                                         <StackPanel Grid.Column="0">
@@ -1059,172 +1067,22 @@
                                                       HorizontalAlignment="Stretch" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Classes="fieldLabel" Text="ACCENT TYPE" />
-                                            <ComboBox ItemsSource="{Binding DominantTypes}"
-                                                      SelectedItem="{Binding DominantType, Mode=TwoWay}"
+                                            <TextBlock Classes="fieldLabel" Text="HOW THE APP KNOWS" />
+                                            <ComboBox ItemsSource="{Binding Tiers}"
+                                                      SelectedItem="{Binding Tier, Mode=TwoWay}"
                                                       HorizontalAlignment="Stretch" />
                                         </StackPanel>
                                     </Grid>
                                     <StackPanel>
-                                        <TextBlock Classes="fieldLabel" Text="HOW THE APP KNOWS ITS STATE" />
-                                        <ComboBox ItemsSource="{Binding Tiers}"
-                                                  SelectedItem="{Binding Tier, Mode=TwoWay}"
-                                                  HorizontalAlignment="Stretch" />
-                                        <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0"
-                                                   Foreground="{StaticResource TextFaintBrush}"
-                                                   Text="verified needs a check below and can hold Ready to go · reported believes a third-party API · inferred is drawn hollow · human becomes somebody's job" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Spacing="16">
-                                        <CheckBox Content="Hub" FontSize="13"
-                                                  IsChecked="{Binding Hub, Mode=TwoWay}"
-                                                  ToolTip.Tip="The PCs and consoles everything converges on. Brighter surface, same size." />
-                                        <CheckBox Content="Off campus" FontSize="13"
-                                                  IsChecked="{Binding OffCampus, Mode=TwoWay}"
-                                                  ToolTip.Tip="Beyond the property line. Can never block Ready to go, whatever its tier." />
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Classes="fieldLabel" Text="OPENS SUB-MAP" />
-                                        <ComboBox ItemsSource="{Binding LinkTargets}"
-                                                  SelectedItem="{Binding LinksTo, Mode=TwoWay}"
-                                                  HorizontalAlignment="Stretch" />
-                                    </StackPanel>
-                                    <StackPanel>
                                         <TextBlock Classes="fieldLabel" Text="WHERE IT PHYSICALLY IS" />
                                         <TextBox Classes="field" FontSize="13"
                                                  Text="{Binding Location, Mode=TwoWay}"
-                                                 Watermark="Grey box on the shelf behind the booth" />
+                                                 Watermark="Sound booth" />
                                     </StackPanel>
-
-                                    <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
-                                    <TextBlock Classes="fieldLabel" Text="START FROM A TEMPLATE" />
-                                    <Grid ColumnDefinitions="*,9,Auto">
-                                        <ComboBox ItemsSource="{Binding Templates}"
-                                                  SelectedItem="{Binding Template, Mode=TwoWay}"
-                                                  HorizontalAlignment="Stretch" FontSize="13" />
-                                        <Button Grid.Column="2" Classes="quiet" Content="Add its ports"
-                                                Padding="11,6" FontSize="12"
-                                                Command="{Binding ApplyTemplateCommand}"
-                                                ToolTip.Tip="Adds the template's sockets to the list below. Nothing you already typed is touched, and every added row stays editable." />
-                                    </Grid>
-                                    <TextBlock Classes="mono" FontSize="10.5" LetterSpacing="0.6"
-                                               Foreground="{StaticResource OkBrush}"
-                                               Text="{Binding TemplateReport}"
-                                               IsVisible="{Binding TemplateReport, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-
-                                    <Grid ColumnDefinitions="*,Auto,7,Auto">
-                                        <TextBlock Classes="fieldLabel" Text="PORTS" VerticalAlignment="Center" />
-                                        <Button Grid.Column="1" Classes="quiet" Content="Add port"
-                                                Padding="11,5" FontSize="12"
-                                                Command="{Binding AddPortCommand}"
-                                                ToolTip.Tip="A named socket on this box. Runs can land on it, and you can click it on the map to wire it." />
-                                        <Button Grid.Column="3" Classes="quiet" Content="Save as template"
-                                                Padding="11,5" FontSize="12"
-                                                IsVisible="{Binding HasPorts}"
-                                                Command="{Binding $parent[Window].((vm:MapWorkspaceViewModel)DataContext).SaveAsTemplateCommand}"
-                                                ToolTip.Tip="Puts this device's ports, kind and accent into the template library, so the next one of these is one click. Export the library to share it with other churches." />
-                                    </Grid>
                                     <TextBlock FontSize="12" TextWrapping="Wrap"
                                                Foreground="{StaticResource TextFaintBrush}"
-                                               Text="Optional. Name the sockets and the map will show exactly where signal enters and leaves. The order here is the order they sit down the edge of the box."
-                                               IsVisible="{Binding !HasPorts}" />
-                                    <ItemsControl ItemsSource="{Binding Ports}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:MapPortEditorViewModel">
-                                                <Border Classes="card" Padding="11,9" Margin="0,0,0,7">
-                                                    <StackPanel Spacing="7">
-                                                        <Grid ColumnDefinitions="*,7,Auto,Auto,Auto">
-                                                            <TextBox Classes="field" FontSize="13"
-                                                                     Watermark="AES50 A"
-                                                                     Text="{Binding Label, Mode=TwoWay}" />
-                                                            <Button Grid.Column="2" Classes="quiet" Content="&#8593;"
-                                                                    Padding="8,4" FontSize="12"
-                                                                    ToolTip.Tip="Move this socket up the edge"
-                                                                    Command="{Binding $parent[ItemsControl].((vm:MapDeviceEditorViewModel)DataContext).MovePortUpCommand}"
-                                                                    CommandParameter="{Binding}" />
-                                                            <Button Grid.Column="3" Classes="quiet" Content="&#8595;"
-                                                                    Padding="8,4" FontSize="12"
-                                                                    ToolTip.Tip="Move this socket down the edge"
-                                                                    Command="{Binding $parent[ItemsControl].((vm:MapDeviceEditorViewModel)DataContext).MovePortDownCommand}"
-                                                                    CommandParameter="{Binding}" />
-                                                            <Button Grid.Column="4" Classes="danger" Content="&#215;"
-                                                                    Padding="9,4" FontSize="13"
-                                                                    ToolTip.Tip="Remove this socket. Runs using it stay, they just float on the edge again."
-                                                                    Command="{Binding $parent[ItemsControl].((vm:MapDeviceEditorViewModel)DataContext).RemovePortCommand}"
-                                                                    CommandParameter="{Binding}" />
-                                                        </Grid>
-                                                        <Grid ColumnDefinitions="Auto,9,*">
-                                                            <ComboBox ItemsSource="{Binding Sides}"
-                                                                      SelectedItem="{Binding Side, Mode=TwoWay}"
-                                                                      MinWidth="94" FontSize="12" />
-                                                            <TextBox Grid.Column="2" Classes="field" FontSize="12"
-                                                                     Watermark="CHANNELS 1-8 (optional)"
-                                                                     Text="{Binding Detail, Mode=TwoWay}" />
-                                                        </Grid>
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
-                                    <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
-                                    <TextBlock Classes="fieldLabel" Text="VERIFIER — SAME KINDS AS THE CHECKLIST" />
-                                    <ComboBox ItemsSource="{Binding VerifyKinds}"
-                                              SelectedItem="{Binding VerifyKind, Mode=TwoWay}"
-                                              HorizontalAlignment="Stretch" />
-                                    <TextBlock FontSize="12" TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextFaintBrush}"
-                                               Text="{Binding GuideText}"
-                                               IsVisible="{Binding HasGuide}" />
-                                    <StackPanel IsVisible="{Binding ShowUrl}">
-                                        <TextBlock Classes="fieldLabel" Text="URL" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 FontFamily="{StaticResource MonoFont}"
-                                                 Text="{Binding Url, Mode=TwoWay}" />
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding ShowContains}">
-                                        <TextBlock Classes="fieldLabel" Text="BODY MUST CONTAIN" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 Text="{Binding Contains, Mode=TwoWay}" />
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding ShowHost}">
-                                        <TextBlock Classes="fieldLabel" Text="HOST" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 FontFamily="{StaticResource MonoFont}"
-                                                 Text="{Binding Host, Mode=TwoWay}"
-                                                 Watermark="cam3.local or 10.0.1.23" />
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding ShowPort}">
-                                        <TextBlock Classes="fieldLabel" Text="TCP PORT (BLANK = PING)" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 FontFamily="{StaticResource MonoFont}"
-                                                 Text="{Binding Port, Mode=TwoWay}" />
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding ShowProcessName}">
-                                        <TextBlock Classes="fieldLabel" Text="PROCESS NAME" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 FontFamily="{StaticResource MonoFont}"
-                                                 Text="{Binding ProcessName, Mode=TwoWay}" />
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding ShowNameContains}">
-                                        <TextBlock Classes="fieldLabel" Text="NAME CONTAINS" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 Text="{Binding NameContains, Mode=TwoWay}" />
-                                    </StackPanel>
-                                    <StackPanel IsVisible="{Binding ShowPath}">
-                                        <TextBlock Classes="fieldLabel" Text="PATH" />
-                                        <TextBox Classes="field" FontSize="13"
-                                                 FontFamily="{StaticResource MonoFont}"
-                                                 Text="{Binding Path, Mode=TwoWay}" />
-                                    </StackPanel>
-
-                                    <StackPanel>
-                                        <TextBlock Classes="fieldLabel" Text="WHAT TO CHECK WHEN IT FAILS (ONE PER LINE)" />
-                                        <TextBox Classes="field" FontSize="13" AcceptsReturn="True"
-                                                 MinHeight="64" TextWrapping="Wrap"
-                                                 Text="{Binding CheckSteps, Mode=TwoWay}"
-                                                 Watermark="Is the PoE injector lit? Say where yours is." />
-                                    </StackPanel>
-                                </StackPanel>
+                                               Text="Ports, templates, the verifier, sub-map links and everything else live in the component editor — one device at a time, with a live preview." />
+                                                                </StackPanel>
                                 <Button Classes="primary" Content="Apply changes" Padding="16,9"
                                         Command="{Binding ApplyEditorCommand}" />
                             </StackPanel>

@@ -486,9 +486,13 @@ A/V closets.
 port tiles that are specks on a 1080p booth monitor become clickable at 130%. Layout-aware, so the
 scrollbars stay honest.
 
-**The big device editor.** **Open big editor** in the rail opens the same editor in its own
-window — identity on the left, the port list in a full column on the right. It is the rail's
-editor with room, not a second one, so nothing can drift between them.
+**The component editor.** The **Component editor** button (toolbar and rail) opens a device the
+way a CAD package opens a part: the template **library** on the left, the component alone in the
+middle **rendered exactly as the map will render it** — live tiles, banking, growing height — and
+every field on the right with room to breathe. Clicking a library entry loads that component's
+shape wholesale; nothing touches the map until Apply, and closing without applying walks away
+clean. The rail keeps only the essentials (label, kind, tier, room) so it stops drowning you in
+fields; everything else lives here.
 
 **Community templates.** The catalogue is not closed. Type a device's ports once and press
 **Save as template** — it lands in your church's shared library and every station's picker offers

@@ -14,6 +14,38 @@ public partial class DeviceEditorWindow : Window
     public DeviceEditorWindow()
     {
         InitializeComponent();
+
+        // The live preview re-renders on any edit. Cheap enough to do bluntly: the preview is
+        // a few dozen records, and subtlety here is how previews drift from reality.
+        DataContextChanged += (_, _) => Hook();
+        Hook();
+    }
+
+    private void Hook()
+    {
+        if (DataContext is not MapDeviceEditorViewModel editor)
+        {
+            return;
+        }
+
+        editor.PropertyChanged += (_, e) =>
+        {
+            // Never refresh in response to the refresh itself, or this recurses forever.
+            if (e.PropertyName is not null && !e.PropertyName.StartsWith("Preview", StringComparison.Ordinal))
+            {
+                editor.RefreshPreview();
+            }
+        };
+        editor.Ports.CollectionChanged += (_, _) => editor.RefreshPreview();
+    }
+
+    private void OnLibraryPick(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is MapDeviceEditorViewModel editor
+            && sender is ListBox { SelectedItem: string name })
+        {
+            editor.LoadFromLibrary(name);
+        }
     }
 
     /// <summary>The workspace's apply, injected by whoever opened the window.</summary>

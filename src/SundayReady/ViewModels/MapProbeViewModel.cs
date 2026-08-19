@@ -540,10 +540,11 @@ public readonly record struct MapPortAnchor(
     /// <summary>Top of the hit panel. The mark inside is centred.</summary>
     public double Top => Offset - (HitHeight / 2);
 
-    /// <summary>The visible mark's size: 16×16 tile, or a 12×4 segment once the edge banks.</summary>
-    public double TileWidth => IsBanked ? 12 : 16;
+    /// <summary>The visible mark's size: an 18px tile, or a 12×4 segment once the edge banks.
+    /// Two pixels over the handoff's 16, because "a little hard to see" beat fidelity.</summary>
+    public double TileWidth => IsBanked ? 12 : 18;
 
-    public double TileHeight => IsBanked ? 4 : 16;
+    public double TileHeight => IsBanked ? 4 : 18;
 
     public Avalonia.CornerRadius TileCorner => new(IsBanked ? 1 : 4);
 
@@ -594,31 +595,31 @@ public readonly record struct MapPortAnchor(
     /// author typed rather than inventing one. <c>AES50 A</c> → <c>A</c>, <c>CH 1-16</c> →
     /// <c>1-16</c>, <c>ETHERNET</c> → <c>ETH</c>.
     /// </summary>
-    public string ShortLabel
+    public string ShortLabel => Shorten(Label);
+
+    /// <summary>Shared with the component editor's preview, so both compress identically.</summary>
+    public static string Shorten(string label)
     {
-        get
+        label = label.Trim();
+
+        if (label.Length <= 4)
         {
-            var label = Label.Trim();
-
-            if (label.Length <= 4)
-            {
-                return label;
-            }
-
-            var tokens = label.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            if (tokens.Length > 1 && tokens[^1].Length <= 4)
-            {
-                return tokens[^1];
-            }
-
-            if (tokens[0].Length <= 4)
-            {
-                return tokens[0];
-            }
-
-            return label[..3];
+            return label;
         }
+
+        var tokens = label.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (tokens.Length > 1 && tokens[^1].Length <= 4)
+        {
+            return tokens[^1];
+        }
+
+        if (tokens.Length > 0 && tokens[0].Length <= 4)
+        {
+            return tokens[0];
+        }
+
+        return label[..3];
     }
 
     /// <summary>The hover card's headline. The rows underneath are the Card* fields.</summary>

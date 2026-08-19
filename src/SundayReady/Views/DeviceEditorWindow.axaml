@@ -5,28 +5,94 @@
         x:DataType="vm:MapDeviceEditorViewModel"
         Title="Edit device"
         Icon="/Assets/logo.png"
-        Width="880" Height="760"
-        MinWidth="760" MinHeight="560"
+        Width="1180" Height="800"
+        MinWidth="980" MinHeight="620"
         Background="{StaticResource RailBgBrush}"
         WindowStartupLocation="CenterOwner">
 
-    <!-- The handoff's 4d: the device on its own, with room. The rail's editor works but a
-         48-row port list in a 340px strip is an exercise in scrolling; here identity sits on
-         the left, the port list gets a full column, and Apply is never off-screen. Same view
-         model as the rail — this window is space, not a second editor. -->
+    <!-- The handoff's 4d, DipTrace-shaped: the library on the left, the component alone in
+         the middle rendered exactly as the map will render it, and the fields on the right.
+         Same view model as the rail — this window is space and a preview, not a second editor. -->
     <Grid RowDefinitions="Auto,*,Auto" Margin="26,22">
 
         <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
             <TextBlock Text="{Binding Label}" FontSize="22" FontWeight="SemiBold" />
             <TextBlock Classes="mono" FontSize="11" LetterSpacing="0.8"
                        Foreground="{StaticResource TextFainterBrush}"
-                       Text="THE SAME EDITOR AS THE RAIL, WITH ROOM · APPLY CHANGES WRITES BACK TO THE MAP" />
+                       Text="PICK FROM THE LIBRARY · SHAPE IT IN THE MIDDLE · NOTHING TOUCHES THE MAP UNTIL APPLY" />
         </StackPanel>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,26,*">
+        <Grid Grid.Row="1" ColumnDefinitions="210,20,*,20,400">
+
+            <!-- The library: every template the picker knows. Click one and it becomes this
+                 component's shape — safe to be decisive, because Apply is the only thing that
+                 writes to the map. -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                <TextBlock Classes="fieldLabel" Text="LIBRARY" Margin="0,0,0,7" />
+                <ListBox Grid.Row="1" ItemsSource="{Binding Library}"
+                         SelectionChanged="OnLibraryPick"
+                         Background="Transparent" FontSize="13" />
+            </Grid>
+
+            <!-- The component, as the map will draw it. -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                <TextBlock Classes="fieldLabel" Text="ON THE MAP IT WILL LOOK LIKE" Margin="0,0,0,7" />
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto">
+                    <LayoutTransformControl HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Margin="42" ClipToBounds="False">
+                        <LayoutTransformControl.LayoutTransform>
+                            <ScaleTransform ScaleX="1.35" ScaleY="1.35" />
+                        </LayoutTransformControl.LayoutTransform>
+                        <Panel Width="262" Height="{Binding PreviewHeight}" ClipToBounds="False">
+                            <Rectangle Fill="{StaticResource PanelRaisedBrush}"
+                                       Stroke="{StaticResource BorderNodeBrush}" StrokeThickness="1"
+                                       RadiusX="8" RadiusY="8" />
+                            <StackPanel Margin="16,11,16,0" Spacing="2">
+                                <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Classes="mono" FontSize="10"
+                                           Foreground="{StaticResource TextFainterBrush}"
+                                           Text="{Binding Detail}" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <TextBlock Classes="mono" FontSize="9.5" LetterSpacing="1"
+                                       Foreground="{StaticResource TextFainterBrush}"
+                                       VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                                       Margin="18,0,0,7"
+                                       Text="{Binding PreviewSummary}" />
+                            <ItemsControl ItemsSource="{Binding PreviewPorts}" ClipToBounds="False">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.Styles>
+                                    <Style Selector="ContentPresenter" x:DataType="vm:MapPreviewPort">
+                                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                    </Style>
+                                </ItemsControl.Styles>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:MapPreviewPort">
+                                        <Border Width="{Binding TileSize}" Height="{Binding TileSize}"
+                                                CornerRadius="4" Background="#0b0d10"
+                                                BorderThickness="1.5" BorderBrush="#52FFFFFF"
+                                                ToolTip.Tip="{Binding FullLabel}">
+                                            <TextBlock Classes="mono" FontSize="8.5" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Text="{Binding ShortLabel}"
+                                                       IsVisible="{Binding !IsBanked}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Panel>
+                    </LayoutTransformControl>
+                </ScrollViewer>
+            </Grid>
+
+            <Grid Grid.Column="4" RowDefinitions="*,Auto">
 
             <!-- Identity -->
-            <ScrollViewer Grid.Column="0">
+            <ScrollViewer Grid.Row="0">
                 <StackPanel Spacing="12" Margin="0,0,6,0">
                     <StackPanel>
                         <TextBlock Classes="fieldLabel" Text="LABEL" />
@@ -112,7 +178,7 @@
             </ScrollViewer>
 
             <!-- Ports, with the room the rail never had -->
-            <Grid Grid.Column="2" RowDefinitions="Auto,Auto,Auto,*">
+            <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,*" Margin="0,14,0,0" MaxHeight="380">
                 <TextBlock Grid.Row="0" Classes="fieldLabel" Text="START FROM A TEMPLATE" />
                 <Grid Grid.Row="1" ColumnDefinitions="*,9,Auto" Margin="0,0,0,10">
                     <ComboBox ItemsSource="{Binding Templates}" SelectedItem="{Binding Template, Mode=TwoWay}"
@@ -135,7 +201,7 @@
                     <ItemsControl ItemsSource="{Binding Ports}" Margin="0,0,6,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:MapPortEditorViewModel">
-                                <Grid ColumnDefinitions="*,7,110,7,*,7,Auto,Auto,Auto" Margin="0,0,0,6">
+                                <Grid ColumnDefinitions="110,7,86,7,*,7,Auto,Auto,Auto" Margin="0,0,0,6">
                                     <TextBox Classes="field" FontSize="13" Watermark="AES50 A"
                                              Text="{Binding Label, Mode=TwoWay}" />
                                     <ComboBox Grid.Column="2" ItemsSource="{Binding Sides}"
@@ -159,6 +225,8 @@
                     </ItemsControl>
                 </ScrollViewer>
             </Grid>
+        </Grid>
+
         </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*,Auto,9,Auto" Margin="0,18,0,0">
