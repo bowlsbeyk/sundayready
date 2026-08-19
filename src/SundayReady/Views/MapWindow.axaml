@@ -766,6 +766,21 @@
                         <StackPanel Margin="20,18,20,18" Spacing="18">
 
                             <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Spacing="6" IsVisible="{Binding HasSeveralMaps}">
+                                    <TextBlock Classes="microLabel" Text="MAP" />
+                                    <ComboBox ItemsSource="{Binding Maps}"
+                                              SelectedItem="{Binding Current, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch" FontSize="13">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate DataType="vm:SystemMapViewModel">
+                                                <TextBlock Text="{Binding Name}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <Rectangle Height="1" Fill="{StaticResource HairlineBrush}"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
+
                                 <TextBlock Classes="microLabel" Text="SIGNAL TYPES" />
                                 <TextBlock Grid.Column="1" Classes="mono" Text="TAP TO ISOLATE"
                                            FontSize="9.5" LetterSpacing="1"
@@ -1333,11 +1348,18 @@
                                         Click="OnImportClick"
                                         ToolTip.Tip="Bring in a map somebody exported. It arrives as a new map — nothing here is overwritten." />
                             </Grid>
-                            <Grid ColumnDefinitions="Auto,9,Auto,*">
-                                <Button Classes="quiet" Content="Export templates…" Padding="13,7" FontSize="12.5"
+                            <TextBlock FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{StaticResource WaitBrush}"
+                                       IsVisible="{Binding ShowPortsHint}"
+                                       Text="No box on this map declares ports yet, so none are drawn — this map was saved before ports existed. Edit layout → select a box → PORTS (or a template), or press New example to see a rig that uses them." />
+                            <Grid ColumnDefinitions="Auto,9,Auto,9,Auto,*">
+                                <Button Classes="quiet" Content="New example" Padding="13,7" FontSize="12.5"
+                                        Command="{Binding CreateExampleMapCommand}"
+                                        ToolTip.Tip="Creates a fresh copy of the worked example rig as a NEW map — ports, notes, duplex snake and all. Nothing you have is touched." />
+                                <Button Grid.Column="2" Classes="quiet" Content="Export templates…" Padding="13,7" FontSize="12.5"
                                         Click="OnExportTemplatesClick"
                                         ToolTip.Tip="Your template library as one file — post it, and every church with the same gear stops typing port lists." />
-                                <Button Grid.Column="2" Classes="quiet" Content="Import templates…" Padding="13,7" FontSize="12.5"
+                                <Button Grid.Column="4" Classes="quiet" Content="Import templates…" Padding="13,7" FontSize="12.5"
                                         Click="OnImportTemplatesClick"
                                         ToolTip.Tip="Bring in templates the community made. Ones you already have are skipped, never replaced." />
                             </Grid>

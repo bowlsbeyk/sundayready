@@ -606,6 +606,18 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         RollUp();
     }
 
+    /// <summary>
+    /// The rail's map switcher sets <see cref="Current"/> directly, so the housekeeping that
+    /// Open() does has to happen here too — otherwise switching maps left the legend counting
+    /// the previous map's wires.
+    /// </summary>
+    partial void OnCurrentChanged(SystemMapViewModel? value)
+    {
+        ClearSelection();
+        RebuildLegend();
+        RollUp();
+    }
+
     public void Open(SystemMapViewModel map, bool remember = true)
     {
         if (Current is { } current && remember && !ReferenceEquals(current, map))
@@ -1163,6 +1175,8 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         // recomputed whenever status settles — otherwise the building view keeps showing the
         // faults from the previous poll.
         RefreshProjections();
+        OnPropertyChanged(nameof(ShowPortsHint));
+        OnPropertyChanged(nameof(HasSeveralMaps));
     }
 
     /// <summary>
@@ -1615,6 +1629,18 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             WireFrom = from;
         }
     }
+
+    /// <summary>
+    /// True when the open map's devices declare no ports at all — almost always a map saved
+    /// before ports existed. The rail shows a pointer, because "the feature is invisible until
+    /// your data has it" is the kind of thing an app has to say out loud.
+    /// </summary>
+    /// <summary>More than one map: the rail shows the switcher.</summary>
+    public bool HasSeveralMaps => Maps.Count > 1;
+
+    public bool ShowPortsHint => Current is { } map
+        && map.Devices.Count > 0
+        && map.Devices.All(d => d.Model.Ports.Count == 0);
 
     /// <summary>Snap while dragging: neighbours first, then the grid. Off for freehand purists.</summary>
     [ObservableProperty]
@@ -2429,9 +2455,20 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
             Y = 1500,
         });
 
+        // Never overwrite. The first example lands on the default name; every later one gets
+        // its own file — an old map sitting on the default name used to trap people on
+        // pre-ports data forever, with no way back short of deleting a file by hand.
+        var fileName = SystemMapStore.DefaultFileName;
+
+        if (_store.Exists(fileName))
+        {
+            model.Name = "Example rig";
+            fileName = SystemMapStore.NewId("example") + ".json";
+        }
+
         try
         {
-            _store.Save(model, SystemMapStore.DefaultFileName);
+            _store.Save(model, fileName);
         }
         catch (Exception ex)
         {
@@ -2440,6 +2477,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         }
 
         Load();
+        Current = _maps.FirstOrDefault(m => m.FileName == fileName) ?? Current;
         IsEditing = true;
         Status = "Example rig created. Rename the boxes to your gear, and give each one a check.";
     }

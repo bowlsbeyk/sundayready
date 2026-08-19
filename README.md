@@ -504,6 +504,12 @@ tick widens, because two cables in one jack is a fact worth seeing rather than a
 away. Ports are entirely optional throughout: skip them and a busy box still fans its wires along
 the edge so each stays followable.
 
+**More than one map.** A switcher appears at the top of the rail once a second map exists — an
+import, a sub-map, or **New example**, which recreates the worked rig any time as a *new* map that
+never touches yours. And because ports live in the map's data, a map saved before ports existed
+draws none: the rail now says exactly that and points at the fix, instead of leaving you staring
+at plain boxes wondering where the feature went.
+
 **Snapping.** Dragged boxes align to the boxes above and beside them — bring one within a few
 pixels of a neighbour's edge and it clicks into line — and fall onto a quiet 10px grid otherwise,
 so hand-laid maps stop being one pixel off everywhere. The **Snap** toggle in the rail turns it off
