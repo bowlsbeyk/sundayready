@@ -153,19 +153,7 @@ public sealed class WireLayer : Control
         // Fade the first and last 60ms so the blip never pops in or out.
         var fade = Math.Clamp(Math.Min(age / 0.06, (1.0 - age) / 0.06), 0, 1);
 
-        const double width = 3;
-        const double dashOn = 14;
-        var blip = Color.FromArgb((byte)(255 * 0.95 * fade), colour.R, colour.G, colour.B);
-
-        context.DrawGeometry(null, new Pen(new SolidColorBrush(blip), width)
-        {
-            // One dash and a gap longer than the path: a single traveller, same technique as
-            // the flow train.
-            DashStyle = new DashStyle(
-                new[] { dashOn / width, (length * 2) / width },
-                -(t * (length - dashOn)) / width),
-            LineCap = PenLineCap.Round,
-        }, wire.Geometry);
+        WireStrokes.Traveler(context, wire.Geometry, colour, 3, 14, length, t, 0.95 * fade);
     }
 
     private void DrawCore(DrawingContext context, MapConnectionViewModel wire, double now)
@@ -210,6 +198,35 @@ public sealed class WireLayer : Control
                 }, geometry);
                 return;
             }
+        }
+
+        // Heartbeat types carry occasional traffic: a faint cable, still, with one short pulse
+        // travelling the run every few seconds. A continuous flow train on a link that talks
+        // once a minute would be a lie about what the cable does.
+        if (type.Pulse)
+        {
+            if (!type.Wireless)
+            {
+                WireStrokes.Cable(context, geometry, colour,
+                    selected ? type.StrokeWidth + 1 : type.StrokeWidth, 0.30 * dim);
+            }
+
+            if (!Frozen)
+            {
+                var period = Math.Max(3.6, wire.FlowSeconds);
+                var cycle = now % period / period;
+
+                // The pulse occupies the first fifth of the cycle; the rest is stillness.
+                if (cycle < 0.2)
+                {
+                    var tp = cycle / 0.2;
+                    var beatFade = Math.Clamp(Math.Min(tp / 0.12, (1 - tp) / 0.12), 0, 1);
+                    WireStrokes.Traveler(context, geometry, colour, type.StrokeWidth + 0.5, 10,
+                        wire.PathLength, tp, 0.9 * beatFade * dim);
+                }
+            }
+
+            return;
         }
 
         // An unknown type is "no information", and no information must not be confusable with
@@ -381,6 +398,23 @@ public sealed class WireSample : Control
 
         if (Type is not { } type || !Color.TryParse(type.Colour, out var colour))
         {
+            return;
+        }
+
+        if (type.Pulse)
+        {
+            WireStrokes.Cable(context, line, colour, type.StrokeWidth, 0.30);
+
+            var cycle = now % 4.2 / 4.2;
+
+            if (!Frozen && cycle < 0.2)
+            {
+                var tp = cycle / 0.2;
+                var beatFade = Math.Clamp(Math.Min(tp / 0.12, (1 - tp) / 0.12), 0, 1);
+                WireStrokes.Traveler(context, line, colour, type.StrokeWidth + 0.5, 10,
+                    Math.Max(20, Bounds.Width - 2), tp, 0.9 * beatFade);
+            }
+
             return;
         }
 

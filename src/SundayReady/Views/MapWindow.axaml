@@ -745,6 +745,94 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- The property line, per 3a: a band, not a node. Everything past it
+                             is drawn and badged but can never block Ready to go. -->
+                        <StackPanel Spacing="12" IsVisible="{Binding HasStreamDestinations}"
+                                    MaxWidth="540" HorizontalAlignment="Left" Margin="0,8,0,0">
+                            <Border BorderBrush="{StaticResource HairlineStrongBrush}"
+                                    BorderThickness="0,1,0,1" Padding="0,7">
+                                <Border.Styles>
+                                    <Style Selector="Border">
+                                        <Setter Property="Background" Value="#08FFFFFF" />
+                                    </Style>
+                                </Border.Styles>
+                                <TextBlock Classes="mono" FontSize="10.5" LetterSpacing="1.6"
+                                           HorizontalAlignment="Center"
+                                           Foreground="{StaticResource TextFainterBrush}"
+                                           Text="BEYOND THE PROPERTY LINE" />
+                            </Border>
+                            <TextBlock FontSize="13" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="{Binding OffCampusNote}" />
+                            <ItemsControl ItemsSource="{Binding StreamDestinations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:MapStreamDestinationViewModel">
+                                        <Border CornerRadius="10" Padding="14,10" Margin="{Binding Indent, Converter={x:Static views:MapConverters.LeftIndent}}"
+                                                Background="{StaticResource PanelBrush}"
+                                                BorderThickness="1"
+                                                BorderBrush="{StaticResource HairlineBrush}">
+                                            <Grid ColumnDefinitions="Auto,11,*,11,Auto">
+                                                <!-- The tier's honest dot: hollow for a guess,
+                                                     filled only when something actually answers. -->
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                         Stroke="{StaticResource TextLockedBrush}"
+                                                         StrokeThickness="1.2" Fill="Transparent"
+                                                         IsVisible="{Binding Device.ShowsHollowDot}" />
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{StaticResource OkBrush}"
+                                                         IsVisible="{Binding Device.ShowsOk}" />
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                                         Fill="{StaticResource FailBrush}"
+                                                         IsVisible="{Binding ShowsTrouble}" />
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="{Binding Device.Label}" FontSize="14"
+                                                               FontWeight="Medium" />
+                                                    <TextBlock Classes="mono" FontSize="10"
+                                                               Foreground="{StaticResource TextFainterBrush}"
+                                                               Text="{Binding ArrivingLabel}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6"
+                                                            VerticalAlignment="Center">
+                                                    <Border CornerRadius="3" Padding="6,2"
+                                                            IsVisible="{Binding Device.IsReported}"
+                                                            Background="#1F4a93e0" BorderThickness="1"
+                                                            BorderBrush="#804a93e0">
+                                                        <TextBlock Classes="tierBadge" Text="REPORTED"
+                                                                   Foreground="{StaticResource ActionBrush}" />
+                                                    </Border>
+                                                    <Border CornerRadius="3" Padding="6,2"
+                                                            IsVisible="{Binding Device.IsHuman}"
+                                                            Background="#1Fd6a53c" BorderThickness="1"
+                                                            BorderBrush="{StaticResource WaitBorderBrush}">
+                                                        <TextBlock Classes="tierBadge" Text="ASK A HUMAN"
+                                                                   Foreground="{StaticResource WaitBrush}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- The tiers, taught where they are seen — the 3a persistent legend. -->
+                        <Border MaxWidth="540" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                CornerRadius="10" Padding="16,12"
+                                Background="{StaticResource PanelBrush}"
+                                BorderThickness="1" BorderBrush="{StaticResource HairlineBrush}">
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="microLabel" Text="HOW THE APP KNOWS" />
+                                <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Verified — the app checks it itself. The only tier that can hold Ready to go." />
+                                <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Reported — a third party answers for it. Believed, badged, never blocking." />
+                                <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Inferred — assumed fine because its upstream is. Drawn hollow; never shows green." />
+                                <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Ask a human — somebody's job to confirm, as a checklist item." />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
 

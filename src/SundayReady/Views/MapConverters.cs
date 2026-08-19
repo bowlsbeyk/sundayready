@@ -21,6 +21,10 @@ public static class MapConverters
     public static readonly IValueConverter DimOpacity =
         new FuncValueConverter<bool, double>(dimmed => dimmed ? 0.22 : 1.0);
 
+    /// <summary>Depth as a left margin — the stream fan's indent.</summary>
+    public static readonly IValueConverter LeftIndent =
+        new FuncValueConverter<double, Avalonia.Thickness>(d => new Avalonia.Thickness(d, 0, 0, 7));
+
     /// <summary>The zoom factor as a layout transform for the canvas wrapper.</summary>
     public static readonly IValueConverter ZoomTransform =
         new FuncValueConverter<double, Avalonia.Media.ITransform>(z =>

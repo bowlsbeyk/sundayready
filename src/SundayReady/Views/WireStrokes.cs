@@ -40,6 +40,32 @@ internal static class WireStrokes
     }
 
     /// <summary>
+    /// A single short dash somewhere along the path — the blip and the heartbeat are both this.
+    /// <paramref name="t"/> is 0..1 along the run; the gap is longer than the path so exactly
+    /// one traveller exists.
+    /// </summary>
+    public static void Traveler(
+        DrawingContext context,
+        Geometry geometry,
+        Color colour,
+        double width,
+        double dashOn,
+        double pathLength,
+        double t,
+        double opacity)
+    {
+        var paint = Color.FromArgb((byte)(255 * opacity), colour.R, colour.G, colour.B);
+
+        context.DrawGeometry(null, new Pen(new SolidColorBrush(paint), width)
+        {
+            DashStyle = new DashStyle(
+                new[] { dashOn / width, (pathLength * 2) / width },
+                -(t * (pathLength - dashOn)) / width),
+            LineCap = PenLineCap.Round,
+        }, geometry);
+    }
+
+    /// <summary>
     /// The reserved alarm: red dashes pulsing in place, opacity .3 → .95 → .3 over 1.7s. It
     /// reads as an alarm precisely because it is the one thing not flowing. Frozen pins it at
     /// full brightness — a frozen map must still show its faults.

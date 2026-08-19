@@ -1323,9 +1323,43 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         Current is { } map ? MapProjections.Rooms(map) : Array.Empty<MapRoomViewModel>();
 
     public IReadOnlyList<MapStreamHopViewModel> StreamHops =>
-        Current is { } map ? MapProjections.StreamPath(map) : Array.Empty<MapStreamHopViewModel>();
+        Current is { } map
+            ? MapProjections.StreamPathWithDestinations(map).Hops
+            : Array.Empty<MapStreamHopViewModel>();
+
+    /// <summary>Everything beyond the property line, fanned out from the last hop.</summary>
+    public IReadOnlyList<MapStreamDestinationViewModel> StreamDestinations =>
+        Current is { } map
+            ? MapProjections.StreamPathWithDestinations(map).Destinations
+            : Array.Empty<MapStreamDestinationViewModel>();
 
     public bool HasStreamPath => StreamHops.Count > 0;
+
+    public bool HasStreamDestinations => StreamDestinations.Count > 0;
+
+    /// <summary>
+    /// One sentence about the fan, always ending on the rule that keeps Sundays calm: nothing
+    /// out there can block Ready to go.
+    /// </summary>
+    public string OffCampusNote
+    {
+        get
+        {
+            var destinations = StreamDestinations;
+
+            if (destinations.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var trouble = destinations.Count(d => d.ShowsTrouble);
+            var counts = $"{destinations.Count} destination{(destinations.Count == 1 ? "" : "s")} beyond the property line";
+
+            return trouble == 0
+                ? $"{counts}. Nothing out here can ever block Ready to go."
+                : $"{counts} · {trouble} reporting trouble. Worth knowing — and still cannot block Ready to go.";
+        }
+    }
 
     /// <summary>One sentence about the stream path: where it stops, or that it does not.</summary>
     public string StreamVerdict
@@ -1382,6 +1416,9 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         OnPropertyChanged(nameof(StreamHops));
         OnPropertyChanged(nameof(HasStreamPath));
         OnPropertyChanged(nameof(StreamVerdict));
+        OnPropertyChanged(nameof(StreamDestinations));
+        OnPropertyChanged(nameof(HasStreamDestinations));
+        OnPropertyChanged(nameof(OffCampusNote));
     }
 
     // ------------------------------------------------------------------ undo
@@ -2469,6 +2506,26 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
                     "PERSONAL MIXES", "wl-audio"),
                 Dev("livestream", "Livestream station", MapDeviceKinds.Computer, outX, 900, "Media room",
                     "ENCODER & SWITCHER", "ndi", hub: true),
+
+                // ---- beyond the property line: drawn, badged, never blocking ----
+                new MapDevice
+                {
+                    Id = "subsplash", Label = "Subsplash", Kind = MapDeviceKinds.Cloud,
+                    X = outX + 420, Y = 820, Location = "Off campus", OffCampus = true,
+                    Tier = MapTiers.Reported, Detail = "STREAM SERVICE · FANS OUT",
+                },
+                new MapDevice
+                {
+                    Id = "youtube", Label = "YouTube", Kind = MapDeviceKinds.Cloud,
+                    X = outX + 840, Y = 740, Location = "Off campus", OffCampus = true,
+                    Tier = MapTiers.Inferred, Detail = "PLATFORM",
+                },
+                new MapDevice
+                {
+                    Id = "facebook", Label = "Facebook", Kind = MapDeviceKinds.Cloud,
+                    X = outX + 840, Y = 900, Location = "Off campus", OffCampus = true,
+                    Tier = MapTiers.Inferred, Detail = "PLATFORM",
+                },
             },
         };
 
@@ -2529,6 +2586,10 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         model.Connections.Add(Wire("propresenter", "m4250", "cat6"));
 
         // ---- the stream path ----
+        model.Connections.Add(Wire("livestream", "subsplash", "cat6", "RTMP OUT"));
+        model.Connections.Add(Wire("subsplash", "youtube", "cat6"));
+        model.Connections.Add(Wire("subsplash", "facebook", "cat6"));
+
         var toMedia = Wire("x32", "x32-compact", "analog-snake", "SNAKE TO MEDIA ROOM");
         toMedia.FromPort = "x32-snake";
         model.Connections.Add(toMedia);

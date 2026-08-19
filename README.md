@@ -519,6 +519,15 @@ tick widens, because two cables in one jack is a fact worth seeing rather than a
 away. Ports are entirely optional throughout: skip them and a busy box still fans its wires along
 the edge so each stays followable.
 
+**Beyond the property line.** The Stream path view now ends the way your signal does: the chain
+of hops the church controls, then a **property-line band**, then the fan of off-campus
+destinations — the stream service, the platforms it feeds — indented by depth, badged by tier
+(REPORTED for a third party that answers, a hollow dot for a platform nobody can check), with the
+rule stated where it matters: *nothing out here can ever block Ready to go*. A persistent legend
+underneath teaches the four tiers where they are seen. Signal types can also be marked
+**heartbeat** in the registry — occasional traffic drawn as a pulse every few seconds instead of a
+continuous stream, for check-ins and telemetry.
+
 **More than one map.** A switcher appears at the top of the rail once a second map exists — an
 import, a sub-map, or **New example**, which recreates the worked rig any time as a *new* map that
 never touches yours. And because ports live in the map's data, a map saved before ports existed

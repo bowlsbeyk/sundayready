@@ -98,6 +98,43 @@ public sealed class MapStreamHopViewModel
 }
 
 /// <summary>
+/// One destination beyond the property line: a platform or service the signal fans out to.
+/// <para>
+/// These render below the property-line band, never inside the hop chain, because the chain is
+/// what the church controls and the fan is what it merely watches. Depth is indent: Subsplash
+/// at 0, the platforms it feeds at 1.
+/// </para>
+/// </summary>
+public sealed class MapStreamDestinationViewModel
+{
+    public MapStreamDestinationViewModel(
+        MapDeviceViewModel device,
+        MapConnectionViewModel arriving,
+        int depth)
+    {
+        Device = device;
+        Arriving = arriving;
+        Depth = depth;
+    }
+
+    public MapDeviceViewModel Device { get; }
+
+    public MapConnectionViewModel Arriving { get; }
+
+    public int Depth { get; }
+
+    public double Indent => Depth * 26;
+
+    public string? ArrivingLabel => Arriving.Type.Name;
+
+    /// <summary>
+    /// Reported trouble, badged, never blocking. Inferred destinations cannot be "down" — the
+    /// app knows nothing about them, and a guess must never look checked OR broken.
+    /// </summary>
+    public bool ShowsTrouble => Device.IsReported && Device.IsFailed;
+}
+
+/// <summary>
 /// Builds the two derived projections. Kept as plain functions over an already-loaded map so both
 /// views stay honest by construction: they cannot show a device the signal-flow view does not have,
 /// and they cannot invent a status it did not already compute.
@@ -131,6 +168,51 @@ public static class MapProjections
     /// </para>
     /// </summary>
     public static IReadOnlyList<MapStreamHopViewModel> StreamPath(SystemMapViewModel map)
+    {
+        var (hops, _) = StreamPathWithDestinations(map);
+        return hops;
+    }
+
+    /// <summary>
+    /// The chain, split at the property line: hops the church controls, then the off-campus fan.
+    /// The hop chain stops at the last on-campus device — the gateway — and everything beyond it
+    /// becomes destinations, walked breadth-first so Subsplash appears before the platforms it
+    /// feeds. Off-campus devices are drawn, badged, and never judged as part of the chain.
+    /// </summary>
+    public static (IReadOnlyList<MapStreamHopViewModel> Hops, IReadOnlyList<MapStreamDestinationViewModel> Destinations)
+        StreamPathWithDestinations(SystemMapViewModel map)
+    {
+        var hops = BuildHops(map);
+
+        // Trim the chain at the property line; the fan picks up from the gateway.
+        var trimmed = hops.TakeWhile(h => !h.Device.OffCampus).ToList();
+
+        if (trimmed.Count == 0)
+        {
+            return (trimmed, Array.Empty<MapStreamDestinationViewModel>());
+        }
+
+        var gateway = trimmed[^1].Device;
+        var destinations = new List<MapStreamDestinationViewModel>();
+        var seen = new HashSet<MapDeviceViewModel> { gateway };
+
+        void Walk(MapDeviceViewModel from, int depth)
+        {
+            foreach (var wire in map.Connections.Where(c => ReferenceEquals(c.From, from)))
+            {
+                if (wire.To.OffCampus && seen.Add(wire.To))
+                {
+                    destinations.Add(new MapStreamDestinationViewModel(wire.To, wire, depth));
+                    Walk(wire.To, depth + 1);
+                }
+            }
+        }
+
+        Walk(gateway, 0);
+        return (trimmed, destinations);
+    }
+
+    private static IReadOnlyList<MapStreamHopViewModel> BuildHops(SystemMapViewModel map)
     {
         if (map.Devices.Count == 0)
         {

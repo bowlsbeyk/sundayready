@@ -90,6 +90,10 @@ public sealed partial class MapTypeRegistryViewModel : ObservableObject
     [ObservableProperty]
     private bool _duplex;
 
+    /// <summary>Occasional traffic: drawn as a heartbeat, not a stream.</summary>
+    [ObservableProperty]
+    private bool _pulse;
+
     [ObservableProperty]
     private string _warnOverFt = string.Empty;
 
@@ -138,6 +142,7 @@ public sealed partial class MapTypeRegistryViewModel : ObservableObject
         StrokeWidth = Wireless ? 2 : 2.5,
         FlowSeconds = FlowSeconds,
         Wireless = Wireless,
+        Pulse = Pulse,
     };
 
     public bool CanDelete => SelectedCard is { IsCustom: true };
@@ -181,6 +186,7 @@ public sealed partial class MapTypeRegistryViewModel : ObservableObject
             FlowSeconds = Math.Clamp(FlowSeconds, 2.0, 8.0),
             Wireless = Wireless,
             DefaultBidirectional = Duplex,
+            Pulse = Pulse,
             WarnOverFt = int.TryParse(WarnOverFt, out var warn) && warn > 0 ? warn : null,
             CreatedBy = Environment.UserName,
             CreatedAt = DateTime.Now.ToString("MMM yyyy").ToUpperInvariant(),
@@ -314,4 +320,6 @@ public sealed partial class MapTypeRegistryViewModel : ObservableObject
     partial void OnFlowSecondsChanged(double value) => OnPropertyChanged(nameof(Preview));
 
     partial void OnWirelessChanged(bool value) => OnPropertyChanged(nameof(Preview));
+
+    partial void OnPulseChanged(bool value) => OnPropertyChanged(nameof(Preview));
 }

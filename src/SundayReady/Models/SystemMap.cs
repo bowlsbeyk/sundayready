@@ -386,6 +386,14 @@ public sealed class MapConnectionType
     /// </summary>
     public bool DefaultBidirectional { get; set; }
 
+    /// <summary>
+    /// The heartbeat pattern: this type carries occasional traffic, not a continuous stream —
+    /// station check-ins, low-rate telemetry. Drawn mostly still with one pulse every few
+    /// seconds, because a continuous flow train on a link that talks once a minute is a lie
+    /// about what the cable does.
+    /// </summary>
+    public bool Pulse { get; set; }
+
     /// <summary>Warn when a run exceeds this. HDMI over Cat6 warns over 50 ft.</summary>
     public int? WarnOverFt { get; set; }
 
