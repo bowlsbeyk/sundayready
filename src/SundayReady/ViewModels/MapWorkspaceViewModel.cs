@@ -751,6 +751,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         foreach (var n in Current?.Notes ?? Enumerable.Empty<MapNoteViewModel>())
         {
             n.IsSelected = false;
+            n.EndTextEditing();
         }
 
         SelectedDevice = null;
@@ -1638,6 +1639,10 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         map.Notes.Add(vm);
         map.RefreshExtent();
         SelectNote(vm);
+
+        // A brand-new note opens ready to type — that is the one moment the text box earns
+        // its keep. Clicking anywhere else commits it and it becomes plain text.
+        vm.IsTextEditing = true;
         Status = about is null
             ? "Note added. Type into it, and drag it where it belongs."
             : $"Note added, attached to {about.Label}. It will follow the box.";
@@ -1690,6 +1695,11 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
         foreach (var other in Current?.Notes ?? Enumerable.Empty<MapNoteViewModel>())
         {
             other.IsSelected = ReferenceEquals(other, note);
+
+            if (!ReferenceEquals(other, note))
+            {
+                other.EndTextEditing();
+            }
         }
 
         SelectedNote = note;

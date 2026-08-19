@@ -39,6 +39,11 @@
             <Setter Property="Opacity" Value="0.55" />
         </Style>
 
+        <Style Selector="TextBlock.notePlaceholder">
+            <Setter Property="Foreground" Value="{StaticResource TextFainterBrush}" />
+            <Setter Property="FontStyle" Value="Italic" />
+        </Style>
+
         <!-- Notes: a bare text field that only looks like a field once you are editing. -->
         <Style Selector="TextBox.noteText">
             <Setter Property="Background" Value="Transparent" />
@@ -303,6 +308,7 @@
                                     <Panel PointerPressed="OnNotePressed"
                                            PointerMoved="OnNoteMoved"
                                            PointerReleased="OnNoteReleased"
+                                           DoubleTapped="OnNoteDoubleTapped"
                                            Opacity="{Binding IsDimmed, Converter={x:Static views:MapConverters.DimOpacity}}">
                                         <Border Width="210" MinHeight="46" CornerRadius="4"
                                                 Padding="12,10"
@@ -312,11 +318,20 @@
                                                 Classes.warn="{Binding IsWarning}"
                                                 Classes.picked="{Binding IsSelected}">
                                             <StackPanel Spacing="5">
+                                                <!-- Read view: a note, not a form. The text box
+                                                     only appears while typing (double-click in
+                                                     edit mode) and commits on click-away. -->
+                                                <TextBlock TextWrapping="Wrap" FontSize="12.5"
+                                                           Text="{Binding DisplayText}"
+                                                           Classes.notePlaceholder="{Binding IsPlaceholder}"
+                                                           IsVisible="{Binding ShowsText}" />
                                                 <TextBox Classes="noteText" AcceptsReturn="True"
                                                          TextWrapping="Wrap" FontSize="12.5"
                                                          Watermark="Type the thing somebody needs to know…"
                                                          Text="{Binding Text, Mode=TwoWay}"
-                                                         IsReadOnly="{Binding !$parent[Window].((vm:MapWorkspaceViewModel)DataContext).IsEditing}" />
+                                                         IsVisible="{Binding IsTextEditing}"
+                                                         LostFocus="OnNoteTextLostFocus"
+                                                         KeyDown="OnNoteTextKeyDown" />
                                                 <TextBlock Classes="mono" FontSize="10"
                                                            LetterSpacing="0.6"
                                                            Foreground="{StaticResource TextFainterBrush}"

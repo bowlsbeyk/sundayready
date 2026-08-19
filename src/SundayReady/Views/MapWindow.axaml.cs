@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Avalonia.Threading;
 using SundayReady.Services;
 using SundayReady.ViewModels;
@@ -565,6 +566,48 @@ public partial class MapWindow : Window
         var y = Math.Max(0, position.Y - _noteOffset.Y);
         note.X = snap ? Math.Round(x / 10) * 10 : x;
         note.Y = snap ? Math.Round(y / 10) * 10 : y;
+    }
+
+    /// <summary>Double-click starts typing (edit mode only) and puts the caret in the box.</summary>
+    private void OnNoteDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is not Control { DataContext: MapNoteViewModel note } control
+            || Workspace is not { IsEditing: true })
+        {
+            return;
+        }
+
+        note.IsTextEditing = true;
+        e.Handled = true;
+
+        // Focus after the box has become visible, or the focus call lands on nothing.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (control.GetVisualDescendants().OfType<TextBox>().FirstOrDefault() is { } box)
+            {
+                box.Focus();
+                box.CaretIndex = box.Text?.Length ?? 0;
+            }
+        });
+    }
+
+    /// <summary>Click-away is the save. The question "how do I save a note" must never come up.</summary>
+    private void OnNoteTextLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: MapNoteViewModel note })
+        {
+            note.EndTextEditing();
+        }
+    }
+
+    private void OnNoteTextKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Escape
+            && sender is Control { DataContext: MapNoteViewModel note })
+        {
+            note.EndTextEditing();
+            e.Handled = true;
+        }
     }
 
     private void OnNoteReleased(object? sender, PointerReleasedEventArgs e)

@@ -35,6 +35,35 @@ public sealed partial class MapNoteViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDimmed;
 
+    /// <summary>
+    /// The note's text box is only a text box while somebody is actually typing into it.
+    /// The rest of the time it reads as what it is — a note — because a permanently exposed
+    /// input field looks unsaved forever, and "how do I save this?" is the question a note
+    /// must never raise.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsText))]
+    private bool _isTextEditing;
+
+    /// <summary>The read view: the text, or a nudge when there is none yet.</summary>
+    public string DisplayText => string.IsNullOrWhiteSpace(Text)
+        ? "Double-click to write…"
+        : Text;
+
+    public bool IsPlaceholder => string.IsNullOrWhiteSpace(Text);
+
+    public bool ShowsText => !IsTextEditing;
+
+    /// <summary>Leaves typing mode and pushes the text into the model.</summary>
+    public void EndTextEditing()
+    {
+        if (IsTextEditing)
+        {
+            IsTextEditing = false;
+            Commit();
+        }
+    }
+
     public MapNoteViewModel(MapNote model, MapDeviceViewModel? about)
     {
         Model = model;
@@ -106,5 +135,10 @@ public sealed partial class MapNoteViewModel : ObservableObject
         OnPropertyChanged(nameof(TetherY));
     }
 
-    partial void OnTextChanged(string value) => Model.Text = value;
+    partial void OnTextChanged(string value)
+    {
+        Model.Text = value;
+        OnPropertyChanged(nameof(DisplayText));
+        OnPropertyChanged(nameof(IsPlaceholder));
+    }
 }
