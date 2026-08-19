@@ -597,6 +597,9 @@ public readonly record struct MapPortAnchor(
     /// </summary>
     public string ShortLabel => Shorten(Label);
 
+    /// <summary>Four characters do not fit an 18px tile at 8.5 — they shrink, not clip.</summary>
+    public double TileFontSize => ShortLabel.Length >= 4 ? 6.5 : 8.5;
+
     /// <summary>Shared with the component editor's preview, so both compress identically.</summary>
     public static string Shorten(string label)
     {

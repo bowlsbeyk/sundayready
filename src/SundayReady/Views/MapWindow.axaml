@@ -221,19 +221,21 @@
                     <Button Classes="quiet" Content="Draw connection"
                             Command="{Binding BeginWireCommand}"
                             ToolTip.Tip="Arms a wire from the selected box. You can also just drag from either end of a box." />
-                    <Button Classes="quiet" Content="Component editor"
-                            Click="OnBigEditorClick"
-                            ToolTip.Tip="Opens the selected device in its own editor — library, live preview, and the full port list. Select a box first." />
                     <Button Classes="quiet" Content="Undo"
                             Command="{Binding UndoCommand}"
                             IsEnabled="{Binding CanUndo}"
                             ToolTip.Tip="{Binding UndoLabel}" />
                 </StackPanel>
 
-                <Button Grid.Column="8" Classes="quiet dashed" VerticalAlignment="Center"
-                        Command="{Binding ToggleEditingCommand}">
-                    <TextBlock Text="Edit layout" />
-                </Button>
+                <StackPanel Grid.Column="8" Orientation="Horizontal" Spacing="11"
+                            VerticalAlignment="Center">
+                    <Button Classes="quiet" Content="Component editor"
+                            Click="OnBigEditorClick"
+                            ToolTip.Tip="Opens the selected device in its own editor — library, live preview, the full port list. Click a box first; this switches into edit mode for you." />
+                    <Button Classes="quiet dashed" Command="{Binding ToggleEditingCommand}">
+                        <TextBlock Text="Edit layout" />
+                    </Button>
+                </StackPanel>
 
                 <TextBlock Grid.Column="10" x:Name="Clock" Classes="mono" FontSize="24"
                            FontWeight="SemiBold" LetterSpacing="-0.5" VerticalAlignment="Center" />
@@ -424,7 +426,7 @@
                                                                     BorderThickness="{Binding TileBorderThickness}"
                                                                     BorderBrush="{Binding TileBorderBrush}"
                                                                     Background="{Binding FillBrush}">
-                                                                <TextBlock Classes="mono" FontSize="8.5" FontWeight="Bold"
+                                                                <TextBlock Classes="mono" FontSize="{Binding TileFontSize}" FontWeight="Bold"
                                                                            Foreground="#0b0d10"
                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                            Text="{Binding ShortLabel}"
@@ -484,7 +486,7 @@
                                                                     BorderThickness="{Binding TileBorderThickness}"
                                                                     BorderBrush="{Binding TileBorderBrush}"
                                                                     Background="{Binding FillBrush}">
-                                                                <TextBlock Classes="mono" FontSize="8.5" FontWeight="Bold"
+                                                                <TextBlock Classes="mono" FontSize="{Binding TileFontSize}" FontWeight="Bold"
                                                                            Foreground="#0b0d10"
                                                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                            Text="{Binding ShortLabel}"

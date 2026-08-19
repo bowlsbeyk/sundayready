@@ -271,7 +271,26 @@ public partial class MapWindow : Window
     /// </summary>
     private void OnBigEditorClick(object? sender, RoutedEventArgs e)
     {
-        if (Workspace is not { DeviceEditor: { } editor } workspace)
+        if (Workspace is not { } workspace)
+        {
+            return;
+        }
+
+        if (workspace.SelectedDevice is not { } device)
+        {
+            workspace.Status = "Click a box first — then the component editor opens it.";
+            return;
+        }
+
+        // The button lives in the always-visible top bar, so it does the mode housekeeping
+        // itself: entering edit mode keeps the selection, and re-selecting builds the editor.
+        if (!workspace.IsEditing)
+        {
+            workspace.ToggleEditingCommand.Execute(null);
+            workspace.Select(device);
+        }
+
+        if (workspace.DeviceEditor is not { } editor)
         {
             return;
         }

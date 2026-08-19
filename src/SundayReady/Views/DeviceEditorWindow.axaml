@@ -75,7 +75,7 @@
                                                 CornerRadius="4" Background="#0b0d10"
                                                 BorderThickness="1.5" BorderBrush="#52FFFFFF"
                                                 ToolTip.Tip="{Binding FullLabel}">
-                                            <TextBlock Classes="mono" FontSize="8.5" FontWeight="Bold"
+                                            <TextBlock Classes="mono" FontSize="{Binding TileFontSize}" FontWeight="Bold"
                                                        Foreground="{StaticResource TextMutedBrush}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                                        Text="{Binding ShortLabel}"

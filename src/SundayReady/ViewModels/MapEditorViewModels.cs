@@ -133,6 +133,8 @@ public sealed record MapPreviewPort(string ShortLabel, string FullLabel, double 
 {
     public double TileSize => IsBanked ? 5 : 18;
 
+    public double TileFontSize => ShortLabel.Length >= 4 ? 6.5 : 8.5;
+
     /// <summary>Canvas.Left inside a 262-wide preview box: straddling the edge, like the map.</summary>
     public double Left => RightSide ? 262 - (TileSize / 2) : -(TileSize / 2);
 }
