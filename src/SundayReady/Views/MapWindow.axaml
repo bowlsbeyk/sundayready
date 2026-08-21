@@ -1148,6 +1148,39 @@
                                 </StackPanel>
                             </Border>
 
+                            <!-- Section bands: the labelled columns behind the graph. Layout
+                                 furniture, not topology — boxes are never tied to one. -->
+                            <StackPanel Spacing="9" IsVisible="{Binding IsEditing}">
+                                <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Classes="microLabel" Text="SECTION BANDS" VerticalAlignment="Center" />
+                                    <Button Grid.Column="1" Classes="quiet" Content="Add section"
+                                            Padding="11,5" FontSize="12"
+                                            Command="{Binding AddColumnCommand}"
+                                            ToolTip.Tip="A labelled vertical band behind the graph — STAGE, BOOTH, OUTPUTS. Pure layout: boxes are not tied to it, it just carries rank so they don't have to." />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding ColumnRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:MapColumnRowViewModel">
+                                            <Grid ColumnDefinitions="*,7,64,7,Auto" Margin="0,0,0,6">
+                                                <TextBox Classes="field" FontSize="12.5"
+                                                         Watermark="SECTION NAME"
+                                                         Text="{Binding Label, Mode=TwoWay}" />
+                                                <TextBox Grid.Column="2" Classes="field" FontSize="12"
+                                                         FontFamily="{StaticResource MonoFont}"
+                                                         ToolTip.Tip="Where the band's left edge sits on the canvas, in pixels"
+                                                         Text="{Binding X, Mode=TwoWay}" />
+                                                <Button Grid.Column="4" Classes="danger" Content="&#215;"
+                                                        Padding="9,4" FontSize="13"
+                                                        ToolTip.Tip="Remove the band. Boxes stay exactly where they are."
+                                                        Command="{Binding $parent[ItemsControl].((vm:MapWorkspaceViewModel)DataContext).RemoveColumnCommand}"
+                                                        CommandParameter="{Binding}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
                             <!-- Device editor: how a box gets its name, tier and check. -->
                             <StackPanel Spacing="11"
                                         IsVisible="{Binding DeviceEditor, Converter={x:Static ObjectConverters.IsNotNull}}">

@@ -98,6 +98,47 @@ public sealed class MapStreamHopViewModel
 }
 
 /// <summary>
+/// One editable column band. Writes straight through to the model and refreshes the canvas,
+/// so typing a name or nudging an X repaints the band as you go — bands are furniture, and
+/// furniture should move when pushed, not after an Apply.
+/// </summary>
+public sealed partial class MapColumnRowViewModel : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+{
+    private readonly Action _refresh;
+
+    public MapColumnRowViewModel(MapColumn model, Action refresh)
+    {
+        Model = model;
+        _refresh = refresh;
+        _label = model.Label;
+        _x = model.X.ToString("0");
+    }
+
+    public MapColumn Model { get; }
+
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty]
+    private string _label;
+
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty]
+    private string _x;
+
+    partial void OnLabelChanged(string value)
+    {
+        Model.Label = value?.Trim() ?? string.Empty;
+        _refresh();
+    }
+
+    partial void OnXChanged(string value)
+    {
+        if (double.TryParse(value, out var x) && x >= 0)
+        {
+            Model.X = Math.Round(x);
+            _refresh();
+        }
+    }
+}
+
+/// <summary>
 /// One destination beyond the property line: a platform or service the signal fans out to.
 /// <para>
 /// These render below the property-line band, never inside the hop chain, because the chain is

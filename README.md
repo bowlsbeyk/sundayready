@@ -534,6 +534,11 @@ never touches yours. And because ports live in the map's data, a map saved befor
 draws none: the rail now says exactly that and points at the fix, instead of leaving you staring
 at plain boxes wondering where the feature went.
 
+**Section bands.** The labelled columns behind the graph — STAGE & PLATFORM, SOUND BOOTH,
+OUTPUTS — are yours to shape: **SECTION BANDS** in the rail (edit mode) renames, moves, adds and
+removes them, repainting as you type. They are pure layout furniture; boxes are never tied to one,
+and removing a band moves nothing.
+
 **Snapping.** Dragged boxes align to the boxes above and beside them — bring one within a few
 pixels of a neighbour's edge and it clicks into line — and fall onto a quiet 10px grid otherwise,
 so hand-laid maps stop being one pixel off everywhere. The **Snap** toggle in the rail turns it off

@@ -639,6 +639,7 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
     {
         ClearSelection();
         RebuildLegend();
+        RebuildColumnRows();
         RollUp();
     }
 
@@ -1303,6 +1304,65 @@ public sealed partial class MapWorkspaceViewModel : ObservableObject, IDisposabl
                 && !map.Connections.Any(c => !c.IsDimmed
                     && (ReferenceEquals(c.From, device) || ReferenceEquals(c.To, device)));
         }
+    }
+
+    // ------------------------------------------------------------------ section bands
+
+    /// <summary>
+    /// The editable face of the map's column bands — STAGE, BOOTH, DISTRIBUTION. They were
+    /// authorable only by hand-editing JSON, which made them look like a fixture of the example
+    /// rather than something a church shapes to its own building.
+    /// </summary>
+    public ObservableCollection<MapColumnRowViewModel> ColumnRows { get; } = new();
+
+    private void RebuildColumnRows()
+    {
+        ColumnRows.Clear();
+
+        if (Current is not { } map)
+        {
+            return;
+        }
+
+        foreach (var column in map.Model.Columns.OrderBy(c => c.X))
+        {
+            ColumnRows.Add(new MapColumnRowViewModel(column, map.RefreshExtent));
+        }
+    }
+
+    [RelayCommand]
+    private void AddColumn()
+    {
+        if (Current is not { } map)
+        {
+            return;
+        }
+
+        Checkpoint("adding a section band");
+
+        // Lands one column-width past the rightmost band, or at the left edge on a bare map.
+        var x = map.Model.Columns.Count == 0
+            ? 16
+            : map.Model.Columns.Max(c => c.X) + 414;
+
+        map.Model.Columns.Add(new MapColumn { Label = "NEW SECTION", X = x });
+        map.RefreshExtent();
+        RebuildColumnRows();
+        Status = "Section added. Name it, and set where it sits — boxes are not tied to it.";
+    }
+
+    [RelayCommand]
+    private void RemoveColumn(MapColumnRowViewModel? row)
+    {
+        if (row is null || Current is not { } map)
+        {
+            return;
+        }
+
+        Checkpoint($"removing the {row.Label} section");
+        map.Model.Columns.Remove(row.Model);
+        map.RefreshExtent();
+        RebuildColumnRows();
     }
 
     // ------------------------------------------------------------------ projections
